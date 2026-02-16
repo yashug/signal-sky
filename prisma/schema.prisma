@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Users (linked to auth.users via Supabase Auth) ─────────────
+
+model User {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String?  @unique
+  name            String?
+  image           String?
+  telegramId      String?  @map("telegram_id")
+  telegramHandle  String?  @map("telegram_handle")
+  tier            Tier     @default(FREE)
+  settings        Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  watchlistItems   WatchlistItem[]
+  journalTrades    JournalTrade[]
+  alertPreferences AlertPreference[]
+  alertHistory     AlertHistory[]
+  subscription     Subscription?
+
+  @@map("users")
+}
+
+enum Tier {
+  FREE
+  PRO
+  INSTITUTIONAL
+}
+
+// ─── Subscriptions & Billing ──────────────────────────────────────
+
+model Subscription {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String    @unique @map("user_id") @db.Uuid
+  stripeCustomerId     String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?   @unique @map("stripe_subscription_id")
+  stripePriceId        String?   @map("stripe_price_id")
+  billingInterval      String    @default("monthly") @map("billing_interval") @db.VarChar(20)
+  status               String    @default("inactive")
+  currentPeriodStart   DateTime? @map("current_period_start")
+  currentPeriodEnd     DateTime? @map("current_period_end")
+  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ─── Lifetime Deal Tracking ──────────────────────────────────────
+
+model LifetimeDeal {
+  id        Int      @id @default(autoincrement())
+  cap       Int      @default(100)
+  sold      Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("lifetime_deals")
+}
+
+// ─── Kite Auth Token ─────────────────────────────────────────────
+
+model KiteToken {
+  id          Int      @id @default(1)
+  accessToken String   @map("access_token") @db.VarChar(100)
+  publicToken String?  @map("public_token") @db.VarChar(100)
+  userId      String?  @map("kite_user_id") @db.VarChar(20)
+  loginTime   DateTime @default(now()) @map("login_time")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("kite_tokens")
+}
+
+// ─── Kite Instruments ────────────────────────────────────────────
+
+model KiteInstrument {
+  instrumentToken Int      @id @map("instrument_token")
+  exchangeToken   Int      @map("exchange_token")
+  tradingsymbol   String   @db.VarChar(40)
+  name            String?  @db.VarChar(120)
+  exchange        String   @db.VarChar(10)
+  segment         String   @db.VarChar(20)
+  instrumentType  String   @map("instrument_type") @db.VarChar(10)
+  lotSize         Int      @default(1) @map("lot_size")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([tradingsymbol])
+  @@index([exchange])
+  @@map("kite_instruments")
+}
+
+// ─── Market Data ──────────────────────────────────────────────────
+
+model DailyBar {
+  id        Int      @id @default(autoincrement())
+  symbol    String   @db.VarChar(20)
+  exchange  String   @db.VarChar(10)
+  date      DateTime @db.Date
+  open      Decimal  @db.Decimal(14, 4)
+  high      Decimal  @db.Decimal(14, 4)
+  low       Decimal  @db.Decimal(14, 4)
+  close     Decimal  @db.Decimal(14, 4)
+  volume    BigInt   @default(0)
+  adjFactor Decimal  @default(1.0) @map("adj_factor") @db.Decimal(10, 6)
+  sma200    Decimal? @db.Decimal(14, 4)
+  ema200    Decimal? @db.Decimal(14, 4)
+  source    String   @default("yahoo") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol, exchange, date])
+  @@index([symbol, date(sort: Desc)])
+  @@index([exchange])
+  @@map("daily_bars")
+}
+
+model Indicator {
+  id          Int       @id @default(autoincrement())
+  symbol      String    @db.VarChar(20)
+  exchange    String    @db.VarChar(10)
+  date        DateTime  @db.Date
+  ema200      Decimal?  @db.Decimal(14, 4)
+  ath         Decimal?  @db.Decimal(14, 4)
+  athDate     DateTime? @map("ath_date") @db.Date
+  avgVol20    BigInt?   @map("avg_vol_20")
+  aboveEma200 Boolean   @default(false) @map("above_ema200")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([symbol, exchange, date])
+  @@index([symbol, date(sort: Desc)])
+  @@map("indicators")
+}
+
+// ─── Signals ──────────────────────────────────────────────────────
+
+model Signal {
+  id           String   @id @default(uuid())
+  symbol       String   @db.VarChar(20)
+  exchange     String   @db.VarChar(10)
+  strategyName String   @map("strategy_name") @db.VarChar(50)
+  heat         Heat
+  price        Decimal  @db.Decimal(14, 4)
+  ath          Decimal  @db.Decimal(14, 4)
+  ema200       Decimal  @db.Decimal(14, 4)
+  distancePct  Decimal  @map("distance_pct") @db.Decimal(8, 4)
+  volumeSurge  Decimal? @map("volume_surge") @db.Decimal(6, 2)
+  volumeToday  BigInt?  @map("volume_today")
+  volumeAvg20  BigInt?  @map("volume_avg20")
+  signalDate   DateTime @map("signal_date") @db.Date
+  details      Json     @default("{}")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  alertHistory  AlertHistory[]
+  journalTrades JournalTrade[]
+  backtests     Backtest[]
+
+  @@index([heat])
+  @@index([symbol])
+  @@index([isActive, signalDate(sort: Desc)])
+  @@map("signals")
+}
+
+enum Heat {
+  breakout
+  boiling
+  simmering
+  cooling
+}
+
+// ─── Market Health ────────────────────────────────────────────────
+
+model MarketHealth {
+  id          Int      @id @default(autoincrement())
+  universe    String   @db.VarChar(30)
+  date        DateTime @db.Date
+  totalStocks Int      @map("total_stocks")
+  aboveEma200 Int      @map("above_ema200")
+  pctAbove    Decimal  @map("pct_above") @db.Decimal(5, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([universe, date])
+  @@index([universe, date(sort: Desc)])
+  @@map("market_health")
+}
+
+// ─── Universes ────────────────────────────────────────────────────
+
+model UniverseMember {
+  id       Int      @id @default(autoincrement())
+  universe String   @db.VarChar(30)
+  symbol   String   @db.VarChar(20)
+  name     String?  @db.VarChar(120)
+  sector   String?  @db.VarChar(60)
+  addedAt  DateTime @default(now()) @map("added_at")
+
+  @@unique([universe, symbol])
+  @@index([universe])
+  @@map("universe_members")
+}
+
+// ─── Watchlists ───────────────────────────────────────────────────
+
+model WatchlistItem {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  symbol   String   @db.VarChar(20)
+  exchange String   @db.VarChar(10)
+  notes    String?
+  addedAt  DateTime @default(now()) @map("added_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol, exchange])
+  @@map("watchlist_items")
+}
+
+// ─── Trade Journal ────────────────────────────────────────────────
+
+model JournalTrade {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String      @map("user_id") @db.Uuid
+  symbol         String      @db.VarChar(20)
+  exchange       String      @db.VarChar(10)
+  side           TradeSide   @default(LONG)
+  entryDate      DateTime    @map("entry_date") @db.Date
+  entryPrice     Decimal     @map("entry_price") @db.Decimal(14, 4)
+  quantity       Int
+  stopLoss       Decimal?    @map("stop_loss") @db.Decimal(14, 4)
+  targetPrice    Decimal?    @map("target_price") @db.Decimal(14, 4)
+  exitDate       DateTime?   @map("exit_date") @db.Date
+  exitPrice      Decimal?    @map("exit_price") @db.Decimal(14, 4)
+  exitReason     String?     @map("exit_reason") @db.VarChar(50)
+  pnl            Decimal?    @db.Decimal(14, 4)
+  pnlPercent     Decimal?    @map("pnl_percent") @db.Decimal(8, 4)
+  notes          String?     @db.Text
+  linkedSignalId String?     @map("linked_signal_id")
+  status         TradeStatus @default(OPEN)
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signal Signal? @relation(fields: [linkedSignalId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([symbol])
+  @@map("journal_trades")
+}
+
+enum TradeSide {
+  LONG
+  SHORT
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+  STOPPED_OUT
+}
+
+// ─── Backtests ────────────────────────────────────────────────────
+
+model Backtest {
+  id             String   @id @default(uuid())
+  symbol         String   @db.VarChar(20)
+  exchange       String   @db.VarChar(10)
+  strategyName   String   @map("strategy_name") @db.VarChar(50)
+  parametersHash String   @map("parameters_hash") @db.VarChar(64)
+  fromDate       DateTime @map("from_date") @db.Date
+  toDate         DateTime @map("to_date") @db.Date
+  totalTrades    Int      @map("total_trades")
+  winRate        Decimal  @map("win_rate") @db.Decimal(5, 2)
+  avgReturn      Decimal  @map("avg_return") @db.Decimal(8, 4)
+  maxDrawdown    Decimal  @map("max_drawdown") @db.Decimal(8, 4)
+  profitFactor   Decimal  @map("profit_factor") @db.Decimal(6, 2)
+  sharpeRatio    Decimal? @map("sharpe_ratio") @db.Decimal(6, 2)
+  trades         Json     @default("[]")
+  summary        Json     @default("{}")
+  signalId       String?  @map("signal_id")
+  computedAt     DateTime @default(now()) @map("computed_at")
+
+  signal Signal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
+
+  @@index([symbol, strategyName])
+  @@index([parametersHash])
+  @@map("backtests")
+}
+
+// ─── Alerts ───────────────────────────────────────────────────────
+
+model AlertPreference {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  channel    String   @default("telegram") @db.VarChar(20)
+  heatFilter Heat[]   @map("heat_filter")
+  universes  String[] @map("universes")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("alert_preferences")
+}
+
+model AlertHistory {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  signalId  String?   @map("signal_id")
+  channel   String    @db.VarChar(20)
+  status    String    @default("pending") @db.VarChar(20)
+  sentAt    DateTime? @map("sent_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  signal Signal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
+
+  @@map("alert_history")
+}
