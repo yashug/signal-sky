@@ -117,7 +117,7 @@ export function SignalDetailDrawer({
 }) {
   const [capital, setCapital] = useState("500000")
   const [riskPercent, setRiskPercent] = useState("2")
-  const [chartData, setChartData] = useState<{ priceHistory: number[]; ema200History: (number | null)[] } | null>(null)
+  const [chartData, setChartData] = useState<{ priceHistory: number[]; ema200History: (number | null)[]; dates?: string[]; ath?: number | null } | null>(null)
   const [chartLoading, setChartLoading] = useState(false)
 
   // Lazy-load chart data when drawer opens
@@ -167,7 +167,9 @@ export function SignalDetailDrawer({
 
   const chartDataFormatted = chartData
     ? chartData.priceHistory.map((price, i) => ({
-        day: i + 1,
+        date: chartData.dates?.[i]
+          ? new Date(chartData.dates[i]).toLocaleDateString("en-US", { month: "short", year: "2-digit" })
+          : String(i + 1),
         price,
         ema200: chartData.ema200History[i] ?? undefined,
       }))
@@ -246,7 +248,7 @@ export function SignalDetailDrawer({
         <div className="px-5 py-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Price vs EMA 200 — 30 Days
+              Price vs EMA 200 — Since Pre-set ATH
             </span>
           </div>
           {chartLoading ? (
@@ -262,10 +264,11 @@ export function SignalDetailDrawer({
                   vertical={false}
                 />
                 <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 10, fill: "oklch(0.55 0.015 260)" }}
+                  dataKey="date"
+                  tick={{ fontSize: 9, fill: "oklch(0.55 0.015 260)" }}
                   tickLine={false}
                   axisLine={false}
+                  interval="equidistantPreserveStart"
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: "oklch(0.55 0.015 260)" }}
@@ -277,10 +280,10 @@ export function SignalDetailDrawer({
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ReferenceLine
-                  y={signal.ath}
+                  y={chartData?.ath ?? signal.ath}
                   stroke="oklch(0.68 0.22 25 / 0.4)"
                   strokeDasharray="4 4"
-                  label={{ value: "ATH", position: "right", fontSize: 9, fill: "oklch(0.68 0.22 25 / 0.6)" }}
+                  label={{ value: "Pre-set ATH", position: "right", fontSize: 9, fill: "oklch(0.68 0.22 25 / 0.6)" }}
                 />
                 <Area
                   type="monotone"

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,14 +13,8 @@ import {
   ArrowLeftIcon,
   ShieldCheckIcon,
   UsersIcon,
+  AlertCircleIcon,
 } from "lucide-react"
-
-const FREE_FEATURES = [
-  "Nifty 50 + S&P 100 scanner",
-  "Delayed Telegram alerts (+15 min)",
-  "Basic position calculator",
-  "Trade journal (up to 20 trades)",
-]
 
 const PRO_FEATURES = [
   "All Nifty indices (50, 100, 200, Midcap, Smallcap)",
@@ -39,8 +33,12 @@ function formatINR(amount: number): string {
 
 export default function PricingPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isExpired = searchParams.get("expired") === "1"
+  const paymentError = searchParams.get("error")
   const [lifetimeRemaining, setLifetimeRemaining] = useState<number | null>(null)
   const [lifetimeAvailable, setLifetimeAvailable] = useState(true)
+  const [checkingOut, setCheckingOut] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/deals/lifetime")
@@ -52,15 +50,22 @@ export default function PricingPage() {
       .catch(() => {})
   }, [])
 
-  async function handleCheckout(plan: "monthly" | "yearly" | "lifetime") {
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ interval: plan }),
-    })
-    const data = await res.json()
-    if (data.url) {
-      window.location.href = data.url
+  async function handleCheckout(interval: "monthly" | "yearly" | "lifetime") {
+    setCheckingOut(interval)
+    try {
+      const res = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interval }),
+      })
+      const data = await res.json()
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl
+      } else {
+        setCheckingOut(null)
+      }
+    } catch {
+      setCheckingOut(null)
     }
   }
 
@@ -76,7 +81,7 @@ export default function PricingPage() {
     <div className="flex min-h-screen flex-col bg-background">
       {/* Nav */}
       <nav className="border-b border-border/20 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-6xl flex items-center justify-between px-6 h-14">
+        <div className="mx-auto max-w-6xl flex items-center justify-between px-4 sm:px-6 h-14">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <ZapIcon className="size-4" />
@@ -94,6 +99,25 @@ export default function PricingPage() {
       </nav>
 
       <div className="flex-1 flex flex-col items-center px-4 py-16">
+        {/* Trial expired banner */}
+        {isExpired && (
+          <div className="flex items-center gap-2 rounded-lg border border-heat-simmering/30 bg-heat-simmering/5 px-4 py-2.5 mb-8 max-w-lg w-full">
+            <AlertCircleIcon className="size-4 text-heat-simmering shrink-0" />
+            <p className="text-xs text-heat-simmering">
+              Your 7-day free trial has ended. Subscribe to continue using SignalSky.
+            </p>
+          </div>
+        )}
+
+        {paymentError && (
+          <div className="flex items-center gap-2 rounded-lg border border-bear/30 bg-bear/5 px-4 py-2.5 mb-8 max-w-lg w-full">
+            <AlertCircleIcon className="size-4 text-bear shrink-0" />
+            <p className="text-xs text-bear">
+              Payment could not be completed. Please try again.
+            </p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col items-center gap-3 mb-12 text-center">
           <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">
@@ -103,46 +127,15 @@ export default function PricingPage() {
             Invest in your edge
           </h1>
           <p className="text-sm text-muted-foreground max-w-md">
-            Start free. Upgrade to unlock all Nifty indices, unlimited backtests, and real-time alerts.
+            Start with a 7-day free trial. Then choose a plan to unlock all Nifty indices, unlimited backtests, and real-time alerts.
           </p>
           <p className="text-[11px] text-heat-simmering font-medium">
             Prices increase after launch
           </p>
         </div>
 
-        {/* Plans grid — 4 columns */}
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4 max-w-5xl w-full">
-          {/* Free Plan */}
-          <div className="rounded-2xl border border-border/30 bg-card/60 p-6 flex flex-col">
-            <h3 className="text-base font-semibold">Free</h3>
-            <p className="text-[12px] text-muted-foreground mt-0.5">
-              Get started with core features
-            </p>
-
-            <div className="flex items-baseline gap-1 mt-5 mb-1">
-              <span className="font-mono text-3xl font-bold tracking-tight">&#8377;0</span>
-              <span className="text-sm text-muted-foreground">forever</span>
-            </div>
-            <p className="text-[10px] text-muted-foreground mb-6">No credit card required</p>
-
-            <ul className="space-y-2 mb-6 flex-1">
-              {FREE_FEATURES.map((feature) => (
-                <li key={feature} className="flex items-start gap-2 text-[12px]">
-                  <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                  <span className="text-muted-foreground">{feature}</span>
-                </li>
-              ))}
-            </ul>
-
-            <Button
-              variant="outline"
-              className="w-full h-10 text-xs"
-              onClick={() => router.push("/sign-in")}
-            >
-              Start free
-            </Button>
-          </div>
-
+        {/* Plans grid — 3 columns */}
+        <div className="grid gap-5 md:grid-cols-3 max-w-4xl w-full">
           {/* Pro Monthly */}
           <div className="rounded-2xl border border-border/30 bg-card/60 p-6 flex flex-col">
             <h3 className="text-base font-semibold">Pro Monthly</h3>
@@ -164,7 +157,7 @@ export default function PricingPage() {
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground mb-6">
-              Save more with yearly &mdash; &#8377;{formatINR(monthlyPrice * 12 - yearlyPrice)}/yr
+              7-day free trial included
             </p>
 
             <ul className="space-y-2 mb-6 flex-1">
@@ -180,9 +173,10 @@ export default function PricingPage() {
               className="w-full h-10 text-xs"
               variant="outline"
               onClick={() => handleCheckout("monthly")}
+              disabled={checkingOut !== null}
             >
               <SparklesIcon className="size-3 mr-1" />
-              Go Monthly
+              {checkingOut === "monthly" ? "Redirecting..." : "Go Monthly"}
             </Button>
           </div>
 
@@ -232,9 +226,10 @@ export default function PricingPage() {
             <Button
               className="w-full h-10 text-xs glow-signal"
               onClick={() => handleCheckout("yearly")}
+              disabled={checkingOut !== null}
             >
               <SparklesIcon className="size-3 mr-1" />
-              Upgrade to Pro
+              {checkingOut === "yearly" ? "Redirecting..." : "Upgrade to Pro"}
             </Button>
           </div>
 
@@ -321,11 +316,11 @@ export default function PricingPage() {
 
             <Button
               className="w-full h-10 text-xs bg-gradient-to-r from-heat-simmering to-heat-boiling text-white hover:brightness-110"
-              disabled={!lifetimeAvailable}
+              disabled={!lifetimeAvailable || checkingOut !== null}
               onClick={() => handleCheckout("lifetime")}
             >
               <CrownIcon className="size-3 mr-1" />
-              {lifetimeAvailable ? "Claim Lifetime Access" : "Sold Out"}
+              {checkingOut === "lifetime" ? "Redirecting..." : lifetimeAvailable ? "Claim Lifetime Access" : "Sold Out"}
             </Button>
           </div>
         </div>
@@ -333,8 +328,8 @@ export default function PricingPage() {
         {/* Trust badges */}
         <div className="flex flex-wrap items-center justify-center gap-8 mt-14 text-muted-foreground">
           {[
-            { icon: ShieldCheckIcon, text: "Secure payments via Stripe" },
-            { icon: ZapIcon, text: "Cancel anytime, no lock-in" },
+            { icon: ShieldCheckIcon, text: "Secure payments via PhonePe" },
+            { icon: ZapIcon, text: "7-day free trial, no card required" },
             { icon: SparklesIcon, text: "Instant access after payment" },
           ].map((badge) => (
             <div key={badge.text} className="flex items-center gap-2 text-[11px]">
@@ -350,20 +345,20 @@ export default function PricingPage() {
           <div className="space-y-4">
             {[
               {
+                q: "How does the free trial work?",
+                a: "You get 7 days of full Pro access when you sign up. No payment required. After the trial ends, subscribe to any plan to continue.",
+              },
+              {
                 q: "Can I switch between monthly and yearly?",
-                a: "Yes, you can upgrade or downgrade anytime. When switching to yearly, you'll be credited for unused time on your monthly plan.",
+                a: "Yes, you can upgrade or downgrade anytime. Contact support and we'll handle the switch for you.",
               },
               {
                 q: "What happens to my Lifetime deal if you add features?",
                 a: "Lifetime means lifetime. All future Pro features are included at no extra cost, forever.",
               },
               {
-                q: "Is there a refund policy?",
-                a: "Monthly and yearly plans can be cancelled anytime. Lifetime deals are non-refundable since they're offered at a deep discount.",
-              },
-              {
                 q: "What payment methods do you accept?",
-                a: "We accept all major credit/debit cards, UPI, and net banking via Stripe. Payments are processed securely.",
+                a: "We accept UPI, credit/debit cards, net banking, and wallets via PhonePe. Payments are processed securely.",
               },
             ].map((faq) => (
               <div key={faq.q} className="rounded-xl border border-border/25 bg-card/60 p-5">

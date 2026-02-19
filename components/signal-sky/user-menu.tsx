@@ -33,6 +33,11 @@ export function UserMenu() {
   }
 
   const isPro = user.tier === "PRO" || user.tier === "INSTITUTIONAL"
+  const trialEndsAt = user.trialEndsAt ? new Date(user.trialEndsAt) : null
+  const isTrialActive = trialEndsAt ? trialEndsAt.getTime() > Date.now() : false
+  const daysRemaining = trialEndsAt
+    ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : 0
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -70,8 +75,10 @@ export function UserMenu() {
                 <SparklesIcon className="size-2.5 text-primary" />
                 Pro
               </>
+            ) : isTrialActive ? (
+              `Trial — ${daysRemaining}d left`
             ) : (
-              "Free"
+              "Expired"
             )}
           </span>
         </div>
@@ -80,7 +87,7 @@ export function UserMenu() {
         {!isPro && (
           <DropdownMenuItem render={<Link href="/pricing" />} className="gap-2 text-primary">
             <SparklesIcon className="size-3.5" />
-            Upgrade to Pro
+            Subscribe
           </DropdownMenuItem>
         )}
         <DropdownMenuItem render={<Link href="/settings" />} className="gap-2">

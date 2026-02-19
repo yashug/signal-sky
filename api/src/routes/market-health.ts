@@ -34,7 +34,13 @@ export async function marketHealthRoutes(app: FastifyInstance) {
     // Which universe keys to return
     const keys: UniverseGroupKey[] = query.universe
       ? [query.universe]
-      : ["nifty50", "niftybank", "sp100", "nasdaq100"]
+      : [
+          "nifty50", "niftynext50", "nifty100", "nifty200",
+          "niftymidcap50", "niftymidcap100",
+          "niftysmallcap50", "niftysmallcap100",
+          "niftybank",
+          "sp100", "nasdaq100",
+        ]
 
     const markets = []
     for (const key of keys) {

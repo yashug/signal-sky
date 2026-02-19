@@ -3,13 +3,21 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 
+export type UserSettings = {
+  defaultCapitalINR?: number
+  defaultCapitalUSD?: number
+  defaultRiskPct?: number
+}
+
 export type AuthUser = {
   id: string
   email: string | undefined
   name: string | null
   image: string | null
   tier: string
+  trialEndsAt: string | null
   isAdmin: boolean
+  settings: UserSettings
 }
 
 type AuthContextValue = {
@@ -56,9 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: profile?.name ?? authUser.user_metadata?.full_name ?? null,
         image: profile?.image ?? authUser.user_metadata?.avatar_url ?? null,
         tier: profile?.tier ?? "FREE",
+        trialEndsAt: profile?.trialEndsAt ?? null,
         isAdmin: ADMIN_EMAILS.includes(
           authUser.email?.toLowerCase() ?? ""
         ),
+        settings: (profile?.settings as UserSettings) ?? {},
       })
     } catch {
       setUser({
@@ -67,9 +77,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: authUser.user_metadata?.full_name ?? null,
         image: authUser.user_metadata?.avatar_url ?? null,
         tier: "FREE",
+        trialEndsAt: null,
         isAdmin: ADMIN_EMAILS.includes(
           authUser.email?.toLowerCase() ?? ""
         ),
+        settings: {},
       })
     }
     setLoading(false)

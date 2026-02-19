@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -18,6 +19,7 @@ import {
   UserIcon,
   CameraIcon,
   Loader2Icon,
+  ScaleIcon,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 
@@ -190,29 +192,130 @@ function ProfileCard() {
   )
 }
 
-export default function SettingsPage() {
-  const { user } = useAuth()
-  const tier = user?.tier
-  const isPro = tier === "PRO" || tier === "INSTITUTIONAL"
+function PositionDefaultsCard() {
+  const { user, refresh } = useAuth()
+  const [capitalINR, setCapitalINR] = useState("100000")
+  const [capitalUSD, setCapitalUSD] = useState("1000")
+  const [riskPct, setRiskPct] = useState("2")
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  async function handleManageBilling() {
-    const res = await fetch("/api/stripe/portal", { method: "POST" })
-    const data = await res.json()
-    if (data.url) {
-      window.location.href = data.url
+  useEffect(() => {
+    if (user?.settings) {
+      if (user.settings.defaultCapitalINR != null) setCapitalINR(String(user.settings.defaultCapitalINR))
+      if (user.settings.defaultCapitalUSD != null) setCapitalUSD(String(user.settings.defaultCapitalUSD))
+      if (user.settings.defaultRiskPct != null) setRiskPct(String(user.settings.defaultRiskPct))
     }
-  }
+  }, [user])
 
-  async function handleUpgrade() {
-    const res = await fetch("/api/stripe/checkout", { method: "POST" })
-    const data = await res.json()
-    if (data.url) {
-      window.location.href = data.url
+  const hasChanges =
+    String(user?.settings?.defaultCapitalINR ?? 100000) !== capitalINR ||
+    String(user?.settings?.defaultCapitalUSD ?? 1000) !== capitalUSD ||
+    String(user?.settings?.defaultRiskPct ?? 2) !== riskPct
+
+  async function handleSave() {
+    setSaving(true)
+    setSaved(false)
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            defaultCapitalINR: parseFloat(capitalINR) || 100000,
+            defaultCapitalUSD: parseFloat(capitalUSD) || 1000,
+            defaultRiskPct: parseFloat(riskPct) || 2,
+          },
+        }),
+      })
+      if (res.ok) {
+        await refresh()
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
+    } finally {
+      setSaving(false)
     }
   }
 
   return (
-    <div className="flex flex-col gap-6 px-6 py-5 max-w-2xl">
+    <Card className="border-border/40 bg-surface">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <ScaleIcon className="size-4 text-primary" />
+          <CardTitle className="text-sm">Position Defaults</CardTitle>
+        </div>
+        <CardDescription className="text-xs">
+          Default capital for the trade ticket calculator. These values are used when you open a signal detail page.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-md">
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
+              India Capital (₹)
+            </label>
+            <Input
+              type="number"
+              value={capitalINR}
+              onChange={(e) => setCapitalINR(e.target.value)}
+              className="h-8 font-mono text-sm bg-background"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
+              US Capital ($)
+            </label>
+            <Input
+              type="number"
+              value={capitalUSD}
+              onChange={(e) => setCapitalUSD(e.target.value)}
+              className="h-8 font-mono text-sm bg-background"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
+              Default Risk %
+            </label>
+            <Input
+              type="number"
+              value={riskPct}
+              onChange={(e) => setRiskPct(e.target.value)}
+              className="h-8 font-mono text-sm bg-background"
+              step="0.5"
+            />
+          </div>
+        </div>
+        <Button
+          size="sm"
+          className="h-7 text-xs gap-1.5 mt-3"
+          onClick={handleSave}
+          disabled={!hasChanges || saving}
+        >
+          {saving ? (
+            <Loader2Icon className="size-3 animate-spin" />
+          ) : saved ? (
+            <CheckIcon className="size-3" />
+          ) : null}
+          {saved ? "Saved" : "Save Defaults"}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+export default function SettingsPage() {
+  const { user } = useAuth()
+  const tier = user?.tier
+  const isPro = tier === "PRO" || tier === "INSTITUTIONAL"
+  const trialEndsAt = user?.trialEndsAt ? new Date(user.trialEndsAt) : null
+  const isTrialActive = trialEndsAt ? trialEndsAt.getTime() > Date.now() : false
+  const daysRemaining = trialEndsAt
+    ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : 0
+
+  return (
+    <div className="flex flex-col gap-6 px-4 sm:px-6 py-5 max-w-2xl">
       <div className="flex items-center gap-3">
         <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
           <SettingsIcon className="size-4 text-primary" />
@@ -251,23 +354,21 @@ export default function SettingsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium">
-                  {isPro ? "Pro Plan" : "Free Plan"}
+                  {isPro ? "Pro Plan" : isTrialActive ? `Trial — ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} remaining` : "Trial Expired"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isPro
                     ? "Full access to all features"
-                    : "Limited scanner, no backtests"}
+                    : isTrialActive
+                      ? "Full access during your trial period"
+                      : "Subscribe to continue using SignalSky"}
                 </p>
               </div>
             </div>
-            {isPro ? (
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleManageBilling}>
-                Manage Billing
-              </Button>
-            ) : (
-              <Button size="sm" className="h-8 text-xs gap-1" onClick={handleUpgrade}>
+            {!isPro && (
+              <Button size="sm" className="h-8 text-xs gap-1" nativeButton={false} render={<Link href="/pricing" />}>
                 <SparklesIcon className="size-3" />
-                Upgrade to Pro
+                {isTrialActive ? "Subscribe Now" : "View Plans"}
               </Button>
             )}
           </div>
@@ -328,7 +429,6 @@ export default function SettingsPage() {
           </div>
           <CardDescription className="text-xs">
             Receive signal alerts via Telegram when new breakout signals are detected.
-            {!isPro && " Free plan alerts are delayed by 15 minutes."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -351,39 +451,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Position Defaults */}
-      <Card className="border-border/40 bg-surface">
-        <CardHeader>
-          <CardTitle className="text-sm">Position Defaults</CardTitle>
-          <CardDescription className="text-xs">
-            Default values for the position size calculator.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 max-w-xs">
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
-                Default Capital
-              </label>
-              <Input
-                type="number"
-                defaultValue="500000"
-                className="h-8 font-mono text-sm bg-background"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
-                Default Risk %
-              </label>
-              <Input
-                type="number"
-                defaultValue="2"
-                className="h-8 font-mono text-sm bg-background"
-                step="0.5"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <PositionDefaultsCard />
     </div>
   )
 }

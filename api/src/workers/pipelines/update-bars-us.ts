@@ -5,6 +5,7 @@
 
 import YahooFinance from "yahoo-finance2"
 import { getPrisma } from "../../db/prisma.js"
+import { updateMovingAveragesForSymbol } from "../../db/update-sma200.js"
 
 const DELAY_MS = 200
 
@@ -83,7 +84,10 @@ export async function updateBarsUS(): Promise<UpdateBarsResult> {
       if (payload.length > 0) {
         const inserted = await prisma.dailyBar.createMany({ data: payload, skipDuplicates: true })
         barsInserted += inserted.count
-        if (inserted.count > 0) symbolsUpdated++
+        if (inserted.count > 0) {
+          symbolsUpdated++
+          await updateMovingAveragesForSymbol(symbol, "US")
+        }
       }
     } catch (e: any) {
       errors.push(`${symbol}: ${e.message?.slice(0, 80)}`)

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
-import { upsertDailyBars } from "@/lib/market-data/store"
+import { upsertDailyBars, updateMovingAverages } from "@/lib/market-data/store"
 
 /**
  * POST /api/admin/sync/us/backfill
@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Fetch each missing range
+      let symbolInserted = 0
       for (const range of fetchRanges) {
         try {
           const candles = await getYahooDailyCandles(symbol, range.from, range.to)
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
             })
             totalInserted += result.inserted
             totalSkipped += result.skipped
+            symbolInserted += result.inserted
           }
         } catch (e: any) {
           errors.push(`${symbol}: ${e.message?.slice(0, 100)}`)
@@ -110,6 +112,15 @@ export async function POST(req: NextRequest) {
 
         // Rate limit: ~5 req/sec
         await new Promise((r) => setTimeout(r, 200))
+      }
+
+      // Compute SMA200 + EMA200 after all ranges for this symbol
+      if (symbolInserted > 0) {
+        try {
+          await updateMovingAverages(symbol, "US")
+        } catch (e: any) {
+          errors.push(`${symbol} (MA): ${e.message?.slice(0, 80)}`)
+        }
       }
     }
 

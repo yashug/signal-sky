@@ -31,6 +31,7 @@ export async function GET() {
     const member = memberMap.get(t.symbol) as any
     const sig = signalMap.get(t.symbol) as any
     const currentPrice = sig ? Number(sig.price) : Number(t.entryPrice)
+    const ema200 = sig ? Number(sig.ema200) : null
 
     return {
       id: t.id,
@@ -52,6 +53,7 @@ export async function GET() {
       linkedSignalId: t.linkedSignalId,
       status: (t.status as string).toLowerCase(),
       currentPrice,
+      ema200,
     }
   })
 
@@ -65,16 +67,62 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
+  const symbol = body.symbol
+  const exchange = body.exchange ?? (symbol.endsWith(".NS") ? "NSE" : "NASDAQ")
+  const side = (body.side ?? "LONG").toUpperCase()
+  const newQty = body.quantity as number
+  const newPrice = body.entryPrice as number
 
+  // Check for existing open trade on the same symbol + side
+  const existing = await prisma.journalTrade.findFirst({
+    where: {
+      userId: session.user.id,
+      symbol,
+      side,
+      status: "OPEN",
+    },
+  })
+
+  if (existing) {
+    // Merge: weighted average entry price + combined quantity
+    const oldQty = existing.quantity
+    const oldPrice = Number(existing.entryPrice)
+    const combinedQty = oldQty + newQty
+    const avgPrice = (oldPrice * oldQty + newPrice * newQty) / combinedQty
+
+    const updated = await prisma.journalTrade.update({
+      where: { id: existing.id },
+      data: {
+        entryPrice: Math.round(avgPrice * 100) / 100,
+        quantity: combinedQty,
+        stopLoss: body.stopLoss ?? existing.stopLoss,
+        notes: existing.notes
+          ? `${existing.notes}\nAdded ${newQty} shares @ ${newPrice}`
+          : `Added ${newQty} shares @ ${newPrice}`,
+      },
+    })
+
+    return NextResponse.json({
+      id: updated.id,
+      symbol: updated.symbol,
+      status: updated.status,
+      merged: true,
+      previousQty: oldQty,
+      newQty: combinedQty,
+      avgPrice: Math.round(avgPrice * 100) / 100,
+    }, { status: 200 })
+  }
+
+  // No existing open trade — create new
   const trade = await prisma.journalTrade.create({
     data: {
       userId: session.user.id,
-      symbol: body.symbol,
-      exchange: body.exchange ?? (body.symbol.endsWith(".NS") ? "NSE" : "NASDAQ"),
-      side: (body.side ?? "LONG").toUpperCase(),
+      symbol,
+      exchange,
+      side,
       entryDate: new Date(body.entryDate),
-      entryPrice: body.entryPrice,
-      quantity: body.quantity,
+      entryPrice: newPrice,
+      quantity: newQty,
       stopLoss: body.stopLoss ?? null,
       targetPrice: body.targetPrice ?? null,
       notes: body.notes ?? null,
@@ -87,5 +135,6 @@ export async function POST(request: Request) {
     id: trade.id,
     symbol: trade.symbol,
     status: trade.status,
+    merged: false,
   }, { status: 201 })
 }

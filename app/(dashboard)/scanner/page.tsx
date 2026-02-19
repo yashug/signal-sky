@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   useReactTable,
   getCoreRowModel,
@@ -39,7 +40,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { SignalDetailDrawer } from "@/components/signal-sky/signal-detail-drawer"
 import { toast } from "sonner"
 import {
   CrosshairIcon,
@@ -207,7 +207,7 @@ const columns: ColumnDef<ApiSignal>[] = [
           </span>
           {dateStr && (
             <span className="font-mono text-[10px] text-muted-foreground/60">
-              {new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}
+              {new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </span>
           )}
         </div>
@@ -281,16 +281,72 @@ const columns: ColumnDef<ApiSignal>[] = [
   },
 ]
 
-export default function ScannerPage() {
+export default function ScannerPageWrapper() {
+  return (
+    <Suspense>
+      <ScannerPage />
+    </Suspense>
+  )
+}
+
+function ScannerPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Valid keys for URL param validation
+  const validUniverses = UNIVERSE_OPTIONS.map((o) => o.value)
+  const validHeats = ["all", "breakout", "boiling", "simmering", "cooling"]
+
   const [sorting, setSorting] = useState<SortingState>([
     { id: "distancePct", desc: false },
   ])
   const [globalFilter, setGlobalFilter] = useState("")
   const [heatFilter, setHeatFilter] = useState<string>("all")
   const [universeFilter, setUniverseFilter] = useState<UniverseGroupKey>("nifty50")
-  const [selectedSignal, setSelectedSignal] = useState<ApiSignal | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [watchlist, setWatchlist] = useState<Set<string>>(new Set())
+
+  // Sync state FROM URL params (handles back/forward navigation)
+  useEffect(() => {
+    const paramUniverse = searchParams.get("universe")
+    const paramHeat = searchParams.get("heat")
+
+    const universe = paramUniverse && validUniverses.includes(paramUniverse as UniverseGroupKey)
+      ? (paramUniverse as UniverseGroupKey)
+      : "nifty50"
+    const heat = paramHeat && validHeats.includes(paramHeat) ? paramHeat : "all"
+
+    setUniverseFilter(universe)
+    setHeatFilter(heat)
+  }, [searchParams])
+
+  // Sync filters TO URL
+  const updateURL = useCallback(
+    (universe: string, heat: string) => {
+      const params = new URLSearchParams()
+      if (universe !== "nifty50") params.set("universe", universe)
+      if (heat !== "all") params.set("heat", heat)
+      const qs = params.toString()
+      router.push(`/scanner${qs ? `?${qs}` : ""}`, { scroll: false })
+    },
+    [router]
+  )
+  // watchlistMap: symbol → watchlist item id (for DELETE calls)
+  const [watchlistMap, setWatchlistMap] = useState<Map<string, string>>(new Map())
+
+  // Load existing watchlist on mount
+  useEffect(() => {
+    fetch("/api/watchlist")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.items) {
+          const map = new Map<string, string>()
+          for (const item of data.items) {
+            map.set(item.symbol, item.id)
+          }
+          setWatchlistMap(map)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const { data, loading, error, refetch } = useApi(
     () => fetchSignals({ universe: universeFilter }),
@@ -330,26 +386,49 @@ export default function ScannerPage() {
     },
   })
 
-  function toggleWatchlist(signalId: string, symbol: string) {
-    setWatchlist(prev => {
-      const next = new Set(prev)
-      if (next.has(signalId)) {
-        next.delete(signalId)
-        toast(`Removed ${symbol} from watchlist`)
-      } else {
-        next.add(signalId)
-        toast(`Added ${symbol} to watchlist`)
+  const toggleWatchlist = useCallback(async (signal: ApiSignal) => {
+    const existing = watchlistMap.get(signal.symbol)
+
+    if (existing) {
+      // Remove from watchlist
+      setWatchlistMap((prev) => {
+        const next = new Map(prev)
+        next.delete(signal.symbol)
+        return next
+      })
+      try {
+        const res = await fetch(`/api/watchlist/${existing}`, { method: "DELETE" })
+        if (!res.ok) throw new Error()
+        toast(`Removed ${signal.symbol.replace(".NS", "")} from watchlist`)
+      } catch {
+        // Revert on failure
+        setWatchlistMap((prev) => new Map(prev).set(signal.symbol, existing))
+        toast.error("Failed to remove from watchlist")
       }
-      return next
-    })
-  }
+    } else {
+      // Add to watchlist
+      try {
+        const res = await fetch("/api/watchlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ symbol: signal.symbol, exchange: signal.exchange }),
+        })
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        setWatchlistMap((prev) => new Map(prev).set(signal.symbol, data.id))
+        toast(`Added ${signal.symbol.replace(".NS", "")} to watchlist`)
+      } catch {
+        toast.error("Failed to add to watchlist")
+      }
+    }
+  }, [watchlistMap])
 
   return (
     <div className="flex flex-col gap-0 min-h-0">
       {/* Page header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border/30">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b border-border/30">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <CrosshairIcon className="size-4 text-primary" />
           </div>
           <div>
@@ -362,8 +441,8 @@ export default function ScannerPage() {
 
         <div className="flex items-center gap-3">
           {/* Universe selector */}
-          <Select value={universeFilter} onValueChange={(v) => setUniverseFilter(v as UniverseGroupKey)}>
-            <SelectTrigger size="sm" className="h-8 w-[180px] bg-surface border-border/40 text-xs">
+          <Select value={universeFilter} onValueChange={(v) => { setUniverseFilter(v as UniverseGroupKey); updateURL(v, heatFilter) }}>
+            <SelectTrigger size="sm" className="h-8 w-[160px] sm:w-[180px] bg-surface border-border/40 text-xs">
               <GlobeIcon className="size-3 text-muted-foreground mr-1" />
               <SelectValue />
             </SelectTrigger>
@@ -395,7 +474,7 @@ export default function ScannerPage() {
           </Select>
 
           {/* Search */}
-          <div className="relative w-56">
+          <div className="relative flex-1 sm:flex-none sm:w-56">
             <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input
               placeholder="Search symbol..."
@@ -408,8 +487,8 @@ export default function ScannerPage() {
       </div>
 
       {/* Heat filter tabs */}
-      <div className="flex items-center gap-4 px-6 py-3 border-b border-border/20 bg-surface/30">
-        <Tabs value={heatFilter} onValueChange={setHeatFilter}>
+      <div className="flex items-center gap-4 px-4 sm:px-6 py-3 border-b border-border/20 bg-surface/30 overflow-x-auto">
+        <Tabs value={heatFilter} onValueChange={(v) => { setHeatFilter(v); updateURL(universeFilter, v) }}>
           <TabsList variant="line" className="h-8 gap-0.5">
             <TabsTrigger value="all" className="text-xs px-3 h-7 gap-1.5">
               <LayersIcon className="size-3" />
@@ -501,6 +580,7 @@ export default function ScannerPage() {
         </div>
       ) : (
         <div className="flex-1 overflow-auto">
+          <div className="min-w-[700px]">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -540,8 +620,7 @@ export default function ScannerPage() {
                       "hover:bg-surface-raised/50"
                     )}
                     onClick={() => {
-                      setSelectedSignal(row.original)
-                      setDrawerOpen(true)
+                      router.push(`/scanner/${encodeURIComponent(row.original.symbol)}`)
                     }}
                   >
                     {/* Watchlist star */}
@@ -552,12 +631,12 @@ export default function ScannerPage() {
                         className="size-6"
                         onClick={(e) => {
                           e.stopPropagation()
-                          toggleWatchlist(row.original.id, row.original.symbol)
+                          toggleWatchlist(row.original)
                         }}
                       >
                         <StarIcon className={cn(
                           "size-3.5 transition-colors",
-                          watchlist.has(row.original.id)
+                          watchlistMap.has(row.original.symbol)
                             ? "fill-heat-simmering text-heat-simmering"
                             : "text-muted-foreground/40"
                         )} />
@@ -573,15 +652,10 @@ export default function ScannerPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
 
-      {/* Signal detail drawer */}
-      <SignalDetailDrawer
-        signal={selectedSignal}
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-      />
     </div>
   )
 }

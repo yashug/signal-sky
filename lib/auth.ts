@@ -12,6 +12,7 @@ export type SessionUser = {
   name: string | null
   image: string | null
   tier: "FREE" | "PRO" | "INSTITUTIONAL"
+  trialEndsAt: string | null
   isAdmin: boolean
 }
 
@@ -23,9 +24,18 @@ export async function getSession(): Promise<{ user: SessionUser } | null> {
 
   if (!user?.id || !user?.email) return null
 
-  const dbUser = await prisma.user.findUnique({
+  // Upsert user — sets trialEndsAt on first creation
+  const dbUser = await prisma.user.upsert({
     where: { id: user.id },
-    select: { tier: true, name: true, image: true },
+    update: {},
+    create: {
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.full_name ?? null,
+      image: user.user_metadata?.avatar_url ?? null,
+      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
+    select: { tier: true, name: true, image: true, trialEndsAt: true },
   })
 
   return {
@@ -35,6 +45,7 @@ export async function getSession(): Promise<{ user: SessionUser } | null> {
       name: dbUser?.name ?? user.user_metadata?.full_name ?? null,
       image: dbUser?.image ?? user.user_metadata?.avatar_url ?? null,
       tier: (dbUser?.tier as "FREE" | "PRO" | "INSTITUTIONAL") ?? "FREE",
+      trialEndsAt: dbUser?.trialEndsAt?.toISOString() ?? null,
       isAdmin: ADMIN_EMAILS.includes(user.email.toLowerCase()),
     },
   }

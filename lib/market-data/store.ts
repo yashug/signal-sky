@@ -59,3 +59,43 @@ export async function getLastBarDate(
   })
   return bar?.date ?? null
 }
+
+/**
+ * Update SMA200 + EMA200 for a symbol after inserting new bars.
+ * Uses raw SQL to compute indicators for bars where they are NULL.
+ */
+export async function updateMovingAverages(
+  symbol: string,
+  exchange: string,
+): Promise<void> {
+  await Promise.all([
+    // SMA200 via window function
+    prisma.$queryRawUnsafe(
+      `
+      WITH ranked AS (
+        SELECT
+          id,
+          AVG(close) OVER (ORDER BY date ROWS BETWEEN 199 PRECEDING AND CURRENT ROW) AS computed_sma,
+          COUNT(*)   OVER (ORDER BY date ROWS BETWEEN 199 PRECEDING AND CURRENT ROW) AS bar_count
+        FROM daily_bars
+        WHERE symbol = $1 AND exchange = $2
+      )
+      UPDATE daily_bars
+      SET sma200 = ranked.computed_sma
+      FROM ranked
+      WHERE daily_bars.id = ranked.id
+        AND ranked.bar_count >= 200
+        AND daily_bars.sma200 IS NULL
+      RETURNING daily_bars.id
+      `,
+      symbol,
+      exchange,
+    ),
+    // EMA200 via PL/pgSQL function
+    prisma.$queryRawUnsafe(
+      `SELECT update_ema200_for_symbol($1, $2)`,
+      symbol,
+      exchange,
+    ),
+  ])
+}

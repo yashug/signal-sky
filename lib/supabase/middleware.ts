@@ -30,7 +30,9 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const publicPaths = ["/", "/sign-in", "/pricing"]
-  const isPublic = publicPaths.includes(request.nextUrl.pathname)
+  const isPublic =
+    publicPaths.includes(request.nextUrl.pathname) ||
+    request.nextUrl.pathname.startsWith("/api/")
 
   // Redirect unauthenticated users to sign-in
   if (!isPublic && !user) {

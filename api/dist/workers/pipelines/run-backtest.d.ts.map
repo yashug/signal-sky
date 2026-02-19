@@ -1,0 +1,1 @@
+{"version":3,"file":"run-backtest.d.ts","sourceRoot":"","sources":["../../../src/workers/pipelines/run-backtest.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAMH,MAAM,WAAW,sBAAsB;IACrC,kBAAkB,EAAE,MAAM,CAAA;IAC1B,gBAAgB,EAAE,MAAM,CAAA;IACxB,MAAM,EAAE,MAAM,EAAE,CAAA;CACjB;AA4GD,wBAAsB,mBAAmB,CACvC,MAAM,EAAE,IAAI,GAAG,IAAI,GAClB,OAAO,CAAC,sBAAsB,CAAC,CAkCjC"}

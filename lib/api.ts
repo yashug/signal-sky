@@ -73,6 +73,8 @@ export type ApiMarketHealthHistoryResponse = {
 export type ApiSignalChart = {
   priceHistory: number[]
   ema200History: (number | null)[]
+  dates: string[]
+  ath: number | null
 }
 
 export type ApiSymbolResult = {
@@ -83,6 +85,67 @@ export type ApiSymbolResult = {
   exchange: string
 }
 
+export type ApiBacktestSummaryRow = {
+  id: string
+  symbol: string
+  exchange: string
+  name: string
+  totalTrades: number
+  winRate: number
+  avgReturn: number
+  maxDrawdown: number
+  profitFactor: number
+  sharpeRatio: number | null
+  fromDate: string
+  toDate: string
+  computedAt: string
+}
+
+export type ApiBacktestTrade = {
+  entryDate: string
+  entryPrice: number
+  exitDate: string | null
+  exitPrice: number | null
+  pnlPercent: number | null
+  daysHeld: number
+  preSetATHAtEntry: number
+}
+
+export type ApiBacktestDetailSummary = {
+  totalTrades: number
+  winners: number
+  losers: number
+  winRate: number
+  avgReturn: number
+  avgWin: number
+  avgLoss: number
+  maxDrawdown: number
+  profitFactor: number
+  sharpeRatio: number
+  avgHoldingDays: number
+  bestTrade: number
+  worstTrade: number
+}
+
+export type ApiBacktestDetail = ApiBacktestSummaryRow & {
+  trades: ApiBacktestTrade[]
+  summary: ApiBacktestDetailSummary
+}
+
+export type ApiBacktestsResponse = {
+  backtests: ApiBacktestSummaryRow[]
+  total: number
+  filters: {
+    universe: string
+    sortBy: string
+    order: string
+  }
+  pagination: {
+    limit: number
+    offset: number
+  }
+}
+
 // ─── Fetch ─────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string): Promise<T> {
@@ -91,7 +154,6 @@ async function apiFetch<T>(path: string): Promise<T> {
   try {
     const res = await fetch(`${API_URL}${path}`, {
       signal: controller.signal,
-      cache: "no-store",
     })
     if (!res.ok) {
       throw new Error(`API ${res.status}: ${res.statusText}`)
@@ -133,8 +195,33 @@ export function fetchMarketHealthHistory(
   return apiFetch(`/market-health/history?days=${days}`)
 }
 
+export function fetchSignalBySymbol(symbol: string): Promise<ApiSignal> {
+  return apiFetch(`/signals/by-symbol/${encodeURIComponent(symbol)}`)
+}
+
 export function fetchSignalChart(signalId: string): Promise<ApiSignalChart> {
   return apiFetch(`/signals/${signalId}/chart`)
+}
+
+export function fetchBacktests(params?: {
+  universe?: string
+  sortBy?: string
+  order?: string
+  limit?: number
+  offset?: number
+}): Promise<ApiBacktestsResponse> {
+  const sp = new URLSearchParams()
+  if (params?.universe) sp.set("universe", params.universe)
+  if (params?.sortBy) sp.set("sortBy", params.sortBy)
+  if (params?.order) sp.set("order", params.order)
+  if (params?.limit) sp.set("limit", String(params.limit))
+  if (params?.offset) sp.set("offset", String(params.offset))
+  const qs = sp.toString()
+  return apiFetch(`/backtests${qs ? `?${qs}` : ""}`)
+}
+
+export function fetchBacktestDetail(symbol: string): Promise<ApiBacktestDetail> {
+  return apiFetch(`/backtests/${encodeURIComponent(symbol)}`)
 }
 
 export function searchSymbols(

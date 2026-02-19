@@ -1,7 +1,8 @@
 "use client"
 
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -28,15 +29,19 @@ import {
   SettingsIcon,
   StarIcon,
   ZapIcon,
+  ClockIcon,
+  ArrowRightIcon,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { MarketHealthBar } from "@/components/signal-sky/market-health-bar"
 import { UserMenu } from "@/components/signal-sky/user-menu"
+import { fetchSignals } from "@/lib/api"
 
 const navItems = [
   { label: "Scanner", href: "/scanner", icon: CrosshairIcon },
   { label: "Market Health", href: "/market-health", icon: HeartPulseIcon },
   { label: "Watchlist", href: "/watchlist", icon: StarIcon },
+  { label: "Backtests", href: "/backtests", icon: BarChart3Icon },
   { label: "Journal", href: "/journal", icon: BookOpenIcon },
 ]
 
@@ -44,14 +49,59 @@ const secondaryItems = [
   { label: "Settings", href: "/settings", icon: SettingsIcon },
 ]
 
+function formatTimeAgo(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diffMs = now - then
+  const diffMin = Math.floor(diffMs / 60_000)
+  if (diffMin < 1) return "just now"
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h ago`
+  const diffDays = Math.floor(diffHr / 24)
+  return `${diffDays}d ago`
+}
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { user } = useAuth()
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const isAdmin = user?.isAdmin === true
+  const [lastScan, setLastScan] = useState<string | null>(null)
+
+  // Trial / subscription access check
+  const accessInfo = useMemo(() => {
+    if (!user) return { hasAccess: true, isTrialActive: false, daysRemaining: 0, isPro: false }
+    const isPro = user.tier === "PRO" || user.tier === "INSTITUTIONAL"
+    const trialEndsAt = user.trialEndsAt ? new Date(user.trialEndsAt) : null
+    const isTrialActive = trialEndsAt ? trialEndsAt.getTime() > Date.now() : false
+    const daysRemaining = trialEndsAt
+      ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+      : 0
+    const hasAccess = isPro || isTrialActive || user.isAdmin
+    return { hasAccess, isTrialActive, daysRemaining, isPro }
+  }, [user])
+
+  // Redirect to pricing if trial expired and not subscribed
+  useEffect(() => {
+    if (!authLoading && user && !accessInfo.hasAccess) {
+      router.replace("/pricing?expired=1")
+    }
+  }, [authLoading, user, accessInfo.hasAccess, router])
+
+  useEffect(() => {
+    fetchSignals({ limit: 1 })
+      .then((data) => {
+        if (data.signals.length > 0) {
+          setLastScan(data.signals[0].createdAt)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -82,7 +132,7 @@ export default function DashboardLayout({
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       render={<Link href={item.href} />}
-                      isActive={pathname === item.href}
+                      isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
                       tooltip={item.label}
                     >
                       <item.icon className="size-4" />
@@ -94,21 +144,14 @@ export default function DashboardLayout({
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* Live status indicator */}
+          {/* Last scan indicator */}
           <SidebarGroup className="mt-auto">
             <SidebarGroupContent>
               <div className="mx-2 rounded-md border border-border/50 bg-surface p-3 group-data-[collapsible=icon]:hidden">
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="relative flex size-2">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-bull opacity-40" />
-                    <span className="relative inline-flex size-2 rounded-full bg-bull" />
-                  </span>
-                  <span className="text-muted-foreground">Market Open</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-1">
+                <div className="flex items-center gap-1.5">
                   <ActivityIcon className="size-3 text-muted-foreground" />
                   <span className="font-mono text-[11px] text-muted-foreground">
-                    Last scan: 2m ago
+                    {lastScan ? `Last scan: ${formatTimeAgo(lastScan)}` : "Loading..."}
                   </span>
                 </div>
               </div>
@@ -166,6 +209,24 @@ export default function DashboardLayout({
 
       <SidebarInset>
         <MarketHealthBar />
+        {/* Trial banner */}
+        {accessInfo.isTrialActive && !accessInfo.isPro && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2 bg-primary/5 border-b border-primary/10">
+            <div className="flex items-center gap-2">
+              <ClockIcon className="size-3.5 text-primary shrink-0" />
+              <span className="text-xs text-primary">
+                Your free trial ends in <span className="font-bold">{accessInfo.daysRemaining} day{accessInfo.daysRemaining !== 1 ? "s" : ""}</span>
+              </span>
+            </div>
+            <Link
+              href="/pricing"
+              className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+            >
+              Subscribe Now
+              <ArrowRightIcon className="size-3" />
+            </Link>
+          </div>
+        )}
         <div className="flex-1 overflow-auto">
           {children}
         </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { LIFETIME_DEAL } from "@/lib/stripe"
+import { LIFETIME_DEAL } from "@/lib/plans"
 
 /**
  * GET /api/deals/lifetime

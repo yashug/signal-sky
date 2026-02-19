@@ -120,7 +120,7 @@ function HeroSection() {
               href="/sign-in"
               className="group inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] glow-signal"
             >
-              Start scanning free
+              Start 7-day free trial
               <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <a
@@ -172,7 +172,7 @@ function HeroSection() {
             </div>
 
             {/* Mock scanner table */}
-            <div className="p-0">
+            <div className="p-0 overflow-x-auto">
               {/* Header bar */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-border/15">
                 <div className="flex items-center gap-2.5">
@@ -191,7 +191,7 @@ function HeroSection() {
               </div>
 
               {/* Heat filter tabs */}
-              <div className="flex items-center gap-1 px-5 py-2 border-b border-border/10 bg-surface/20">
+              <div className="flex items-center gap-1 px-5 py-2 border-b border-border/10 bg-surface/20 overflow-x-auto">
                 <span className="px-3 py-1 text-[11px] font-medium rounded-md bg-primary/10 text-primary">All</span>
                 <span className="flex items-center gap-1 px-3 py-1 text-[11px] text-muted-foreground rounded-md">
                   <RocketIcon className="size-2.5 text-heat-breakout" /> Breakout
@@ -208,7 +208,7 @@ function HeroSection() {
               </div>
 
               {/* Table */}
-              <div className="text-xs">
+              <div className="text-xs min-w-[600px]">
                 {/* Header */}
                 <div className="grid grid-cols-[1.5fr_0.5fr_0.7fr_1fr_1fr_1fr] gap-3 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/10">
                   <span>Symbol</span>
@@ -804,7 +804,7 @@ function StrategySection() {
         </div>
 
         {/* Heat classification + Strategy guide CTA */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_280px] items-start">
+        <div className="grid gap-6 lg:grid-cols-[1fr_280px] items-start px-0">
           {/* Heat system */}
           <div className="rounded-2xl border border-border/25 bg-card/60 p-6">
             <h3 className="text-[15px] font-semibold text-foreground mb-1">Signal Heat Classification</h3>
@@ -954,38 +954,14 @@ function PricingSection() {
             Invest in your edge
           </h2>
           <p className="text-sm text-muted-foreground mt-3 max-w-md mx-auto">
-            Start free. Upgrade to unlock all Nifty indices, unlimited backtests, and real-time alerts.
+            Start with a 7-day free trial. Then choose a plan to unlock all Nifty indices, unlimited backtests, and real-time alerts.
           </p>
           <p className="text-[11px] text-heat-simmering font-medium mt-2">
             Prices increase after launch
           </p>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4 max-w-5xl mx-auto mt-12">
-          {/* Free */}
-          <div className="rounded-2xl border border-border/25 bg-card/50 p-6 flex flex-col">
-            <h3 className="text-base font-semibold">Free</h3>
-            <p className="text-[12px] text-muted-foreground mt-0.5">Get started with core features</p>
-            <div className="flex items-baseline gap-1 mt-5 mb-6">
-              <span className="font-mono text-3xl font-bold tracking-tight">&#8377;0</span>
-              <span className="text-sm text-muted-foreground">forever</span>
-            </div>
-            <ul className="space-y-2 mb-6 flex-1">
-              {["Nifty 50 + S&P 100 scanner", "Delayed Telegram alerts", "Basic position calculator", "Trade journal (20 trades)"].map((f) => (
-                <li key={f} className="flex items-start gap-2 text-[12px]">
-                  <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                  <span className="text-muted-foreground">{f}</span>
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/sign-in"
-              className="flex items-center justify-center w-full rounded-xl py-2.5 text-[13px] font-semibold border border-border/40 text-foreground hover:bg-surface transition-all"
-            >
-              Start free
-            </Link>
-          </div>
-
+        <div className="grid gap-5 md:grid-cols-3 max-w-4xl mx-auto mt-12">
           {/* Pro Monthly */}
           <div className="rounded-2xl border border-border/25 bg-card/50 p-6 flex flex-col">
             <h3 className="text-base font-semibold">Pro Monthly</h3>
@@ -997,7 +973,7 @@ function PricingSection() {
                 <span className="text-sm text-muted-foreground">/mo</span>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground mb-6">Save more with yearly &mdash; &#8377;989/yr</p>
+            <p className="text-[10px] text-muted-foreground mb-6">7-day free trial included</p>
             <ul className="space-y-2 mb-6 flex-1">
               {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Unlimited backtests", "Real-time Telegram alerts", "Volume surge filter", "Unlimited trade journal", "Priority support"].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-[12px]">
@@ -1011,7 +987,7 @@ function PricingSection() {
               className="flex items-center justify-center w-full rounded-xl py-2.5 text-[13px] font-semibold border border-border/40 text-foreground hover:bg-surface transition-all"
             >
               <SparklesIcon className="size-3 mr-1.5" />
-              Go Monthly
+              Start Free Trial
             </Link>
           </div>
 
@@ -1049,7 +1025,7 @@ function PricingSection() {
               className="flex items-center justify-center w-full rounded-xl py-2.5 text-[13px] font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all glow-signal"
             >
               <SparklesIcon className="size-3 mr-1.5" />
-              Upgrade to Pro
+              Start Free Trial
             </Link>
           </div>
 
@@ -1122,7 +1098,7 @@ function CtaSection() {
             href="/sign-in"
             className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] glow-signal"
           >
-            Get started — it&apos;s free
+            Start your free trial
             <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>

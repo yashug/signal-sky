@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 import { getKiteDailyCandles } from "@/lib/market-data/kite"
 import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
-import { upsertDailyBars, getLastBarDate } from "@/lib/market-data/store"
+import { upsertDailyBars, getLastBarDate, updateMovingAverages } from "@/lib/market-data/store"
 
 const INDIA_UNIVERSES = [
   "nifty50", "niftynext50", "nifty200",
@@ -65,6 +65,9 @@ export async function POST() {
           const r = await upsertDailyBars({ symbol, exchange: "NSE", candles, source: "kite" })
           results.india.inserted += r.inserted
           results.india.skipped += r.skipped
+          if (r.inserted > 0) {
+            await updateMovingAverages(symbol, "NSE")
+          }
         }
         results.india.symbolsProcessed++
 
@@ -98,6 +101,9 @@ export async function POST() {
           const r = await upsertDailyBars({ symbol, exchange: "US", candles, source: "yahoo" })
           results.us.inserted += r.inserted
           results.us.skipped += r.skipped
+          if (r.inserted > 0) {
+            await updateMovingAverages(symbol, "US")
+          }
         }
         results.us.symbolsProcessed++
 

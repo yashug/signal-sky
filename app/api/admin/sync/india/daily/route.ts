@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 import { getKiteDailyCandles } from "@/lib/market-data/kite"
-import { upsertDailyBars, getLastBarDate } from "@/lib/market-data/store"
+import { upsertDailyBars, getLastBarDate, updateMovingAverages } from "@/lib/market-data/store"
 
 /**
  * POST /api/admin/sync/india/daily
@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
         const result = await upsertDailyBars({ symbol, exchange: "NSE", candles, source: "kite" })
         totalInserted += result.inserted
         totalSkipped += result.skipped
+
+        if (result.inserted > 0) {
+          await updateMovingAverages(symbol, "NSE")
+        }
 
         // Rate limit
         await new Promise((r) => setTimeout(r, 350))

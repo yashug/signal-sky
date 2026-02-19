@@ -10,6 +10,12 @@ import { toUTCMidnight } from "./normalize"
 // yahoo-finance2 v3 requires instantiation
 const yf = new (YahooFinance as any)()
 
+// Yahoo uses hyphens for share classes (BRK-B), DB stores dots (BRK.B)
+function toYahooSymbol(symbol: string): string {
+  if (symbol.endsWith(".NS")) return symbol
+  return symbol.replace(/\.([A-Z])$/, "-$1")
+}
+
 /**
  * Fetch daily candles for a US stock symbol from Yahoo Finance.
  *
@@ -23,7 +29,7 @@ export async function getYahooDailyCandles(
   from: Date,
   to: Date,
 ): Promise<DailyCandle[]> {
-  const result = await yf.chart(symbol, {
+  const result = await yf.chart(toYahooSymbol(symbol), {
     period1: from,
     period2: to,
     interval: "1d",

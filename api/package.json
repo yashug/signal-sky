@@ -10,7 +10,8 @@
     "scan": "tsx src/workers/scanner.ts",
     "cron": "tsx src/workers/cron-pipeline.ts",
     "cron:india": "tsx src/workers/cron-pipeline.ts india",
-    "cron:us": "tsx src/workers/cron-pipeline.ts us"
+    "cron:us": "tsx src/workers/cron-pipeline.ts us",
+    "backtest": "tsx src/workers/backtest-runner.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.1",

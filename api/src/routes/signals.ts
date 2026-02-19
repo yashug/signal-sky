@@ -117,7 +117,48 @@ export async function signalsRoutes(app: FastifyInstance) {
     }
   })
 
-  // Chart data for a specific signal
+  // Fetch a single signal by symbol (for dedicated detail pages)
+  app.get("/signals/by-symbol/:symbol", async (request) => {
+    const { symbol } = request.params as { symbol: string }
+    const prisma = getPrisma()
+
+    const rows = await prisma.$queryRawUnsafe(`
+      SELECT s.*,
+        (SELECT um.name FROM universe_members um WHERE um.symbol = s.symbol LIMIT 1) as member_name
+      FROM signals s
+      WHERE s.symbol = $1 AND s.is_active = true
+      ORDER BY s.signal_date DESC
+      LIMIT 1
+    `, symbol)
+
+    const arr = rows as any[]
+    if (arr.length === 0) {
+      return { error: "Signal not found" }
+    }
+
+    const s = arr[0]
+    return {
+      id: s.id,
+      symbol: s.symbol,
+      exchange: s.exchange,
+      name: s.member_name ?? s.symbol.replace(".NS", ""),
+      strategyName: s.strategy_name,
+      heat: s.heat,
+      price: Number(s.price),
+      ath: Number(s.ath),
+      ema200: Number(s.ema200),
+      distancePct: Number(s.distance_pct),
+      volumeSurge: s.volume_surge ? Number(s.volume_surge) : null,
+      volumeToday: s.volume_today ? Number(s.volume_today) : null,
+      volumeAvg20: s.volume_avg20 ? Number(s.volume_avg20) : null,
+      signalDate: s.signal_date,
+      isActive: s.is_active,
+      details: s.details,
+      createdAt: s.created_at,
+    }
+  })
+
+  // Chart data for a specific signal — from pre-set ATH date to present
   app.get("/signals/:id/chart", async (request) => {
     const { id } = request.params as { id: string }
     const prisma = getPrisma()
@@ -127,16 +168,32 @@ export async function signalsRoutes(app: FastifyInstance) {
       return { error: "Signal not found" }
     }
 
+    // Resolve the bar symbol (strip .NS suffix for NSE stocks)
+    const barSymbol = signal.exchange === "NSE"
+      ? signal.symbol.replace(/\.NS$/, "")
+      : signal.symbol
+
+    // Use pre-set ATH date from signal details as chart start
+    const details = signal.details as Record<string, any> | null
+    const preSetATHDate = details?.preSetATHDate
+      ? new Date(details.preSetATHDate)
+      : null
+
+    const whereClause: any = { symbol: barSymbol }
+    if (preSetATHDate) {
+      whereClause.date = { gte: preSetATHDate }
+    }
+
     const bars = await prisma.dailyBar.findMany({
-      where: { symbol: signal.symbol },
-      orderBy: { date: "desc" },
-      take: 30,
+      where: whereClause,
+      orderBy: { date: "asc" },
     })
-    bars.reverse()
 
     return {
       priceHistory: bars.map((b) => Number(b.close)),
       ema200History: bars.map((b) => (b.ema200 ? Number(b.ema200) : null)),
+      dates: bars.map((b) => b.date.toISOString().split("T")[0]),
+      ath: details?.preSetATH ? Number(details.preSetATH) : null,
     }
   })
 }

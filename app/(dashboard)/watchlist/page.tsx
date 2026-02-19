@@ -120,7 +120,7 @@ export default function WatchlistPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-6 py-5">
+    <div className="flex flex-col gap-6 px-4 sm:px-6 py-5">
       <div className="flex items-center gap-3">
         <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
           <StarIcon className="size-4 text-primary" />
@@ -157,8 +157,9 @@ export default function WatchlistPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-border/40 bg-surface">
+        <Card className="border-border/40 bg-surface overflow-x-auto">
           <CardContent className="p-0">
+            <div className="min-w-[700px]">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/30 hover:bg-transparent">
@@ -278,6 +279,7 @@ export default function WatchlistPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}

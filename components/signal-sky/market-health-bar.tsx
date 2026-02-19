@@ -61,21 +61,21 @@ function MarketCard({ market }: { market: ApiMarketHealth }) {
 
 export function MarketHealthBar() {
   const { data, loading, error } = useApi(() => fetchMarketHealth(), [])
-  const markets = data?.markets ?? []
+  const markets = (data?.markets ?? []).filter((m) => m.universe === "nifty50" || m.universe === "niftybank")
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border/40 bg-background/80 backdrop-blur-xl px-4 py-2">
-      <SidebarTrigger className="text-muted-foreground" />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+    <header className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-border/40 bg-background/80 backdrop-blur-xl px-3 sm:px-4 py-2 sm:h-[68px]">
+      <SidebarTrigger className="text-muted-foreground shrink-0" />
+      <Separator orientation="vertical" className="mx-1 h-5 hidden sm:block" />
 
-      <div className="flex items-center gap-1.5">
+      <div className="hidden sm:flex items-center gap-1.5">
         <ActivityIcon className="size-3.5 text-primary" />
         <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
           Market Health
         </span>
       </div>
 
-      <div className="flex items-center gap-2 ml-2">
+      <div className="flex items-center gap-2 ml-1 sm:ml-2 overflow-x-auto shrink-0">
         {loading ? (
           <div className="flex items-center gap-2 px-3 py-2">
             <Loader2Icon className="size-3.5 text-muted-foreground animate-spin" />

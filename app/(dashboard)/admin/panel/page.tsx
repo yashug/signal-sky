@@ -51,7 +51,7 @@ const INDIA_UNIVERSES = [
   "niftybank",
 ] as const
 
-const US_UNIVERSES = ["sp100"] as const
+const US_UNIVERSES = ["sp100", "nasdaq100"] as const
 
 const ALL_UNIVERSES = [...INDIA_UNIVERSES, ...US_UNIVERSES] as const
 
@@ -713,7 +713,63 @@ function StrategyScannerSection() {
       {syncUsAction.result && (
         <ResultBanner result={syncUsAction.result} className="mt-2" />
       )}
+
+      {/* Backtest */}
+      <Separator className="mt-4 opacity-30" />
+      <BacktestRunSection />
     </section>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION: BACKTEST RUN
+// ═══════════════════════════════════════════════════════════════════
+function BacktestRunSection() {
+  const indiaAction = useAction()
+  const usAction = useAction()
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-start gap-3 mb-3">
+        <div className="mt-0.5 flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <BarChart3Icon className="size-4" />
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            Backtest Engine
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Run historical backtests using the Reset & Reclaim strategy
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <ActionCard
+          label="Backtest India"
+          loadingLabel="Running..."
+          icon={<BarChart3Icon className="size-4" />}
+          flag="IN"
+          loading={indiaAction.loading}
+          onClick={() => indiaAction.execute("/api/admin/backtest/run", { body: { market: "india" } })}
+        />
+        <ActionCard
+          label="Backtest US"
+          loadingLabel="Running..."
+          icon={<BarChart3Icon className="size-4" />}
+          flag="US"
+          loading={usAction.loading}
+          onClick={() => usAction.execute("/api/admin/backtest/run", { body: { market: "us" } })}
+        />
+      </div>
+
+      {indiaAction.result && (
+        <ResultBanner result={indiaAction.result} className="mt-2" />
+      )}
+      {usAction.result && (
+        <ResultBanner result={usAction.result} className="mt-2" />
+      )}
+    </div>
   )
 }
 
@@ -1165,6 +1221,22 @@ function ResultBanner({
           </span>
           {entries.map(([key, val]) => {
             if (Array.isArray(val) && val.length === 0) return null
+            // Handle nested objects (e.g. india: { inserted: 5, ... })
+            if (val && typeof val === "object" && !Array.isArray(val)) {
+              const subEntries = Object.entries(val).filter(
+                ([, v]) => !(Array.isArray(v) && v.length === 0)
+              )
+              if (subEntries.length === 0) return null
+              return (
+                <span key={key} className="text-muted-foreground">
+                  <span className="text-foreground font-medium">{key}:</span>{" "}
+                  {subEntries.map(([sk, sv]) => {
+                    const svDisplay = Array.isArray(sv) ? sv.join(", ") : String(sv)
+                    return `${sk}: ${svDisplay}`
+                  }).join(" · ")}
+                </span>
+              )
+            }
             const display = Array.isArray(val) ? val.join(", ") : String(val)
             return (
               <span key={key} className="text-muted-foreground">

@@ -10,7 +10,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, name: true, email: true, image: true, tier: true },
+    select: { id: true, name: true, email: true, image: true, tier: true, trialEndsAt: true, settings: true },
   })
 
   if (!user) {
@@ -31,7 +31,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  const data: Record<string, string | null> = {}
+  const data: Record<string, unknown> = {}
 
   if (typeof body.name === "string") {
     const name = body.name.trim()
@@ -49,6 +49,16 @@ export async function PATCH(req: Request) {
     data.image = image || null
   }
 
+  if (body.settings != null && typeof body.settings === "object") {
+    // Merge incoming settings with existing ones
+    const existing = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { settings: true },
+    })
+    const current = (existing?.settings as Record<string, unknown>) ?? {}
+    data.settings = { ...current, ...body.settings }
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
   }
@@ -56,7 +66,7 @@ export async function PATCH(req: Request) {
   const updated = await prisma.user.update({
     where: { id: session.user.id },
     data,
-    select: { id: true, name: true, email: true, image: true },
+    select: { id: true, name: true, email: true, image: true, settings: true },
   })
 
   return NextResponse.json(updated)

@@ -10,16 +10,17 @@ datasource db {
 // ─── Users (linked to auth.users via Supabase Auth) ─────────────
 
 model User {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email           String?  @unique
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String?   @unique
   name            String?
   image           String?
-  telegramId      String?  @map("telegram_id")
-  telegramHandle  String?  @map("telegram_handle")
-  tier            Tier     @default(FREE)
-  settings        Json     @default("{}")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  telegramId      String?   @map("telegram_id")
+  telegramHandle  String?   @map("telegram_handle")
+  tier            Tier      @default(FREE)
+  trialEndsAt     DateTime? @map("trial_ends_at")
+  settings        Json      @default("{}")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   watchlistItems   WatchlistItem[]
   journalTrades    JournalTrade[]
@@ -39,18 +40,18 @@ enum Tier {
 // ─── Subscriptions & Billing ──────────────────────────────────────
 
 model Subscription {
-  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId               String    @unique @map("user_id") @db.Uuid
-  stripeCustomerId     String?   @unique @map("stripe_customer_id")
-  stripeSubscriptionId String?   @unique @map("stripe_subscription_id")
-  stripePriceId        String?   @map("stripe_price_id")
-  billingInterval      String    @default("monthly") @map("billing_interval") @db.VarChar(20)
-  status               String    @default("inactive")
-  currentPeriodStart   DateTime? @map("current_period_start")
-  currentPeriodEnd     DateTime? @map("current_period_end")
-  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String    @unique @map("user_id") @db.Uuid
+  paymentProvider       String    @default("phonepe") @map("payment_provider") @db.VarChar(20)
+  paymentOrderId        String?   @map("payment_order_id")
+  paymentSubscriptionId String?   @map("payment_subscription_id")
+  billingInterval       String    @default("monthly") @map("billing_interval") @db.VarChar(20)
+  status                String    @default("inactive")
+  currentPeriodStart    DateTime? @map("current_period_start")
+  currentPeriodEnd      DateTime? @map("current_period_end")
+  cancelAtPeriodEnd     Boolean   @default(false) @map("cancel_at_period_end")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -289,11 +290,32 @@ model Backtest {
   signalId       String?  @map("signal_id")
   computedAt     DateTime @default(now()) @map("computed_at")
 
-  signal Signal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
+  signal         Signal?          @relation(fields: [signalId], references: [id], onDelete: SetNull)
+  backtestTrades BacktestTrade[]
 
   @@index([symbol, strategyName])
   @@index([parametersHash])
   @@map("backtests")
+}
+
+model BacktestTrade {
+  id               String    @id @default(dbgenerated("gen_random_uuid()::text"))
+  backtestId       String    @map("backtest_id")
+  symbol           String    @db.VarChar(20)
+  exchange         String    @db.VarChar(10)
+  entryDate        DateTime  @map("entry_date") @db.Date
+  entryPrice       Decimal   @map("entry_price") @db.Decimal(12, 4)
+  exitDate         DateTime? @map("exit_date") @db.Date
+  exitPrice        Decimal?  @map("exit_price") @db.Decimal(12, 4)
+  pnlPercent       Decimal?  @map("pnl_percent") @db.Decimal(8, 2)
+  daysHeld         Int       @default(0) @map("days_held")
+  preSetATHAtEntry Decimal   @default(0) @map("pre_set_ath_at_entry") @db.Decimal(12, 4)
+
+  backtest Backtest @relation(fields: [backtestId], references: [id], onDelete: Cascade)
+
+  @@index([backtestId])
+  @@index([symbol])
+  @@map("backtest_trades")
 }
 
 // ─── Alerts ───────────────────────────────────────────────────────

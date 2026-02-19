@@ -1,11 +1,18 @@
 import yahooFinance from "yahoo-finance2"
 import type { DataProvider, OHLCVBar, Quote } from "./types.js"
 
+// Yahoo Finance uses hyphens for share classes (BRK-B), while DB stores dots (BRK.B)
+function toYahooSymbol(symbol: string): string {
+  if (symbol.endsWith(".NS")) return symbol
+  return symbol.replace(/\.([A-Z])$/, "-$1")
+}
+
 export class YahooFinanceProvider implements DataProvider {
   name = "yahoo-finance"
 
   async fetchBars(symbol: string, from: string, to: string): Promise<OHLCVBar[]> {
-    const result: any[] = await yahooFinance.historical(symbol, {
+    const yahooSymbol = toYahooSymbol(symbol)
+    const result: any[] = await yahooFinance.historical(yahooSymbol, {
       period1: from,
       period2: to,
       interval: "1d",
@@ -27,7 +34,8 @@ export class YahooFinanceProvider implements DataProvider {
   }
 
   async fetchQuote(symbol: string): Promise<Quote | null> {
-    const result: any = await yahooFinance.quote(symbol)
+    const yahooSymbol = toYahooSymbol(symbol)
+    const result: any = await yahooFinance.quote(yahooSymbol)
     if (!result) return null
 
     const exchange = symbol.endsWith(".NS") ? "NSE" : "US"
