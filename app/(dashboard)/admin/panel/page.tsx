@@ -37,6 +37,13 @@ import {
   GlobeIcon,
   ActivityIcon,
   LayersIcon,
+  MessageSquareIcon,
+  CheckIcon,
+  BugIcon,
+  LightbulbIcon,
+  MessageCircleIcon,
+  MailIcon,
+  EyeIcon,
 } from "lucide-react"
 
 // ─── Constants ──────────────────────────────────────────────────
@@ -1251,6 +1258,254 @@ function ResultBanner({
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// FEEDBACK SECTION
+// ═══════════════════════════════════════════════════════════════════
+
+type FeedbackItem = {
+  id: string
+  category: string
+  message: string
+  isRead: boolean
+  createdAt: string
+  user: { email: string | null; name: string | null; image: string | null }
+}
+
+const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof BugIcon; color: string; bg: string }> = {
+  bug: { label: "BUG", icon: BugIcon, color: "text-bear", bg: "bg-bear/10 border-bear/20" },
+  feature: { label: "FEATURE", icon: LightbulbIcon, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
+  general: { label: "GENERAL", icon: MessageCircleIcon, color: "text-muted-foreground", bg: "bg-muted/50 border-border/30" },
+}
+
+function formatFeedbackTime(dateStr: string): string {
+  const d = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60_000)
+  if (diffMin < 1) return "just now"
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h ago`
+  const diffDays = Math.floor(diffHr / 24)
+  if (diffDays < 7) return `${diffDays}d ago`
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
+}
+
+function FeedbackSection() {
+  const [items, setItems] = useState<FeedbackItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [total, setTotal] = useState(0)
+  const [showAll, setShowAll] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [markingRead, setMarkingRead] = useState<Set<string>>(new Set())
+
+  const fetchFeedback = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/feedback?unreadOnly=${showAll ? "0" : "1"}&limit=50`)
+      const data = await res.json()
+      setItems(data.items ?? [])
+      setUnreadCount(data.unreadCount ?? 0)
+      setTotal(data.total ?? 0)
+    } finally {
+      setLoading(false)
+    }
+  }, [showAll])
+
+  useEffect(() => { fetchFeedback() }, [fetchFeedback])
+
+  async function handleMarkRead(id: string) {
+    setMarkingRead((prev) => new Set(prev).add(id))
+    try {
+      await fetch("/api/feedback", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      })
+      setItems((prev) => prev.map((f) => f.id === id ? { ...f, isRead: true } : f))
+      setUnreadCount((prev) => Math.max(0, prev - 1))
+      if (!showAll) {
+        setItems((prev) => prev.filter((f) => f.id !== id))
+      }
+    } finally {
+      setMarkingRead((prev) => { const n = new Set(prev); n.delete(id); return n })
+    }
+  }
+
+  async function handleMarkAllRead() {
+    const unreadIds = items.filter((f) => !f.isRead).map((f) => f.id)
+    if (unreadIds.length === 0) return
+    setMarkingRead(new Set(unreadIds))
+    try {
+      await fetch("/api/feedback", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: unreadIds }),
+      })
+      if (showAll) {
+        setItems((prev) => prev.map((f) => ({ ...f, isRead: true })))
+      } else {
+        setItems([])
+      }
+      setUnreadCount(0)
+    } finally {
+      setMarkingRead(new Set())
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+            <MailIcon className="size-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold tracking-tight">User Feedback</h2>
+            <p className="text-[11px] text-muted-foreground font-mono">
+              {unreadCount > 0 ? (
+                <><span className="text-primary font-bold">{unreadCount}</span> unread of {total} total</>
+              ) : (
+                <>{total} total — all read</>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className={`
+              inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all
+              ${showAll
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-border/30 bg-background text-muted-foreground hover:text-foreground"
+              }
+            `}
+          >
+            <EyeIcon className="size-3" />
+            {showAll ? "All" : "Unread"}
+          </button>
+          {unreadCount > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px] gap-1.5"
+              onClick={handleMarkAllRead}
+            >
+              <CheckIcon className="size-3" />
+              Mark all read
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <MessageSquareIcon className="size-8 mb-3 opacity-30" />
+          <p className="text-sm">{showAll ? "No feedback yet" : "No unread feedback"}</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border/30 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-border/20">
+                <TableHead className="text-[10px] uppercase tracking-wider font-semibold w-[180px]">User</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider font-semibold w-[90px]">Type</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider font-semibold">Message</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider font-semibold w-[90px] text-right">When</TableHead>
+                <TableHead className="w-[80px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => {
+                const cat = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.general
+                const CatIcon = cat.icon
+                const isExpanded = expandedId === item.id
+
+                return (
+                  <TableRow
+                    key={item.id}
+                    className={cn(
+                      "border-border/10 cursor-pointer transition-colors",
+                      !item.isRead && "bg-primary/[0.02]",
+                      isExpanded && "bg-surface"
+                    )}
+                    onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  >
+                    <TableCell className="py-2.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {!item.isRead && (
+                          <span className="flex size-1.5 shrink-0">
+                            <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+                          </span>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">
+                            {item.user.name ?? "—"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-mono truncate">
+                            {item.user.email}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-2.5">
+                      <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-bold tracking-wider ${cat.bg} ${cat.color}`}>
+                        <CatIcon className="size-2.5" />
+                        {cat.label}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-2.5">
+                      <p className={cn(
+                        "text-xs text-muted-foreground",
+                        isExpanded ? "whitespace-pre-wrap" : "truncate max-w-[400px]"
+                      )}>
+                        {item.message}
+                      </p>
+                    </TableCell>
+                    <TableCell className="py-2.5 text-right">
+                      <span className="text-[10px] font-mono text-muted-foreground/70">
+                        {formatFeedbackTime(item.createdAt)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-2.5">
+                      {!item.isRead && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          disabled={markingRead.has(item.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleMarkRead(item.id)
+                          }}
+                        >
+                          {markingRead.has(item.id) ? (
+                            <Loader2Icon className="size-3 animate-spin" />
+                          ) : (
+                            <CheckIcon className="size-3 text-bull" />
+                          )}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════
 export default function AdminPanelPage() {
@@ -1300,6 +1555,10 @@ export default function AdminPanelPage() {
                 <CloudDownloadIcon className="size-3.5" />
                 Sync & Backfill
               </TabsTrigger>
+              <TabsTrigger value="feedback" className="px-4 text-xs">
+                <MessageSquareIcon className="size-3.5" />
+                Feedback
+              </TabsTrigger>
             </TabsList>
           </div>
         </div>
@@ -1324,6 +1583,13 @@ export default function AdminPanelPage() {
         <TabsContent value="sync" className="flex-1 overflow-auto">
           <div className="flex flex-col gap-6 px-6 py-6 w-full">
             <SyncBackfillSection />
+          </div>
+        </TabsContent>
+
+        {/* Tab: Feedback */}
+        <TabsContent value="feedback" className="flex-1 overflow-auto">
+          <div className="flex flex-col gap-6 px-6 py-6 w-full">
+            <FeedbackSection />
           </div>
         </TabsContent>
       </Tabs>

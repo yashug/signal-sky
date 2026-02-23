@@ -20,6 +20,10 @@ import {
   CameraIcon,
   Loader2Icon,
   ScaleIcon,
+  MessageSquareIcon,
+  BugIcon,
+  LightbulbIcon,
+  MessageCircleIcon,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 
@@ -304,6 +308,120 @@ function PositionDefaultsCard() {
   )
 }
 
+const FEEDBACK_CATEGORIES = [
+  { value: "bug", label: "Bug", icon: BugIcon, color: "text-bear" },
+  { value: "feature", label: "Feature", icon: LightbulbIcon, color: "text-primary" },
+  { value: "general", label: "General", icon: MessageCircleIcon, color: "text-muted-foreground" },
+] as const
+
+function FeedbackCard() {
+  const [category, setCategory] = useState<string>("general")
+  const [message, setMessage] = useState("")
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  async function handleSubmit() {
+    if (!message.trim() || message.trim().length < 5) return
+    setSending(true)
+    setSent(false)
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, message: message.trim() }),
+      })
+      if (res.ok) {
+        setSent(true)
+        setMessage("")
+        setCategory("general")
+        setTimeout(() => setSent(false), 3000)
+      }
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <Card className="border-border/40 bg-surface">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <MessageSquareIcon className="size-4 text-primary" />
+          <CardTitle className="text-sm">Send Feedback</CardTitle>
+        </div>
+        <CardDescription className="text-xs">
+          Found a bug? Have an idea? Let us know — we read every message.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {/* Category pills */}
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">
+              Category
+            </label>
+            <div className="flex gap-1.5">
+              {FEEDBACK_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setCategory(cat.value)}
+                  className={`
+                    inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium
+                    transition-all duration-150
+                    ${category === cat.value
+                      ? `border-primary/40 bg-primary/10 ${cat.color}`
+                      : "border-border/30 bg-background text-muted-foreground hover:border-border/60 hover:text-foreground"
+                    }
+                  `}
+                >
+                  <cat.icon className="size-3" />
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Message */}
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
+              Message
+            </label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Describe the issue or your idea..."
+              rows={3}
+              maxLength={2000}
+              className="flex w-full rounded-lg border border-border/40 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none max-w-lg"
+            />
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-[10px] text-muted-foreground/50 font-mono">
+                {message.length}/2000
+              </span>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={handleSubmit}
+            disabled={sending || !message.trim() || message.trim().length < 5}
+          >
+            {sending ? (
+              <Loader2Icon className="size-3 animate-spin" />
+            ) : sent ? (
+              <CheckIcon className="size-3" />
+            ) : (
+              <SendIcon className="size-3" />
+            )}
+            {sent ? "Sent — thank you!" : "Send Feedback"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function SettingsPage() {
   const { user } = useAuth()
   const tier = user?.tier
@@ -452,6 +570,9 @@ export default function SettingsPage() {
 
       {/* Position Defaults */}
       <PositionDefaultsCard />
+
+      {/* Feedback */}
+      <FeedbackCard />
     </div>
   )
 }

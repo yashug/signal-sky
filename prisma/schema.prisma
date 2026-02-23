@@ -4,7 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── Users (linked to auth.users via Supabase Auth) ─────────────
@@ -27,6 +29,7 @@ model User {
   alertPreferences AlertPreference[]
   alertHistory     AlertHistory[]
   subscription     Subscription?
+  feedback         Feedback[]
 
   @@map("users")
 }
@@ -347,4 +350,20 @@ model AlertHistory {
   signal Signal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
 
   @@map("alert_history")
+}
+
+// ─── Feedback ────────────────────────────────────────────────────
+
+model Feedback {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  category  String   @db.VarChar(20)
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isRead, createdAt(sort: Desc)])
+  @@map("feedback")
 }

@@ -11,10 +11,12 @@ import {
   CrownIcon,
   FlameIcon,
   ArrowLeftIcon,
+  LogOutIcon,
   ShieldCheckIcon,
   UsersIcon,
   AlertCircleIcon,
 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 const PRO_FEATURES = [
   "All Nifty indices (50, 100, 200, Midcap, Smallcap)",
@@ -88,13 +90,26 @@ export default function PricingPage() {
             </div>
             <span className="text-[15px] font-semibold tracking-tight">SignalSky</span>
           </Link>
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeftIcon className="size-3" />
-            Back to home
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeftIcon className="size-3" />
+              Back to home
+            </Link>
+            <button
+              onClick={async () => {
+                const supabase = createClient()
+                await supabase.auth.signOut()
+                router.push("/")
+              }}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-bear transition-colors"
+            >
+              <LogOutIcon className="size-3" />
+              Sign out
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -120,17 +135,11 @@ export default function PricingPage() {
 
         {/* Header */}
         <div className="flex flex-col items-center gap-3 mb-12 text-center">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">
-            Early Adopter Pricing
-          </span>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em]">
             Invest in your edge
           </h1>
           <p className="text-sm text-muted-foreground max-w-md">
             Start with a 7-day free trial. Then choose a plan to unlock all Nifty indices, unlimited backtests, and real-time alerts.
-          </p>
-          <p className="text-[11px] text-heat-simmering font-medium">
-            Prices increase after launch
           </p>
         </div>
 
