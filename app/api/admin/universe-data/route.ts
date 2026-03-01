@@ -58,6 +58,8 @@ export async function GET(req: NextRequest) {
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    const twentyYearsAgo = new Date(today)
+    twentyYearsAgo.setFullYear(twentyYearsAgo.getFullYear() - 20)
     const tenYearsAgo = new Date(today)
     tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10)
 
@@ -69,12 +71,12 @@ export async function GET(req: NextRequest) {
       if (stats?.firstDate && stats?.lastDate) {
         const firstMs = stats.firstDate.getTime()
         const lastMs = stats.lastDate.getTime()
-        const tenYearsMs = tenYearsAgo.getTime()
+        const twentyYearsMs = twentyYearsAgo.getTime()
         const todayMs = today.getTime()
 
-        // Coverage: how much of the 10-year window is filled
-        const idealSpan = todayMs - tenYearsMs
-        const actualStart = Math.max(firstMs, tenYearsMs)
+        // Coverage: how much of the 20-year window is filled
+        const idealSpan = todayMs - twentyYearsMs
+        const actualStart = Math.max(firstMs, twentyYearsMs)
         const actualEnd = Math.min(lastMs, todayMs)
         const actualSpan = Math.max(0, actualEnd - actualStart)
         coverage = idealSpan > 0 ? Math.round((actualSpan / idealSpan) * 100) : 0
@@ -85,9 +87,14 @@ export async function GET(req: NextRequest) {
         ? today.getTime() - stats.lastDate.getTime() < 5 * 86_400_000
         : false
 
-      // Has 10 year history?
+      // Has 20 year history? (allow 30 day buffer)
+      const has20YearHistory = stats?.firstDate
+        ? stats.firstDate.getTime() <= twentyYearsAgo.getTime() + 30 * 86_400_000
+        : false
+
+      // Has at least 10 year history?
       const has10YearHistory = stats?.firstDate
-        ? stats.firstDate.getTime() <= tenYearsAgo.getTime() + 30 * 86_400_000 // allow 30 day buffer
+        ? stats.firstDate.getTime() <= tenYearsAgo.getTime() + 30 * 86_400_000
         : false
 
       return {
@@ -100,13 +107,14 @@ export async function GET(req: NextRequest) {
         coverage,
         isUpToDate,
         has10YearHistory,
+        has20YearHistory,
       }
     })
 
     // Summary stats
     const withData = enriched.filter((m) => m.barCount > 0)
     const upToDate = enriched.filter((m) => m.isUpToDate)
-    const full10Y = enriched.filter((m) => m.has10YearHistory)
+    const full20Y = enriched.filter((m) => m.has20YearHistory)
 
     return NextResponse.json({
       universe,
@@ -114,7 +122,8 @@ export async function GET(req: NextRequest) {
       total: enriched.length,
       withData: withData.length,
       upToDate: upToDate.length,
-      full10Year: full10Y.length,
+      full10Year: enriched.filter((m) => m.has10YearHistory).length,
+      full20Year: full20Y.length,
       members: enriched,
     })
   } catch (e: any) {

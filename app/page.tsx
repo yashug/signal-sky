@@ -137,6 +137,7 @@ function HeroSection() {
               { label: "Markets Covered", value: "2", suffix: "" },
               { label: "Signals Scanned Daily", value: "1,000", suffix: "+" },
               { label: "Strategy Win Rate", value: "68", suffix: "%" },
+              { label: "Years of Backtest Data", value: "20", suffix: "Y" },
             ].map((stat) => (
               <div key={stat.label} className="flex flex-col items-center gap-1">
                 <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
@@ -524,8 +525,8 @@ function TrustSection() {
             },
             {
               icon: ActivityIcon,
-              title: "Backtested strategy",
-              description: "Reset & Reclaim is not a black box. Every signal comes with historical backtest data.",
+              title: "20 years of backtest data",
+              description: "Reset & Reclaim is not a black box. Every signal comes with 20 years of historical backtest data to validate the setup.",
             },
           ].map((item) => (
             <div key={item.title} className="flex gap-4 p-5 rounded-xl">
@@ -899,7 +900,7 @@ function StrategySection() {
               Strategy Deep-Dive
             </h3>
             <p className="text-[12px] leading-relaxed text-muted-foreground mb-5">
-              Full breakdown with entry rules, exit conditions, position sizing, and backtest results across 10 years of data.
+              Full breakdown with entry rules, exit conditions, position sizing, and backtest results across 20 years of data.
             </p>
             <a
               href="/strategy-guide.pdf"

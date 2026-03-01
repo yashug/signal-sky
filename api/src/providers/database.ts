@@ -3,7 +3,7 @@ import type { DataProvider, OHLCVBar, Quote } from "./types.js"
 
 /**
  * DatabaseProvider — reads historical bars from the `daily_bars` table
- * (populated by Kite Connect or CSV upload) instead of fetching from
+ * (populated by Yahoo Finance or CSV upload) instead of fetching from
  * an external API.
  *
  * Quote is synthesized from the most recent bar (EOD scanning).

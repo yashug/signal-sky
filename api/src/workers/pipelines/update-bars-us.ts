@@ -7,6 +7,8 @@ import YahooFinance from "yahoo-finance2"
 import { getPrisma } from "../../db/prisma.js"
 import { updateMovingAveragesForSymbol } from "../../db/update-sma200.js"
 
+const yf = new (YahooFinance as any)()
+
 const DELAY_MS = 200
 
 export interface UpdateBarsResult {
@@ -58,7 +60,7 @@ export async function updateBarsUS(): Promise<UpdateBarsResult> {
       if (from >= to) continue
 
       // Fetch from Yahoo Finance
-      const result: any[] = await YahooFinance.historical(symbol, {
+      const result: any[] = await yf.historical(symbol, {
         period1: from.toISOString().split("T")[0],
         period2: to.toISOString().split("T")[0],
         interval: "1d",

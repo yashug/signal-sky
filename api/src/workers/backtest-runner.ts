@@ -23,18 +23,20 @@ async function run() {
   if (runIndia) {
     const indiaResult = await runBacktestPipeline("IN")
     console.log(`\n[Backtest] India Complete:`)
-    console.log(`  Backtests persisted: ${indiaResult.backtestsPersisted}`)
-    console.log(`  Symbols processed: ${indiaResult.symbolsProcessed}`)
-    console.log(`  Errors: ${indiaResult.errors.length}`)
+    console.log(`  Updated:  ${indiaResult.backtestsPersisted}`)
+    console.log(`  Skipped:  ${indiaResult.symbolsSkipped} (already up to date)`)
+    console.log(`  Total:    ${indiaResult.symbolsProcessed}`)
+    console.log(`  Errors:   ${indiaResult.errors.length}`)
     allErrors.push(...indiaResult.errors)
   }
 
   if (runUS) {
     const usResult = await runBacktestPipeline("US")
     console.log(`\n[Backtest] US Complete:`)
-    console.log(`  Backtests persisted: ${usResult.backtestsPersisted}`)
-    console.log(`  Symbols processed: ${usResult.symbolsProcessed}`)
-    console.log(`  Errors: ${usResult.errors.length}`)
+    console.log(`  Updated:  ${usResult.backtestsPersisted}`)
+    console.log(`  Skipped:  ${usResult.symbolsSkipped} (already up to date)`)
+    console.log(`  Total:    ${usResult.symbolsProcessed}`)
+    console.log(`  Errors:   ${usResult.errors.length}`)
     allErrors.push(...usResult.errors)
   }
 

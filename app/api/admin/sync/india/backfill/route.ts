@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
-import { getKiteDailyCandles } from "@/lib/market-data/kite"
-import { upsertDailyBars, getLastBarDate, updateMovingAverages } from "@/lib/market-data/store"
+import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
+import { upsertDailyBars, updateMovingAverages } from "@/lib/market-data/store"
 
 /**
  * POST /api/admin/sync/india/backfill
- * Smart backfill India (NSE) daily bars using Kite Connect.
+ * Smart backfill India (NSE) daily bars using Yahoo Finance.
  * Checks existing data per symbol and only fetches missing date ranges.
  * Body: { universe?: string, years?: number }
+ *
+ * Symbol convention:
+ *   - Yahoo Finance fetch  → uses full symbol WITH .NS suffix (e.g. "RELIANCE.NS")
+ *   - DB storage / queries → uses symbol WITHOUT .NS suffix (e.g. "RELIANCE")
  */
 export async function POST(req: NextRequest) {
   const session = await requireAdmin()
@@ -18,10 +22,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const universe = body.universe ?? "nifty50"
-  const years = Math.min(body.years ?? 10, 15) // Cap at 15 years
+  const years = Math.min(body.years ?? 10, 20) // Cap at 20 years
 
   try {
-    // Get universe members
+    // Get universe members (symbols stored with .NS suffix in universeMember)
     const members = await prisma.universeMember.findMany({
       where: { universe },
       select: { symbol: true },
@@ -31,26 +35,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `No members found for universe: ${universe}` }, { status: 404 })
     }
 
-    // Resolve instrument tokens for each symbol
-    const symbols = members.map((m) => m.symbol.replace(/\.NS$/, ""))
-    const instruments = await prisma.kiteInstrument.findMany({
-      where: { tradingsymbol: { in: symbols }, exchange: "NSE" },
-      select: { instrumentToken: true, tradingsymbol: true },
-    })
-
-    const tokenMap = new Map(instruments.map((i) => [i.tradingsymbol, i.instrumentToken]))
-    const matched = symbols.filter((s) => tokenMap.has(s))
-    const unmatched = symbols.filter((s) => !tokenMap.has(s))
+    // Yahoo symbols keep .NS; DB symbols drop .NS
+    const yahooSymbols = members.map((m) => m.symbol)
+    const dbSymbols = yahooSymbols.map((s) => s.replace(/\.NS$/, ""))
 
     const today = new Date()
-    const backfillFrom = new Date()
-    backfillFrom.setFullYear(backfillFrom.getFullYear() - years)
 
-    // Check existing data coverage per symbol
+    // Check existing data coverage per DB symbol
     const barStats = await prisma.dailyBar.groupBy({
       by: ["symbol"],
       where: {
-        symbol: { in: matched },
+        symbol: { in: dbSymbols },
         exchange: "NSE",
       },
       _min: { date: true },
@@ -66,29 +61,34 @@ export async function POST(req: NextRequest) {
     let symbolsAlreadyComplete = 0
     const errors: string[] = []
 
-    for (const symbol of matched) {
-      const token = tokenMap.get(symbol)!
-      const stats = statsMap.get(symbol)
+    for (let i = 0; i < yahooSymbols.length; i++) {
+      const yahooSymbol = yahooSymbols[i]
+      const dbSymbol = dbSymbols[i]
+      const stats = statsMap.get(dbSymbol)
 
       // Determine what ranges we need to fetch
       const fetchRanges: Array<{ from: Date; to: Date }> = []
 
       if (!stats) {
-        // No data at all — fetch full range
+        // No data at all — fetch `years` back from today
+        const backfillFrom = new Date()
+        backfillFrom.setFullYear(backfillFrom.getFullYear() - years)
         fetchRanges.push({ from: backfillFrom, to: today })
       } else {
-        // Check if we need older data (gap at the start)
+        // Extend backward: go `years` before the existing oldest date
         const oneMonthBuffer = 30 * 86_400_000
-        if (stats.firstDate && stats.firstDate.getTime() > backfillFrom.getTime() + oneMonthBuffer) {
-          // Need to fetch from backfillFrom to firstDate
-          const gapEnd = new Date(stats.firstDate.getTime() - 86_400_000)
-          fetchRanges.push({ from: backfillFrom, to: gapEnd })
+        if (stats.firstDate) {
+          const extendFrom = new Date(stats.firstDate)
+          extendFrom.setFullYear(extendFrom.getFullYear() - years)
+          if (stats.firstDate.getTime() > extendFrom.getTime() + oneMonthBuffer) {
+            const gapEnd = new Date(stats.firstDate.getTime() - 86_400_000)
+            fetchRanges.push({ from: extendFrom, to: gapEnd })
+          }
         }
 
         // Check if we need newer data (gap at the end)
         const fiveDayBuffer = 5 * 86_400_000
         if (stats.lastDate && today.getTime() - stats.lastDate.getTime() > fiveDayBuffer) {
-          // Need to fetch from lastDate+1 to today
           const gapStart = new Date(stats.lastDate.getTime() + 86_400_000)
           fetchRanges.push({ from: gapStart, to: today })
         }
@@ -103,32 +103,32 @@ export async function POST(req: NextRequest) {
       let symbolInserted = 0
       for (const range of fetchRanges) {
         try {
-          const candles = await getKiteDailyCandles(token, range.from, range.to)
+          const candles = await getYahooDailyCandles(yahooSymbol, range.from, range.to)
           if (candles.length > 0) {
             const result = await upsertDailyBars({
-              symbol,
+              symbol: dbSymbol,  // store WITHOUT .NS
               exchange: "NSE",
               candles,
-              source: "kite",
+              source: "yahoo",
             })
             totalInserted += result.inserted
             totalSkipped += result.skipped
             symbolInserted += result.inserted
           }
         } catch (e: any) {
-          errors.push(`${symbol}: ${e.message?.slice(0, 100)}`)
+          errors.push(`${dbSymbol}: ${e.message?.slice(0, 100)}`)
         }
 
-        // Rate limit: ~3 req/sec
-        await new Promise((r) => setTimeout(r, 350))
+        // Rate limit
+        await new Promise((r) => setTimeout(r, 200))
       }
 
       // Compute SMA200 + EMA200 after all ranges for this symbol
       if (symbolInserted > 0) {
         try {
-          await updateMovingAverages(symbol, "NSE")
+          await updateMovingAverages(dbSymbol, "NSE")
         } catch (e: any) {
-          errors.push(`${symbol} (MA): ${e.message?.slice(0, 80)}`)
+          errors.push(`${dbSymbol} (MA): ${e.message?.slice(0, 80)}`)
         }
       }
     }
@@ -138,10 +138,8 @@ export async function POST(req: NextRequest) {
       universe,
       years,
       symbolsInUniverse: members.length,
-      symbolsMatched: matched.length,
-      symbolsUnmatched: unmatched,
       symbolsAlreadyComplete,
-      symbolsFetched: matched.length - symbolsAlreadyComplete,
+      symbolsFetched: yahooSymbols.length - symbolsAlreadyComplete,
       totalInserted,
       totalSkipped,
       errors: errors.slice(0, 20),

@@ -2,6 +2,8 @@
 
 export type UniverseGroupKey =
   | "all"
+  | "india"
+  | "us"
   | "nifty50"
   | "niftynext50"
   | "nifty100"
@@ -22,6 +24,8 @@ export interface UniverseOption {
 
 export const UNIVERSE_OPTIONS: UniverseOption[] = [
   { value: "all", label: "All Markets", group: "all" },
+  { value: "india", label: "All India", group: "all" },
+  { value: "us", label: "All US", group: "all" },
   { value: "nifty50", label: "Nifty 50", group: "india" },
   { value: "niftynext50", label: "Nifty Next 50", group: "india" },
   { value: "nifty100", label: "Nifty 100", group: "india" },

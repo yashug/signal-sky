@@ -1,6 +1,15 @@
 /**
  * Backtest Pipeline — runs the backtest engine on all universe stocks
  * and persists results to the backtests + backtest_trades tables.
+ *
+ * Smart mode: only re-runs a symbol when its bar data has changed.
+ * If the existing backtest already covers fromDate→toDate equal to the
+ * first→last bar in daily_bars, it is skipped (nothing new to process).
+ *
+ * This handles both cases automatically:
+ *   - New bars added by daily sync  → toDate is ahead  → re-run
+ *   - Older bars added by backfill  → fromDate is earlier → re-run
+ *   - No change                     → skip
  */
 
 import { getPrisma } from "../../db/prisma.js"
@@ -10,6 +19,7 @@ import type { OHLCVBar } from "../../providers/types.js"
 export interface BacktestPipelineResult {
   backtestsPersisted: number
   symbolsProcessed: number
+  symbolsSkipped: number
   errors: string[]
 }
 
@@ -28,19 +38,47 @@ function resolveDbSymbol(symbol: string): { dbSymbol: string; exchange: string }
 async function backtestSymbol(
   symbol: string,
   prisma: ReturnType<typeof getPrisma>,
-): Promise<{ ok: boolean; trades: number; error?: string }> {
+): Promise<{ ok: boolean; trades: number; skipped?: boolean; error?: string }> {
   try {
     const { dbSymbol, exchange } = resolveDbSymbol(symbol)
 
-    // Load ALL daily bars for this symbol
+    // Check bar count and date range without loading all bars first
+    const barStats = await prisma.dailyBar.aggregate({
+      where: { symbol: dbSymbol, exchange },
+      _count: { id: true },
+      _min: { date: true },
+      _max: { date: true },
+    })
+
+    const barCount = barStats._count.id
+    if (barCount < 200) {
+      return { ok: false, trades: 0, error: `${symbol}: insufficient bars (${barCount})` }
+    }
+
+    const firstBarDate = barStats._min.date!.toISOString().split("T")[0]
+    const lastBarDate = barStats._max.date!.toISOString().split("T")[0]
+
+    // Check if existing backtest already covers this exact date range
+    const existingBacktest = await prisma.backtest.findFirst({
+      where: { symbol, strategyName: "Reset & Reclaim" },
+      select: { fromDate: true, toDate: true },
+    })
+
+    if (existingBacktest) {
+      const existingFrom = existingBacktest.fromDate.toISOString().split("T")[0]
+      const existingTo = existingBacktest.toDate.toISOString().split("T")[0]
+
+      if (existingFrom === firstBarDate && existingTo === lastBarDate) {
+        // Bar range unchanged — nothing to process
+        return { ok: true, trades: 0, skipped: true }
+      }
+    }
+
+    // Bar range changed (new bars at start or end) — load all bars and re-run
     const dbBars = await prisma.dailyBar.findMany({
       where: { symbol: dbSymbol, exchange },
       orderBy: { date: "asc" },
     })
-
-    if (dbBars.length < 200) {
-      return { ok: false, trades: 0, error: `${symbol}: insufficient bars (${dbBars.length})` }
-    }
 
     // Convert to OHLCVBar format
     const bars: OHLCVBar[] = dbBars.map((b) => ({
@@ -55,21 +93,24 @@ async function backtestSymbol(
       ema200: b.ema200 != null ? Number(b.ema200) : null,
     }))
 
-    // Run backtest
+    // Run full backtest (stateful algorithm must use all bars)
     const result = runBacktest(bars)
 
     if (result.trades.length === 0) {
+      // Delete any stale record and return — no trades found
+      await prisma.backtest.deleteMany({
+        where: { symbol, strategyName: "Reset & Reclaim" },
+      })
       return { ok: true, trades: 0 }
     }
 
     const ex = getExchange(symbol)
 
-    // Delete old backtest + cascading trades
+    // Delete old backtest + cascading trades, then insert fresh
     await prisma.backtest.deleteMany({
       where: { symbol, strategyName: "Reset & Reclaim" },
     })
 
-    // Create backtest row
     const backtest = await prisma.backtest.create({
       data: {
         symbol,
@@ -89,28 +130,25 @@ async function backtestSymbol(
       },
     })
 
-    // Persist individual trades to backtest_trades table
-    if (result.trades.length > 0) {
-      await prisma.backtestTrade.createMany({
-        data: result.trades.map((t) => ({
-          backtestId: backtest.id,
-          symbol,
-          exchange: ex,
-          entryDate: new Date(t.entryDate),
-          entryPrice: t.entryPrice,
-          exitDate: t.exitDate ? new Date(t.exitDate) : null,
-          exitPrice: t.exitPrice,
-          pnlPercent: t.pnlPercent,
-          daysHeld: t.daysHeld,
-          preSetATHAtEntry: t.preSetATHAtEntry,
-        })),
-      })
-    }
+    await prisma.backtestTrade.createMany({
+      data: result.trades.map((t) => ({
+        backtestId: backtest.id,
+        symbol,
+        exchange: ex,
+        entryDate: new Date(t.entryDate),
+        entryPrice: t.entryPrice,
+        exitDate: t.exitDate ? new Date(t.exitDate) : null,
+        exitPrice: t.exitPrice,
+        pnlPercent: t.pnlPercent,
+        daysHeld: t.daysHeld,
+        preSetATHAtEntry: t.preSetATHAtEntry,
+      })),
+    })
 
     const emoji =
       result.summary.winRate >= 60 ? "🟢" : result.summary.winRate >= 45 ? "🟡" : "🔴"
     console.log(
-      `  ${emoji} ${symbol.padEnd(18)} ${result.summary.totalTrades} trades, ${result.summary.winRate}% win, avg ${result.summary.avgReturnPct}%`,
+      `  ${emoji} ${symbol.padEnd(18)} ${result.summary.totalTrades} trades  ${result.summary.winRate}% win  avg ${result.summary.avgReturnPct}%  [${firstBarDate} → ${lastBarDate}]`,
     )
 
     return { ok: true, trades: result.summary.totalTrades }
@@ -133,6 +171,7 @@ export async function runBacktestPipeline(
   console.log(`[Backtest] Processing ${allSymbols.length} ${market} symbols...`)
 
   let backtestsPersisted = 0
+  let symbolsSkipped = 0
   const errors: string[] = []
 
   const BATCH_SIZE = 20
@@ -143,16 +182,23 @@ export async function runBacktestPipeline(
     )
 
     for (const r of batchResults) {
-      if (r.ok && r.trades > 0) backtestsPersisted++
+      if (r.skipped) {
+        symbolsSkipped++
+      } else if (r.ok && r.trades > 0) {
+        backtestsPersisted++
+      }
       if (r.error) errors.push(r.error)
     }
   }
 
-  console.log(`[Backtest] ${market}: ${backtestsPersisted} backtests persisted`)
+  console.log(
+    `[Backtest] ${market}: ${backtestsPersisted} updated, ${symbolsSkipped} skipped (already up to date)`,
+  )
 
   return {
     backtestsPersisted,
     symbolsProcessed: allSymbols.length,
+    symbolsSkipped,
     errors,
   }
 }

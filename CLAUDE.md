@@ -11,7 +11,7 @@ SignalSky is a stock market signal scanner and trading toolkit for India (NSE) a
 - **Database**: PostgreSQL via Supabase (hosted), Prisma ORM v7 with `@prisma/adapter-pg`
 - **Auth**: Supabase Auth (Google OAuth), session via `lib/auth.ts` → `getSession()`
 - **Payments**: PhonePe Payment Gateway (replaced Stripe) — 0% commission
-- **Market Data**: Zerodha Kite Connect (India), Yahoo Finance (US)
+- **Market Data**: Yahoo Finance (India .NS + US)
 - **UI Components**: shadcn/ui with Base UI primitives (`@base-ui/react`), lucide-react icons
 
 ## Project Structure
@@ -36,7 +36,7 @@ signal-sky/
 │   │       ├── panel/            # Admin dashboard (scans, data, sync, feedback)
 │   │       └── data/             # CSV upload
 │   └── api/                      # Next.js API routes
-│       ├── admin/                # Admin endpoints (scan, sync, backtest, kite, etc.)
+│       ├── admin/                # Admin endpoints (scan, sync, backtest, etc.)
 │       ├── backtest/             # Backtest CRUD
 │       ├── deals/lifetime/       # Lifetime deal counter
 │       ├── feedback/             # User feedback CRUD
@@ -50,7 +50,7 @@ signal-sky/
 │   │   ├── routes/               # API routes
 │   │   ├── services/             # Business logic
 │   │   ├── engine/               # Strategy engine, backtest engine
-│   │   ├── providers/            # Kite, Yahoo data providers
+│   │   ├── providers/            # Yahoo data providers
 │   │   ├── workers/              # Background jobs
 │   │   └── generated/prisma/     # API's own Prisma client
 │   └── prisma/schema.prisma      # API's Prisma schema (keep in sync with main)
@@ -204,11 +204,6 @@ PHONEPE_ENV=sandbox  # or production
 ADMIN_EMAILS=gosulayaswanth2@gmail.com
 NEXT_PUBLIC_ADMIN_EMAILS=gosulayaswanth2@gmail.com
 
-# Kite Connect (India market data)
-KITE_API_KEY=
-KITE_API_SECRET=
-KITE_ACCESS_TOKEN=
-
 # App URLs
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:4000
@@ -231,7 +226,6 @@ DIRECT_URL=            # Direct connection (for migrations)
 - **WatchlistItem** — userId, symbol, exchange
 - **Feedback** — userId, category (bug/feature/general), message, isRead
 - **LifetimeDeal** — cap, sold (tracks lifetime deal availability)
-- **KiteToken** — Zerodha Kite access token storage
 
 ## Known Gotchas
 

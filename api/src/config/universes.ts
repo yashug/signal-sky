@@ -22,6 +22,8 @@ export type UniverseTag =
 /** User-facing index group key used in API queries & frontend */
 export type UniverseGroupKey =
   | "all"
+  | "india"
+  | "us"
   | "nifty50"
   | "niftynext50"
   | "nifty100"
@@ -52,6 +54,21 @@ export const UNIVERSE_GROUPS: Record<UniverseGroupKey, UniverseGroup> = {
       "sp100", "nasdaq100",
     ],
     market: "IN",
+  },
+  india: {
+    label: "All India",
+    tags: [
+      "nifty50", "niftynext50", "nifty200",
+      "niftymidcap50", "niftymidcap100",
+      "niftysmallcap50", "niftysmallcap100",
+      "niftybank",
+    ],
+    market: "IN",
+  },
+  us: {
+    label: "All US",
+    tags: ["sp100", "nasdaq100"],
+    market: "US",
   },
   nifty50: {
     label: "Nifty 50",

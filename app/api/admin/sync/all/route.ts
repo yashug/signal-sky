@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
-import { getKiteDailyCandles } from "@/lib/market-data/kite"
 import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
 import { upsertDailyBars, getLastBarDate, updateMovingAverages } from "@/lib/market-data/store"
 
@@ -12,7 +11,7 @@ const INDIA_UNIVERSES = [
   "niftybank",
 ]
 
-const US_UNIVERSES = ["sp100"]
+const US_UNIVERSES = ["sp100", "nasdaq100"]
 
 /**
  * POST /api/admin/sync/all
@@ -37,20 +36,12 @@ export async function POST() {
       where: { universe: { in: INDIA_UNIVERSES } },
       select: { symbol: true },
     })
-    const indiaSymbols = [...new Set(indiaMembers.map((m) => m.symbol.replace(/\.NS$/, "")))]
+    const indiaSymbols = [...new Set(indiaMembers.map((m) => m.symbol))] // Have .NS suffix (Yahoo)
 
-    const instruments = await prisma.kiteInstrument.findMany({
-      where: { tradingsymbol: { in: indiaSymbols }, exchange: "NSE" },
-      select: { instrumentToken: true, tradingsymbol: true },
-    })
-    const tokenMap = new Map(instruments.map((i) => [i.tradingsymbol, i.instrumentToken]))
-
-    for (const symbol of indiaSymbols) {
-      const token = tokenMap.get(symbol)
-      if (!token) continue
-
+    for (const yahooSymbol of indiaSymbols) {
+      const dbSymbol = yahooSymbol.replace(/\.NS$/, "") // strip .NS for DB ops
       try {
-        const lastDate = await getLastBarDate(symbol, "NSE")
+        const lastDate = await getLastBarDate(dbSymbol, "NSE")
         const from = lastDate
           ? new Date(lastDate.getTime() + 86_400_000)
           : new Date(Date.now() - 30 * 86_400_000)
@@ -60,20 +51,20 @@ export async function POST() {
           continue
         }
 
-        const candles = await getKiteDailyCandles(token, from, to)
+        const candles = await getYahooDailyCandles(yahooSymbol, from, to)
         if (candles.length > 0) {
-          const r = await upsertDailyBars({ symbol, exchange: "NSE", candles, source: "kite" })
+          const r = await upsertDailyBars({ symbol: dbSymbol, exchange: "NSE", candles, source: "yahoo" })
           results.india.inserted += r.inserted
           results.india.skipped += r.skipped
           if (r.inserted > 0) {
-            await updateMovingAverages(symbol, "NSE")
+            await updateMovingAverages(dbSymbol, "NSE")
           }
         }
         results.india.symbolsProcessed++
 
-        await new Promise((r) => setTimeout(r, 350))
+        await new Promise((r) => setTimeout(r, 200))
       } catch (e: any) {
-        results.india.errors.push(`${symbol}: ${e.message?.slice(0, 80)}`)
+        results.india.errors.push(`${dbSymbol}: ${e.message?.slice(0, 80)}`)
       }
     }
 
@@ -117,7 +108,6 @@ export async function POST() {
       success: true,
       india: {
         uniqueSymbols: indiaSymbols.length,
-        matched: indiaSymbols.filter((s) => tokenMap.has(s)).length,
         ...results.india,
         errors: results.india.errors.slice(0, 10),
       },

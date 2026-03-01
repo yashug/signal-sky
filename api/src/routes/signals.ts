@@ -4,7 +4,8 @@ import { getPrisma } from "../db/prisma.js"
 import { resolveUniverseTags, type UniverseGroupKey } from "../config/universes.js"
 
 const VALID_UNIVERSES = [
-  "all", "nifty50", "niftynext50", "nifty100", "nifty200",
+  "all", "india", "us",
+  "nifty50", "niftynext50", "nifty100", "nifty200",
   "niftymidcap50", "niftymidcap100",
   "niftysmallcap50", "niftysmallcap100",
   "niftybank",

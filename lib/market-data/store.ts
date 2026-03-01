@@ -16,7 +16,7 @@ export async function upsertDailyBars(params: {
   symbol: string
   exchange: string
   candles: DailyCandle[]
-  source: "kite" | "yahoo" | "csv"
+  source: "yahoo" | "csv"
 }): Promise<{ inserted: number; skipped: number }> {
   const payload = candlesToPrismaPayload(params.candles, {
     symbol: params.symbol,

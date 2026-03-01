@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}))
-  const years = Math.min(body.years ?? 10, 15)
+  const years = Math.min(body.years ?? 10, 20) // Cap at 20 years
 
   let symbols: string[] = body.symbols ?? []
 
@@ -36,8 +36,6 @@ export async function POST(req: NextRequest) {
   }
 
   const today = new Date()
-  const backfillFrom = new Date()
-  backfillFrom.setFullYear(backfillFrom.getFullYear() - years)
 
   try {
     // Check existing data coverage per symbol
@@ -67,14 +65,20 @@ export async function POST(req: NextRequest) {
       const fetchRanges: Array<{ from: Date; to: Date }> = []
 
       if (!stats) {
-        // No data at all — fetch full range
+        // No data at all — fetch `years` back from today
+        const backfillFrom = new Date()
+        backfillFrom.setFullYear(backfillFrom.getFullYear() - years)
         fetchRanges.push({ from: backfillFrom, to: today })
       } else {
-        // Check if we need older data (gap at the start)
+        // Extend backward: go `years` before the existing oldest date
         const oneMonthBuffer = 30 * 86_400_000
-        if (stats.firstDate && stats.firstDate.getTime() > backfillFrom.getTime() + oneMonthBuffer) {
-          const gapEnd = new Date(stats.firstDate.getTime() - 86_400_000)
-          fetchRanges.push({ from: backfillFrom, to: gapEnd })
+        if (stats.firstDate) {
+          const extendFrom = new Date(stats.firstDate)
+          extendFrom.setFullYear(extendFrom.getFullYear() - years)
+          if (stats.firstDate.getTime() > extendFrom.getTime() + oneMonthBuffer) {
+            const gapEnd = new Date(stats.firstDate.getTime() - 86_400_000)
+            fetchRanges.push({ from: extendFrom, to: gapEnd })
+          }
         }
 
         // Check if we need newer data (gap at the end)

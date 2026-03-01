@@ -5,8 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // ─── Users & Auth ─────────────────────────────────────────────────
@@ -111,37 +109,6 @@ model LifetimeDeal {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("lifetime_deals")
-}
-
-// ─── Kite Auth Token ─────────────────────────────────────────────
-
-model KiteToken {
-  id          Int      @id @default(1)
-  accessToken String   @map("access_token") @db.VarChar(100)
-  publicToken String?  @map("public_token") @db.VarChar(100)
-  userId      String?  @map("kite_user_id") @db.VarChar(20)
-  loginTime   DateTime @default(now()) @map("login_time")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@map("kite_tokens")
-}
-
-// ─── Kite Instruments ────────────────────────────────────────────
-
-model KiteInstrument {
-  instrumentToken Int      @id @map("instrument_token")
-  exchangeToken   Int      @map("exchange_token")
-  tradingsymbol   String   @db.VarChar(40)
-  name            String?  @db.VarChar(120)
-  exchange        String   @db.VarChar(10)
-  segment         String   @db.VarChar(20)
-  instrumentType  String   @map("instrument_type") @db.VarChar(10)
-  lotSize         Int      @default(1) @map("lot_size")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  @@index([tradingsymbol])
-  @@index([exchange])
-  @@map("kite_instruments")
 }
 
 // ─── Market Data ──────────────────────────────────────────────────

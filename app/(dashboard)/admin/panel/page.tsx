@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -22,7 +22,6 @@ import {
   CheckCircle2Icon,
   AlertCircleIcon,
   XCircleIcon,
-  LinkIcon,
   RefreshCwIcon,
   DownloadCloudIcon,
   PlayIcon,
@@ -67,13 +66,6 @@ function isIndianUniverse(u: string) {
 }
 
 // ─── Types ──────────────────────────────────────────────────────
-type KiteStatus = {
-  connected: boolean
-  stale?: boolean
-  userId?: string
-  loginTime?: string
-}
-
 type ScanStatus = {
   lastScanTime?: string
   lastScanDate?: string
@@ -93,6 +85,7 @@ type UniverseMember = {
   coverage: number
   isUpToDate: boolean
   has10YearHistory: boolean
+  has20YearHistory: boolean
 }
 
 type UniverseData = {
@@ -102,6 +95,7 @@ type UniverseData = {
   withData: number
   upToDate: number
   full10Year: number
+  full20Year: number
   members: UniverseMember[]
 }
 
@@ -157,135 +151,6 @@ function useAction() {
   )
 
   return { loading, result, execute, setResult }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// SECTION 1: KITE CONNECT STATUS
-// ═══════════════════════════════════════════════════════════════════
-function KiteConnectSection() {
-  const [status, setStatus] = useState<KiteStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const instrumentAction = useAction()
-
-  useEffect(() => {
-    fetch("/api/admin/kite/status")
-      .then((r) => r.json())
-      .then(setStatus)
-      .catch(() => setStatus({ connected: false }))
-      .finally(() => setLoading(false))
-  }, [])
-
-  // Handle callback params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get("kite_connected") === "true") {
-      fetch("/api/admin/kite/status")
-        .then((r) => r.json())
-        .then(setStatus)
-        .catch(() => {})
-      window.history.replaceState({}, "", window.location.pathname)
-      toast.success("Kite connected successfully")
-    } else if (params.get("kite_error")) {
-      toast.error(`Kite login failed: ${params.get("kite_error")}`)
-      window.history.replaceState({}, "", window.location.pathname)
-    }
-  }, [])
-
-  const isConnected = status?.connected && !status.stale
-  const isExpired = status?.connected && status.stale
-  const isDisconnected = !status?.connected
-
-  return (
-    <section>
-      <SectionHeader
-        icon={<LinkIcon className="size-4" />}
-        title="Kite Connect"
-        description="Zerodha Kite API connection for India / NSE data"
-        badge={
-          loading ? null : isConnected ? (
-            <StatusBadge status="connected" />
-          ) : isExpired ? (
-            <StatusBadge status="expired" />
-          ) : (
-            <StatusBadge status="disconnected" />
-          )
-        }
-      />
-
-      <div className="mt-4 rounded-lg border border-border/50 bg-card p-4">
-        {loading ? (
-          <div className="flex gap-4">
-            <Skeleton className="h-9 w-32" />
-            <Skeleton className="h-4 w-48 self-center" />
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-4">
-            <a
-              href="/api/admin/kite/login"
-              className={cn(
-                buttonVariants({
-                  size: "sm",
-                  variant: isConnected ? "outline" : "default",
-                }),
-                "gap-1.5 no-underline"
-              )}
-            >
-              {isConnected ? (
-                <>
-                  <RefreshCwIcon className="size-3.5" />
-                  Reconnect
-                </>
-              ) : (
-                <>
-                  <LinkIcon className="size-3.5" />
-                  Connect Kite
-                </>
-              )}
-            </a>
-
-            {status?.connected && (
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="font-medium text-foreground">User:</span>
-                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
-                    {status.userId ?? "---"}
-                  </code>
-                </span>
-                <span className="text-border">|</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarIcon className="size-3" />
-                  {status.loginTime ? formatIST(status.loginTime) : "---"}
-                </span>
-              </div>
-            )}
-
-            <div className="ml-auto flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                disabled={instrumentAction.loading || !isConnected}
-                onClick={() =>
-                  instrumentAction.execute("/api/admin/kite/instruments")
-                }
-              >
-                {instrumentAction.loading ? (
-                  <Loader2Icon className="size-3.5 animate-spin" />
-                ) : (
-                  <RefreshCwIcon className="size-3.5" />
-                )}
-                Refresh Instruments
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {instrumentAction.result && (
-          <ResultBanner result={instrumentAction.result} className="mt-3" />
-        )}
-      </div>
-    </section>
-  )
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -367,10 +232,10 @@ function UniverseExplorerSection() {
           accent={data && data.upToDate === data.total ? "bull" : undefined}
         />
         <MetricCard
-          label="10Y History"
-          value={loading ? "---" : String(data?.full10Year ?? 0)}
+          label="20Y History"
+          value={loading ? "---" : String(data?.full20Year ?? 0)}
           icon={<CalendarIcon className="size-3.5 text-muted-foreground" />}
-          accent={data && data.full10Year === data.total ? "bull" : undefined}
+          accent={data && data.full20Year === data.total ? "bull" : undefined}
         />
       </div>
 
@@ -461,9 +326,10 @@ function UniverseExplorerSection() {
 function StrategyScannerSection() {
   const [status, setStatus] = useState<ScanStatus | null>(null)
   const [loading, setLoading] = useState(true)
-  const [scanRunning, setScanRunning] = useState<string | null>(null) // "india" | "us" | null
+  const [scanRunning, setScanRunning] = useState<string | null>(null) // "india" | "us" | "all" | null
   const scanIndiaAction = useAction()
   const scanUsAction = useAction()
+  const scanAllAction = useAction()
   const syncIndiaAction = useAction()
   const syncUsAction = useAction()
   const syncAllAction = useAction()
@@ -496,7 +362,8 @@ function StrategyScannerSection() {
             setScanRunning(null)
             if (pollRef.current) clearInterval(pollRef.current)
             pollRef.current = null
-            toast.success(`${market.toUpperCase()} scan complete — ${data.activeSignals} active signals`)
+            const marketLabel = market === "all" ? "India + US" : market.toUpperCase()
+            toast.success(`${marketLabel} scan complete — ${data.activeSignals} active signals`)
           }
         })
         .catch(() => {})
@@ -511,8 +378,9 @@ function StrategyScannerSection() {
   }, [])
 
   const runScan = useCallback(
-    (market: "india" | "us") => {
-      const action = market === "india" ? scanIndiaAction : scanUsAction
+    (market: "india" | "us" | "all") => {
+      const action =
+        market === "india" ? scanIndiaAction : market === "us" ? scanUsAction : scanAllAction
       preScanTimeRef.current = status?.lastScanTime ?? null
       action.execute("/api/admin/scan/run", { body: { market } }).then((r) => {
         if (!r?.error) {
@@ -520,7 +388,7 @@ function StrategyScannerSection() {
         }
       })
     },
-    [scanIndiaAction, scanUsAction, status?.lastScanTime, startPolling]
+    [scanIndiaAction, scanUsAction, scanAllAction, status?.lastScanTime, startPolling]
   )
 
   return (
@@ -545,7 +413,7 @@ function StrategyScannerSection() {
           <Loader2Icon className="size-4 text-primary animate-spin" />
           <div className="flex-1">
             <span className="text-sm font-medium text-foreground">
-              {scanRunning.toUpperCase()} scan in progress...
+              {scanRunning === "all" ? "India + US" : scanRunning.toUpperCase()} scan in progress...
             </span>
             <span className="text-xs text-muted-foreground ml-2">
               Auto-refreshing status every 5s
@@ -635,9 +503,24 @@ function StrategyScannerSection() {
         </div>
       )}
 
-      {/* Sync All — single button for everything */}
-      <div className="mt-3">
+      {/* Scan All + Sync All — primary action buttons */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <Button
+          className="w-full gap-2"
+          disabled={!!scanRunning || scanAllAction.loading}
+          onClick={() => runScan("all")}
+        >
+          {scanRunning === "all" || scanAllAction.loading ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <ScanSearchIcon className="size-4" />
+          )}
+          {scanRunning === "all" || scanAllAction.loading
+            ? "Scanning..."
+            : "Scan All (India + US)"}
+        </Button>
+        <Button
+          variant="outline"
           className="w-full gap-2"
           disabled={syncAllAction.loading}
           onClick={() =>
@@ -651,12 +534,13 @@ function StrategyScannerSection() {
           ) : (
             <CloudDownloadIcon className="size-4" />
           )}
-          {syncAllAction.loading
-            ? "Syncing all universes..."
-            : "Sync Today — All Universes (India + US)"}
+          {syncAllAction.loading ? "Syncing..." : "Sync Today — All Universes"}
         </Button>
       </div>
 
+      {scanAllAction.result && (
+        <ResultBanner result={scanAllAction.result} className="mt-2" />
+      )}
       {syncAllAction.result && (
         <ResultBanner result={syncAllAction.result} className="mt-2" />
       )}
@@ -731,9 +615,120 @@ function StrategyScannerSection() {
 // ═══════════════════════════════════════════════════════════════════
 // SECTION: BACKTEST RUN
 // ═══════════════════════════════════════════════════════════════════
+type BacktestJob = {
+  status: "idle" | "running" | "done" | "error"
+  market: string
+  startedAt?: string
+  completedAt?: string
+  updated?: number
+  skipped?: number
+  total?: number
+  errors?: number
+  elapsedSec?: number
+  lastLine?: string
+}
+
+function BacktestStatusCard({ market }: { market: string }) {
+  const [job, setJob] = useState<BacktestJob | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const fetchStatus = useCallback(() => {
+    fetch(`/api/admin/backtest/status?market=${market}`)
+      .then((r) => r.json())
+      .then(setJob)
+      .catch(() => {})
+  }, [market])
+
+  // Start polling when a job is running, stop when done/error
+  useEffect(() => {
+    fetchStatus()
+  }, [fetchStatus])
+
+  useEffect(() => {
+    if (job?.status === "running") {
+      if (!pollRef.current) {
+        pollRef.current = setInterval(fetchStatus, 3000)
+      }
+    } else {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [job?.status, fetchStatus])
+
+  if (!job || job.status === "idle") return null
+
+  const isRunning = job.status === "running"
+  const isDone = job.status === "done"
+  const isError = job.status === "error"
+
+  return (
+    <div className={cn(
+      "mt-2 rounded-lg border px-3 py-2.5 text-xs transition-all",
+      isRunning && "border-primary/30 bg-primary/5",
+      isDone && "border-bull/30 bg-bull/5",
+      isError && "border-destructive/30 bg-destructive/5",
+    )}>
+      <div className="flex items-center gap-2 mb-1.5">
+        {isRunning && <Loader2Icon className="size-3.5 text-primary animate-spin shrink-0" />}
+        {isDone && <CheckCircle2Icon className="size-3.5 text-bull shrink-0" />}
+        {isError && <AlertCircleIcon className="size-3.5 text-destructive shrink-0" />}
+        <span className={cn(
+          "font-medium",
+          isRunning && "text-primary",
+          isDone && "text-bull",
+          isError && "text-destructive",
+        )}>
+          {isRunning && "Running..."}
+          {isDone && "Done"}
+          {isError && "Error"}
+        </span>
+        {job.elapsedSec != null && (
+          <span className="ml-auto font-mono text-muted-foreground text-[10px]">
+            {job.elapsedSec}s
+          </span>
+        )}
+      </div>
+
+      {isDone && (
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground">
+          {job.updated != null && (
+            <span><span className="font-medium text-foreground">{job.updated}</span> updated</span>
+          )}
+          {job.skipped != null && (
+            <span><span className="font-medium text-foreground">{job.skipped}</span> skipped</span>
+          )}
+          {job.total != null && (
+            <span><span className="font-medium text-foreground">{job.total}</span> total</span>
+          )}
+          {job.errors != null && job.errors > 0 && (
+            <span className="text-destructive"><span className="font-medium">{job.errors}</span> errors</span>
+          )}
+        </div>
+      )}
+
+      {isError && job.lastLine && (
+        <p className="text-destructive text-[11px] mt-0.5 truncate">{job.lastLine}</p>
+      )}
+
+      {isRunning && (
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          Polling every 3s — page stays live while pipeline runs in background
+        </p>
+      )}
+    </div>
+  )
+}
+
 function BacktestRunSection() {
   const indiaAction = useAction()
   const usAction = useAction()
+  const [indiaTriggered, setIndiaTriggered] = useState(false)
+  const [usTriggered, setUsTriggered] = useState(false)
 
   return (
     <div className="mt-4">
@@ -746,7 +741,7 @@ function BacktestRunSection() {
             Backtest Engine
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Run historical backtests using the Reset & Reclaim strategy
+            Only re-runs symbols where bar data changed — skips already up-to-date results
           </p>
         </div>
       </div>
@@ -754,28 +749,30 @@ function BacktestRunSection() {
       <div className="grid grid-cols-2 gap-2">
         <ActionCard
           label="Backtest India"
-          loadingLabel="Running..."
+          loadingLabel="Starting..."
           icon={<BarChart3Icon className="size-4" />}
           flag="IN"
           loading={indiaAction.loading}
-          onClick={() => indiaAction.execute("/api/admin/backtest/run", { body: { market: "india" } })}
+          onClick={() => {
+            indiaAction.execute("/api/admin/backtest/run", { body: { market: "india" } })
+              .then(() => setIndiaTriggered(true))
+          }}
         />
         <ActionCard
           label="Backtest US"
-          loadingLabel="Running..."
+          loadingLabel="Starting..."
           icon={<BarChart3Icon className="size-4" />}
           flag="US"
           loading={usAction.loading}
-          onClick={() => usAction.execute("/api/admin/backtest/run", { body: { market: "us" } })}
+          onClick={() => {
+            usAction.execute("/api/admin/backtest/run", { body: { market: "us" } })
+              .then(() => setUsTriggered(true))
+          }}
         />
       </div>
 
-      {indiaAction.result && (
-        <ResultBanner result={indiaAction.result} className="mt-2" />
-      )}
-      {usAction.result && (
-        <ResultBanner result={usAction.result} className="mt-2" />
-      )}
+      {indiaTriggered && <BacktestStatusCard market="india" />}
+      {usTriggered && <BacktestStatusCard market="us" />}
     </div>
   )
 }
@@ -797,8 +794,8 @@ function SyncBackfillSection() {
       <section>
         <SectionHeader
           icon={<DownloadCloudIcon className="size-4" />}
-          title="India (NSE) — Kite Connect"
-          description="Backfill and sync daily OHLCV bars via Zerodha Kite"
+          title="India (NSE) — Yahoo Finance"
+          description="Backfill and sync daily OHLCV bars via Yahoo Finance"
         />
 
         <div className="mt-4 rounded-lg border border-border/50 bg-card p-5 space-y-5">
@@ -831,7 +828,10 @@ function SyncBackfillSection() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Historical Backfill (10 Years)
+                Historical Backfill (Extend −10Y)
+              </p>
+              <p className="text-[10px] text-muted-foreground/70">
+                Fetches 10 years before the oldest existing data. Run twice to reach 20Y total.
               </p>
               <Button
                 size="sm"
@@ -851,7 +851,7 @@ function SyncBackfillSection() {
                 )}
                 {indiaBackfill.loading
                   ? `Backfilling ${indiaUniverse}...`
-                  : `Backfill ${indiaUniverse} — 10Y`}
+                  : `Backfill ${indiaUniverse} — Extend −10Y`}
               </Button>
               {indiaBackfill.result && (
                 <ResultBanner result={indiaBackfill.result} />
@@ -928,7 +928,10 @@ function SyncBackfillSection() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Historical Backfill (10 Years)
+                Historical Backfill (Extend −10Y)
+              </p>
+              <p className="text-[10px] text-muted-foreground/70">
+                Fetches 10 years before the oldest existing data. Run twice to reach 20Y total.
               </p>
               <Button
                 size="sm"
@@ -948,7 +951,7 @@ function SyncBackfillSection() {
                 )}
                 {usBackfill.loading
                   ? `Backfilling ${usUniverse}...`
-                  : `Backfill ${usUniverse} — 10Y`}
+                  : `Backfill ${usUniverse} — Extend −10Y`}
               </Button>
               {usBackfill.result && (
                 <ResultBanner result={usBackfill.result} />
@@ -1172,10 +1175,17 @@ function DataStatusDot({ member }: { member: UniverseMember }) {
       </span>
     )
   }
+  if (member.isUpToDate && member.has20YearHistory) {
+    return (
+      <span className="inline-flex items-center justify-center" title="Complete: 20Y + up to date">
+        <CheckCircle2Icon className="size-3.5 text-bull" />
+      </span>
+    )
+  }
   if (member.isUpToDate && member.has10YearHistory) {
     return (
-      <span className="inline-flex items-center justify-center" title="Complete: 10Y + up to date">
-        <CheckCircle2Icon className="size-3.5 text-bull" />
+      <span className="inline-flex items-center justify-center" title="10Y history, up to date — run backfill to extend to 20Y">
+        <CheckCircle2Icon className="size-3.5 text-primary" />
       </span>
     )
   }
@@ -1567,8 +1577,6 @@ export default function AdminPanelPage() {
         <TabsContent value="overview" className="flex-1 overflow-auto">
           <div className="flex flex-col gap-8 px-6 py-6 w-full">
             <StrategyScannerSection />
-            <Separator className="opacity-40" />
-            <KiteConnectSection />
           </div>
         </TabsContent>
 

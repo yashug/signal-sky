@@ -12,8 +12,8 @@ export function toUTCMidnight(date: Date): Date {
 }
 
 /**
- * Convert an IST date (from Kite Connect) to UTC midnight of the IST trading date.
- * Kite returns "2026-02-13T00:00:00+0530" → JS parses to 2026-02-12T18:30:00Z.
+ * Convert an IST date to UTC midnight of the IST trading date.
+ * IST dates like "2026-02-13T00:00:00+0530" → JS parses to 2026-02-12T18:30:00Z.
  * We add 5:30 back to recover the IST calendar date (Feb 13), then store as UTC midnight.
  */
 export function istToTradingDate(date: Date): Date {

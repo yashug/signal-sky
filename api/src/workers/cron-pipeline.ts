@@ -24,14 +24,11 @@ async function runIndiaPipeline() {
   const start = Date.now()
   console.log(`\n[Cron] ━━━ India EOD Pipeline started at ${new Date().toISOString()} ━━━`)
 
-  // Step 1: Update daily bars from Kite
-  console.log("\n[Step 1] Fetching today's bars from Kite...")
+  // Step 1: Update daily bars from Yahoo Finance
+  console.log("\n[Step 1] Fetching today's bars from Yahoo Finance...")
   const barsResult = await updateBarsIndia()
   console.log(`  Symbols updated: ${barsResult.symbolsUpdated}`)
   console.log(`  Bars inserted: ${barsResult.barsInserted}`)
-  if (barsResult.tokenStale) {
-    console.warn("  ⚠ Kite token is stale — reconnect via Admin → Data Sources")
-  }
   if (barsResult.errors.length > 0) {
     console.warn(`  Errors: ${barsResult.errors.length}`)
     barsResult.errors.slice(0, 5).forEach((e) => console.warn(`    ${e}`))
@@ -92,7 +89,7 @@ if (mode === "india") {
     .catch((e) => console.error("[Cron] US pipeline failed:", e.message))
     .finally(() => disconnectPrisma())
 } else if (mode === "scan-india") {
-  // Scan only — skip Kite bar fetch, just evaluate strategy on existing DB data
+  // Scan only — skip bar fetch, just evaluate strategy on existing DB data
   console.log(`\n[Cron] ━━━ India Scan-Only started at ${new Date().toISOString()} ━━━`)
   const start = Date.now()
   runScanPipeline("IN")
