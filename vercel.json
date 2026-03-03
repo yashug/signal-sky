@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/india-eod",
+      "schedule": "30 10 * * 1-5"
+    },
+    {
+      "path": "/api/cron/us-eod",
+      "schedule": "30 20 * * 1-5"
+    }
+  ]
+}

@@ -17,6 +17,7 @@ model User {
   telegramId      String?   @map("telegram_id")
   telegramHandle  String?   @map("telegram_handle")
   tier            Tier      @default(FREE)
+  isAdmin         Boolean   @default(false) @map("is_admin")
   trialEndsAt     DateTime? @map("trial_ends_at")
   settings        Json      @default("{}")
   createdAt       DateTime  @default(now()) @map("created_at")

@@ -7,7 +7,6 @@ import {
   ArrowRightIcon,
   TrendingUpIcon,
   ShieldCheckIcon,
-  BellRingIcon,
   BarChart3Icon,
   CheckIcon,
   SparklesIcon,
@@ -21,6 +20,7 @@ import {
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { LifetimeSlots } from "@/components/signal-sky/lifetime-slots"
+import { getLifetimeDealInfo, type LifetimeDealInfo } from "@/lib/data/deals"
 
 function Logo() {
   return (
@@ -310,14 +310,8 @@ function FeaturesSection() {
     {
       icon: BookOpenIcon,
       title: "Trade Journal",
-      description: "Log entries, exits, stop losses and targets. Track realized and unrealized P&L with win rate analytics. Export to CSV.",
+      description: "Log entries, exits, stop losses and targets. Track realized and unrealized P&L with win rate analytics.",
       accent: "from-[oklch(0.78_0.16_80)] to-[oklch(0.68_0.22_25)]",
-    },
-    {
-      icon: BellRingIcon,
-      title: "Telegram Alerts",
-      description: "Get notified the moment a new signal fires. Real-time delivery for Pro users. Never miss a breakout again.",
-      accent: "from-[oklch(0.65_0.17_300)] to-primary",
     },
   ]
 
@@ -401,7 +395,7 @@ function PreviewSection() {
                 {
                   step: "03",
                   title: "Track every trade",
-                  description: "Log your entries in the journal, get Telegram alerts on new signals, and monitor your P&L in real time.",
+                  description: "Log your entries in the journal, track your positions, and monitor your P&L in real time.",
                   icon: TrendingUpIcon,
                 },
               ].map((item) => (
@@ -938,7 +932,7 @@ function StrategySection() {
   )
 }
 
-function PricingSection() {
+function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
   return (
     <section id="pricing" className="relative py-28">
       <div className="absolute inset-0 bg-grid opacity-10" />
@@ -968,15 +962,15 @@ function PricingSection() {
             <h3 className="text-base font-semibold">Pro Monthly</h3>
             <p className="text-[12px] text-muted-foreground mt-0.5">Flexible month-to-month billing</p>
             <div className="mt-5">
-              <span className="font-mono text-sm text-muted-foreground line-through">&#8377;999</span>
+              <span className="font-mono text-sm text-muted-foreground line-through">&#8377;599</span>
               <div className="flex items-baseline gap-1">
-                <span className="font-mono text-3xl font-bold tracking-tight">&#8377;499</span>
+                <span className="font-mono text-3xl font-bold tracking-tight">&#8377;299</span>
                 <span className="text-sm text-muted-foreground">/mo</span>
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground mb-6">7-day free trial included</p>
             <ul className="space-y-2 mb-6 flex-1">
-              {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Unlimited backtests", "Real-time Telegram alerts", "Volume surge filter", "Unlimited trade journal", "Priority support"].map((f) => (
+              {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Unlimited backtests", "Unlimited trade journal", "Priority support"].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-[12px]">
                   <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
                   <span className="text-muted-foreground">{f}</span>
@@ -1004,17 +998,17 @@ function PricingSection() {
             <p className="text-[12px] text-muted-foreground mt-0.5">Best value for committed traders</p>
             <div className="mt-5">
               <div className="flex items-baseline gap-2">
-                <span className="font-mono text-sm text-muted-foreground line-through">&#8377;9,999</span>
-                <span className="rounded-full bg-bull/10 px-2 py-0.5 text-[9px] font-bold text-bull">Save 17%</span>
+                <span className="font-mono text-sm text-muted-foreground line-through">&#8377;5,999</span>
+                <span className="rounded-full bg-bull/10 px-2 py-0.5 text-[9px] font-bold text-bull">Save 16%</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="font-mono text-3xl font-bold tracking-tight text-primary">&#8377;4,999</span>
+                <span className="font-mono text-3xl font-bold tracking-tight text-primary">&#8377;2,999</span>
                 <span className="text-sm text-muted-foreground">/yr</span>
               </div>
             </div>
-            <p className="text-[10px] text-bull font-medium mb-6">That&apos;s just &#8377;417/month</p>
+            <p className="text-[10px] text-bull font-medium mb-6">That&apos;s just &#8377;250/month</p>
             <ul className="space-y-2 mb-6 flex-1">
-              {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Unlimited backtests", "Real-time Telegram alerts", "Volume surge filter", "Unlimited trade journal", "Priority support"].map((f) => (
+              {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Unlimited backtests", "Unlimited trade journal", "Priority support"].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-[12px]">
                   <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
                   <span className="text-muted-foreground">{f}</span>
@@ -1045,16 +1039,16 @@ function PricingSection() {
             <p className="text-[12px] text-muted-foreground mt-0.5">Pay once, Pro access forever</p>
             <div className="mt-5">
               <div className="flex items-baseline gap-2">
-                <span className="font-mono text-sm text-muted-foreground line-through">&#8377;24,999</span>
-                <span className="rounded-full bg-heat-boiling/10 px-2 py-0.5 text-[9px] font-bold text-heat-boiling">60% OFF</span>
+                <span className="font-mono text-sm text-muted-foreground line-through">&#8377;14,999</span>
+                <span className="rounded-full bg-heat-boiling/10 px-2 py-0.5 text-[9px] font-bold text-heat-boiling">67% OFF</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="font-mono text-3xl font-bold tracking-tight text-heat-simmering">&#8377;9,999</span>
+                <span className="font-mono text-3xl font-bold tracking-tight text-heat-simmering">&#8377;4,999</span>
                 <span className="text-sm text-muted-foreground">one-time</span>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground mb-4">Equivalent to 20 months of Pro</p>
-            <LifetimeSlots />
+            <p className="text-[10px] text-muted-foreground mb-4">Equivalent to 17 months of Pro</p>
+            <LifetimeSlots deal={deal} />
             <ul className="space-y-2 mb-6 flex-1">
               {["Everything in Pro, forever", "No recurring charges", "Early adopter badge", "Locked-in price guarantee"].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-[12px]">
@@ -1128,7 +1122,7 @@ function Footer() {
             </Link>
           </div>
           <span className="text-[11px] text-muted-foreground/60">
-            &copy; {new Date().getFullYear()} SignalSky. All rights reserved.
+            &copy; 2026 SignalSky. All rights reserved.
           </span>
         </div>
       </div>
@@ -1136,7 +1130,9 @@ function Footer() {
   )
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const deal = await getLifetimeDealInfo()
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -1145,7 +1141,7 @@ export default function LandingPage() {
       <TrustSection />
       <StrategySection />
       <PreviewSection />
-      <PricingSection />
+      <PricingSection deal={deal} />
       <CtaSection />
       <Footer />
     </div>

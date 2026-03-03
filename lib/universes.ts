@@ -22,6 +22,37 @@ export interface UniverseOption {
   group: "all" | "india" | "us"
 }
 
+const UNIVERSE_GROUPS: Record<string, string[]> = {
+  all: [
+    "nifty50", "niftynext50", "nifty200",
+    "niftymidcap50", "niftymidcap100",
+    "niftysmallcap50", "niftysmallcap100",
+    "niftybank", "sp100", "nasdaq100",
+  ],
+  india: [
+    "nifty50", "niftynext50", "nifty200",
+    "niftymidcap50", "niftymidcap100",
+    "niftysmallcap50", "niftysmallcap100",
+    "niftybank",
+  ],
+  us: ["sp100", "nasdaq100"],
+  nifty50: ["nifty50"],
+  niftynext50: ["niftynext50"],
+  nifty100: ["nifty50", "niftynext50"],
+  nifty200: ["nifty50", "niftynext50", "nifty200"],
+  niftymidcap50: ["niftymidcap50"],
+  niftymidcap100: ["niftymidcap50", "niftymidcap100"],
+  niftysmallcap50: ["niftysmallcap50"],
+  niftysmallcap100: ["niftysmallcap50", "niftysmallcap100"],
+  niftybank: ["niftybank"],
+  sp100: ["sp100"],
+  nasdaq100: ["nasdaq100"],
+}
+
+export function resolveUniverseTags(key: string): string[] {
+  return UNIVERSE_GROUPS[key] ?? UNIVERSE_GROUPS.all
+}
+
 export const UNIVERSE_OPTIONS: UniverseOption[] = [
   { value: "all", label: "All Markets", group: "all" },
   { value: "india", label: "All India", group: "all" },

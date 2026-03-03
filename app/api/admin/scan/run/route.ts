@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidateTag } from "next/cache"
 import { requireAdmin } from "@/lib/admin"
 import { exec } from "child_process"
 import path from "path"
@@ -33,6 +34,14 @@ export async function POST(req: NextRequest) {
         if (error) console.error(`[scan/run] ${mode} pipeline error:`, error.message)
         if (stdout) console.log(`[scan/run] ${mode} stdout:`, stdout.slice(-500))
         if (stderr) console.error(`[scan/run] ${mode} stderr:`, stderr.slice(-500))
+
+        try {
+          revalidateTag("signals", { expire: 0 })
+          revalidateTag("market-health", { expire: 0 })
+          console.log(`[scan/run] ${mode} cache revalidated`)
+        } catch (e: any) {
+          console.error(`[scan/run] revalidation failed:`, e.message)
+        }
       })
     }
 

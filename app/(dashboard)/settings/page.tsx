@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
   SettingsIcon,
-  BellIcon,
   SendIcon,
   CreditCardIcon,
   SparklesIcon,
@@ -498,8 +497,8 @@ export default function SettingsPage() {
                 {[
                   "All Nifty indices + S&P 100 & NASDAQ 100",
                   "Unlimited backtests",
-                  "Real-time Telegram alerts",
-                  "Volume surge filter",
+                  "Unlimited trade journal",
+                  "Priority support",
                 ].map((f) => (
                   <div key={f} className="flex items-center gap-1.5 text-muted-foreground">
                     <CheckIcon className="size-3 text-bull" />
@@ -534,36 +533,6 @@ export default function SettingsPage() {
               </div>
             </div>
             <ThemeToggle />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Telegram Alerts */}
-      <Card className="border-border/40 bg-surface">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <SendIcon className="size-4 text-primary" />
-            <CardTitle className="text-sm">Telegram Alerts</CardTitle>
-          </div>
-          <CardDescription className="text-xs">
-            Receive signal alerts via Telegram when new breakout signals are detected.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
-                Telegram Username
-              </label>
-              <Input
-                placeholder="@yourusername"
-                className="h-8 font-mono text-sm bg-background max-w-xs"
-              />
-            </div>
-            <Button size="sm" className="h-7 text-xs">
-              <BellIcon className="size-3 mr-1" />
-              Enable Alerts
-            </Button>
           </div>
         </CardContent>
       </Card>

@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from "react"
 import type { ApiSignal, HeatStatus } from "@/lib/api"
-import { fetchSignalChart } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { BacktestCard } from "@/components/signal-sky/backtest-card"
 import { Button } from "@/components/ui/button"
@@ -127,7 +126,8 @@ export function SignalDetailDrawer({
       return
     }
     setChartLoading(true)
-    fetchSignalChart(signal.id)
+    fetch(`/api/signals/${signal.id}/chart`)
+      .then((res) => res.json())
       .then((data) => {
         // Use real data if available, else fall back to synthetic
         if (data.priceHistory.length > 0) {

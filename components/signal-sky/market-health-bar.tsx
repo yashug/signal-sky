@@ -1,17 +1,13 @@
 "use client"
 
-import { fetchMarketHealth, type ApiMarketHealth } from "@/lib/api"
-import { useApi } from "@/hooks/use-api"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
-  ArrowUpIcon,
-  ArrowDownIcon,
-  MinusIcon,
   ActivityIcon,
-  Loader2Icon,
 } from "lucide-react"
+import type { ApiMarketHealth } from "@/lib/api"
 
 function getTrafficLight(percent: number): {
   color: string
@@ -59,9 +55,10 @@ function MarketCard({ market }: { market: ApiMarketHealth }) {
   )
 }
 
-export function MarketHealthBar() {
-  const { data, loading, error } = useApi(() => fetchMarketHealth(), [])
-  const markets = (data?.markets ?? []).filter((m) => m.universe === "nifty50" || m.universe === "niftybank")
+export function MarketHealthBar({ markets }: { markets: ApiMarketHealth[] }) {
+  const filtered = markets.filter((m) => m.universe === "nifty50" || m.universe === "niftybank")
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => { setNow(new Date()) }, [])
 
   return (
     <header className="sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-border/40 bg-background/80 backdrop-blur-xl px-3 sm:px-4 py-2 sm:h-[68px]">
@@ -76,15 +73,10 @@ export function MarketHealthBar() {
       </div>
 
       <div className="flex items-center gap-2 ml-1 sm:ml-2 overflow-x-auto shrink-0">
-        {loading ? (
-          <div className="flex items-center gap-2 px-3 py-2">
-            <Loader2Icon className="size-3.5 text-muted-foreground animate-spin" />
-            <span className="text-xs text-muted-foreground">Loading...</span>
-          </div>
-        ) : error ? (
+        {filtered.length === 0 ? (
           <span className="text-[11px] text-muted-foreground/60">Unavailable</span>
         ) : (
-          markets.map((m) => (
+          filtered.map((m) => (
             <MarketCard key={m.universe} market={m} />
           ))
         )}
@@ -92,11 +84,13 @@ export function MarketHealthBar() {
 
       {/* Right side: timestamp */}
       <div className="ml-auto flex items-center gap-2">
-        <span className="font-mono text-[10px] text-muted-foreground/60 hidden md:inline">
-          {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-          {" "}
-          {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
-        </span>
+        {now && (
+          <span className="font-mono text-[10px] text-muted-foreground/60 hidden md:inline">
+            {now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+            {" "}
+            {now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
       </div>
     </header>
   )

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
+import type { InitialUser } from "@/lib/auth"
 
 export type UserSettings = {
   defaultCapitalINR?: number
@@ -26,24 +27,43 @@ type AuthContextValue = {
   refresh: () => Promise<void>
 }
 
-const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean)
-
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
   refresh: async () => {},
 })
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  const supabaseRef = useRef(createClient())
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: React.ReactNode
+  initialUser?: InitialUser | null
+}) {
+  const [user, setUser] = useState<AuthUser | null>(
+    initialUser
+      ? {
+          id: initialUser.id,
+          email: initialUser.email,
+          name: initialUser.name,
+          image: initialUser.image,
+          tier: initialUser.tier,
+          trialEndsAt: initialUser.trialEndsAt,
+          isAdmin: initialUser.isAdmin,
+          settings: (initialUser.settings as UserSettings) ?? {},
+        }
+      : null
+  )
+  const [loading, setLoading] = useState(!initialUser)
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+
+  const getSupabase = useCallback(() => {
+    if (!supabaseRef.current) supabaseRef.current = createClient()
+    return supabaseRef.current
+  }, [])
 
   const fetchUser = useCallback(async () => {
-    const supabase = supabaseRef.current
+    const supabase = getSupabase()
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser()
@@ -65,9 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         image: profile?.image ?? authUser.user_metadata?.avatar_url ?? null,
         tier: profile?.tier ?? "FREE",
         trialEndsAt: profile?.trialEndsAt ?? null,
-        isAdmin: ADMIN_EMAILS.includes(
-          authUser.email?.toLowerCase() ?? ""
-        ),
+        isAdmin: profile?.isAdmin === true,
         settings: (profile?.settings as UserSettings) ?? {},
       })
     } catch {
@@ -78,31 +96,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         image: authUser.user_metadata?.avatar_url ?? null,
         tier: "FREE",
         trialEndsAt: null,
-        isAdmin: ADMIN_EMAILS.includes(
-          authUser.email?.toLowerCase() ?? ""
-        ),
+        isAdmin: false,
         settings: {},
       })
     }
     setLoading(false)
-  }, [])
+  }, [getSupabase])
 
   useEffect(() => {
-    fetchUser()
+    if (!initialUser) {
+      fetchUser()
+    }
 
-    const supabase = supabaseRef.current
+    const supabase = getSupabase()
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) fetchUser()
-      else {
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (initialUser) {
+        if (event === "SIGNED_OUT") {
+          setUser(null)
+          setLoading(false)
+        }
+        return
+      }
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        fetchUser()
+      } else if (event === "SIGNED_OUT") {
         setUser(null)
         setLoading(false)
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [fetchUser])
+  }, [fetchUser, getSupabase, initialUser])
 
   return (
     <AuthContext.Provider value={{ user, loading, refresh: fetchUser }}>

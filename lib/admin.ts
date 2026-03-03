@@ -1,16 +1,11 @@
 import { getSession } from "@/lib/auth"
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean)
-
 /**
  * Returns the session if the caller is an admin, or null otherwise.
+ * Admin status is determined by the is_admin flag in the database.
  */
 export async function requireAdmin() {
   const session = await getSession()
-  const email = session?.user?.email?.toLowerCase()
-  if (!email || !ADMIN_EMAILS.includes(email)) return null
+  if (!session?.user?.isAdmin) return null
   return session
 }

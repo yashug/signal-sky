@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { JetBrains_Mono, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { getInitialUser } from "@/lib/auth";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -21,6 +23,11 @@ export const metadata: Metadata = {
   description: "Professional-grade stock signal scanner for India & US markets. Track Reset & Reclaim breakouts with real-time market health monitoring.",
 };
 
+async function AuthenticatedProviders({ children }: { children: React.ReactNode }) {
+  const initialUser = await getInitialUser()
+  return <Providers initialUser={initialUser}>{children}</Providers>
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,9 +38,11 @@ export default function RootLayout({
       <body
         className={`${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <Providers>
-          {children}
-        </Providers>
+        <Suspense>
+          <AuthenticatedProviders>
+            {children}
+          </AuthenticatedProviders>
+        </Suspense>
         <Toaster
           position="bottom-right"
           toastOptions={{

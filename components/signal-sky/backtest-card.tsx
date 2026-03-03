@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import type { ApiSignal } from "@/lib/api"
-import { fetchBacktestDetail, type ApiBacktestDetail } from "@/lib/api"
+import type { ApiSignal, ApiBacktestDetail } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -81,12 +80,15 @@ export function BacktestCard({ signal }: { signal: ApiSignal }) {
     setLoading(true)
     setBacktest(null)
     setGenError(null)
-    fetchBacktestDetail(signal.symbol)
+    fetch(`/api/backtest/detail/${encodeURIComponent(signal.symbol)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Not found")
+        return res.json()
+      })
       .then((data) => {
-        if (data && !("error" in data) && data.summary) {
+        if (data && data.summary) {
           setBacktest(data)
         } else {
-          // No existing backtest — auto-trigger generation
           setBacktest(null)
           setLoading(false)
           triggerBacktest()

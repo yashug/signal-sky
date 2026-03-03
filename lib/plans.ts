@@ -6,24 +6,21 @@ export const PRO_PLAN = {
   name: "Pro",
   description: "Full access for serious traders",
   price: {
-    monthly: 499,
-    yearly: 4999,
-    lifetime: 9999,
+    monthly: 299,
+    yearly: 2999,
+    lifetime: 4999,
   },
   /** Anchor / "MRP" prices for strikethrough display */
   mrp: {
-    monthly: 999,
-    yearly: 9999,
-    lifetime: 24999,
+    monthly: 599,
+    yearly: 5999,
+    lifetime: 14999,
   },
   features: [
     "All Nifty indices + S&P 100 & NASDAQ 100",
     "Unlimited backtests",
-    "Real-time Telegram alerts",
-    "Volume surge filter",
     "Unlimited trade journal",
     "Priority support",
-    "Export to CSV",
   ],
 } as const
 
@@ -33,9 +30,9 @@ export const LIFETIME_DEAL = {
   /** Total lifetime seats available */
   cap: 100,
   /** Price in INR */
-  price: 9999,
+  price: 4999,
   /** Anchor price for strikethrough */
-  mrp: 24999,
+  mrp: 14999,
 }
 
 // ── Helpers ─────────────────────────────────────────────────────

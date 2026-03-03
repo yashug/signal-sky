@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidateTag } from "next/cache"
 import { requireAdmin } from "@/lib/admin"
 import { exec } from "child_process"
 import path from "path"
@@ -70,6 +71,13 @@ export async function POST(req: NextRequest) {
         errors: errorsMatch ? parseInt(errorsMatch[1]) : undefined,
         lastLine: "Completed",
       })
+
+      try {
+        revalidateTag("backtests", { expire: 0 })
+        console.log(`[backtest/run] backtests cache revalidated`)
+      } catch (e: any) {
+        console.error(`[backtest/run] revalidation failed:`, e.message)
+      }
 
       if (stdout) console.log(`[backtest/run] stdout:`, stdout.slice(-800))
       if (stderr) console.error(`[backtest/run] stderr:`, stderr.slice(-300))

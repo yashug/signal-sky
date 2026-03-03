@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidateTag } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { LIFETIME_DEAL } from "@/lib/plans"
 
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
             where: { sold: { lt: LIFETIME_DEAL.cap } },
             data: { sold: { increment: 1 } },
           })
+          revalidateTag("lifetime-deals", { expire: 0 })
         } catch {
           // Non-critical
         }
