@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "rm -rf .next/dev 2>/dev/null; next dev",
     "dev:api": "npm --prefix api run dev",
     "dev:all": "npm run dev & npm run dev:api & wait",
     "cron": "npm --prefix api run cron",

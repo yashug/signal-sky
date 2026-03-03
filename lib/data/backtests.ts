@@ -59,6 +59,49 @@ export async function getBacktests(universe: string): Promise<ApiBacktestsRespon
   }
 }
 
+export type BacktestAggregates = {
+  winRate: number
+  avgReturn: number
+  maxDrawdown: number
+  sharpeRatio: number | null
+  symbolCount: number
+}
+
+/**
+ * Aggregate stats from latest backtest per symbol (for landing page / marketing).
+ * Cached with backtests tag; revalidate when backtests are re-run.
+ */
+export async function getBacktestAggregates(): Promise<BacktestAggregates | null> {
+  "use cache"
+  cacheTag("backtests")
+  cacheLife("weeks")
+
+  const row = await prisma.$queryRawUnsafe(`
+    SELECT
+      COUNT(*)::int AS symbol_count,
+      AVG(win_rate)::double precision AS win_rate,
+      AVG(avg_return)::double precision AS avg_return,
+      AVG(max_drawdown)::double precision AS max_drawdown,
+      AVG(sharpe_ratio)::double precision AS sharpe_ratio
+    FROM (
+      SELECT DISTINCT ON (symbol) symbol, win_rate, avg_return, max_drawdown, sharpe_ratio
+      FROM backtests
+      ORDER BY symbol, computed_at DESC
+    ) latest
+  `) as unknown as [{ symbol_count: number; win_rate: number; avg_return: number; max_drawdown: number; sharpe_ratio: number | null }]
+
+  const r = row[0]
+  if (!r || r.symbol_count === 0) return null
+
+  return {
+    symbolCount: r.symbol_count,
+    winRate: Number(r.win_rate),
+    avgReturn: Number(r.avg_return),
+    maxDrawdown: Number(r.max_drawdown),
+    sharpeRatio: r.sharpe_ratio != null ? Number(r.sharpe_ratio) : null,
+  }
+}
+
 export async function getBacktestDetail(symbol: string): Promise<ApiBacktestDetail | null> {
   "use cache"
   cacheTag("backtests")

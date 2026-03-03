@@ -14,7 +14,6 @@ import {
   ThermometerIcon,
   ActivityIcon,
   GlobeIcon,
-  FileTextIcon,
   RocketIcon,
   CrownIcon,
 } from "lucide-react"
@@ -136,7 +135,6 @@ function HeroSection() {
             {[
               { label: "Markets Covered", value: "2", suffix: "" },
               { label: "Signals Scanned Daily", value: "1,000", suffix: "+" },
-              { label: "Strategy Win Rate", value: "68", suffix: "%" },
               { label: "Years of Backtest Data", value: "20", suffix: "Y" },
             ].map((stat) => (
               <div key={stat.label} className="flex flex-col items-center gap-1">
@@ -312,6 +310,12 @@ function FeaturesSection() {
       title: "Trade Journal",
       description: "Log entries, exits, stop losses and targets. Track realized and unrealized P&L with win rate analytics.",
       accent: "from-[oklch(0.78_0.16_80)] to-[oklch(0.68_0.22_25)]",
+    },
+    {
+      icon: BarChart3Icon,
+      title: "Backtests",
+      description: "Validate the strategy on 20 years of data. Run full backtests per symbol with win rate, drawdown and Sharpe — then compare with live signals.",
+      accent: "from-[oklch(0.65_0.17_250)] to-primary",
     },
   ]
 
@@ -798,10 +802,9 @@ function StrategySection() {
           </div>
         </div>
 
-        {/* Heat classification + Strategy guide CTA */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_280px] items-start px-0">
-          {/* Heat system */}
-          <div className="rounded-2xl border border-border/25 bg-card/60 p-6">
+        {/* Signal Heat Classification — full width */}
+        <div className="w-full px-0">
+          <div className="rounded-2xl border border-border/25 bg-card/60 p-6 md:p-8">
             <h3 className="text-[15px] font-semibold text-foreground mb-1">Signal Heat Classification</h3>
             <p className="text-[12px] text-muted-foreground mb-5">
               Every signal is ranked by distance to the prior peak — the all-time high reached before the stock broke below EMA 200.
@@ -884,48 +887,6 @@ function StrategySection() {
               </p>
             </div>
           </div>
-
-          {/* Strategy guide CTA card */}
-          <div className="rounded-2xl border border-primary/20 bg-primary/[0.03] p-6">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 mb-4">
-              <BookOpenIcon className="size-5 text-primary" />
-            </div>
-            <h3 className="text-[15px] font-semibold text-foreground mb-2">
-              Strategy Deep-Dive
-            </h3>
-            <p className="text-[12px] leading-relaxed text-muted-foreground mb-5">
-              Full breakdown with entry rules, exit conditions, position sizing, and backtest results across 20 years of data.
-            </p>
-            <a
-              href="/strategy-guide.pdf"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98]"
-            >
-              <FileTextIcon className="size-3.5" />
-              Download Guide
-            </a>
-
-            {/* Quick stats */}
-            <div className="mt-6 pt-5 border-t border-border/15">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground block mb-3">
-                Backtest Highlights
-              </span>
-              <div className="space-y-3">
-                {[
-                  { label: "Win Rate", value: "68%", accent: true },
-                  { label: "Avg Return / Trade", value: "+12.4%" },
-                  { label: "Max Drawdown", value: "-8.2%" },
-                  { label: "Sharpe Ratio", value: "1.85" },
-                ].map((stat) => (
-                  <div key={stat.label} className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">{stat.label}</span>
-                    <span className={`font-mono text-[13px] font-bold ${stat.accent ? "text-bull" : "text-foreground"}`}>
-                      {stat.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
@@ -949,7 +910,7 @@ function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
             Invest in your edge
           </h2>
           <p className="text-sm text-muted-foreground mt-3 max-w-md mx-auto">
-            Start with a 7-day free trial. Then choose a plan to unlock all Nifty indices, unlimited backtests, and real-time alerts.
+            Start with a 7-day free trial. Then choose a plan to unlock all Nifty indices, and unlimited backtests.
           </p>
           <p className="text-[11px] text-heat-simmering font-medium mt-2">
             Prices increase after launch
@@ -1140,7 +1101,8 @@ function Footer() {
 }
 
 export default async function LandingPage() {
-  const deal = await getLifetimeDealInfo()
+  const dealResult = await Promise.allSettled([getLifetimeDealInfo()])
+  const deal = dealResult[0].status === "fulfilled" ? dealResult[0].value : { cap: 100, sold: 0, remaining: 100, available: true }
 
   return (
     <div className="min-h-screen bg-background">
