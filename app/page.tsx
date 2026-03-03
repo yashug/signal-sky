@@ -1113,9 +1113,18 @@ function Footer() {
             </div>
             <span className="text-sm font-semibold tracking-tight text-foreground">SignalSky</span>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5 flex-wrap justify-center">
             <Link href="/pricing" className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
               Pricing
+            </Link>
+            <Link href="/terms" className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
+              Terms
+            </Link>
+            <Link href="/privacy" className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
+              Privacy
+            </Link>
+            <Link href="/refund" className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
+              Refund Policy
             </Link>
             <Link href="/sign-in" className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
               Sign in
