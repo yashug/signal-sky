@@ -34,10 +34,11 @@ export async function updateSession(request: NextRequest) {
     publicPaths.includes(request.nextUrl.pathname) ||
     request.nextUrl.pathname.startsWith("/api/")
 
-  // Redirect unauthenticated users to sign-in
+  // Redirect unauthenticated users to sign-in, preserving the path they wanted so we can send them back after auth
   if (!isPublic && !user) {
     const url = request.nextUrl.clone()
     url.pathname = "/sign-in"
+    url.searchParams.set("next", request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }
 

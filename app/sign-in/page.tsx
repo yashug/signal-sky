@@ -1,17 +1,29 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ZapIcon } from "lucide-react"
 
+/** Allow only relative app paths (no protocol, no //). */
+function safeNext(next: string | null): string {
+  if (!next || typeof next !== "string") return "/scanner"
+  const path = next.startsWith("/") ? next : `/${next}`
+  if (path.includes("//") || path.startsWith("/http")) return "/scanner"
+  return path
+}
+
 export default function SignInPage() {
+  const searchParams = useSearchParams()
+
   async function handleSignIn() {
+    const next = safeNext(searchParams.get("next"))
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/scanner`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     })
   }
@@ -44,7 +56,7 @@ export default function SignInPage() {
 
             <Button
               variant="outline"
-              className="w-full h-10 gap-2 text-sm"
+              className="w-full h-10 gap-2 text-sm cursor-pointer"
               onClick={handleSignIn}
             >
               <svg className="size-4" viewBox="0 0 24 24">

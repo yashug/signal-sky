@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -50,6 +50,18 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
   const [items, setItems] = useState(initialItems)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editNotes, setEditNotes] = useState("")
+
+  // Refetch on mount so we always show latest after adding/removing from scanner
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/watchlist")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.items?.length !== undefined) setItems(data.items)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   async function removeItem(id: string) {
     const item = items.find(i => i.id === id)

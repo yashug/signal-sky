@@ -1,12 +1,14 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
+
+export const runtime = "nodejs"
 
 /**
  * GET /api/admin/scan/status
  * Returns the latest scan status: last scan time, active signals, market health.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await requireAdmin()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 
+export const runtime = "nodejs"
+
 /**
  * GET /api/admin/universe-data?universe=nifty50
  * Returns all universe members with their dailyBar coverage stats.
