@@ -25,7 +25,7 @@ const siteUrl = "https://signalsky.app"
 
 export const metadata: Metadata = {
   title: {
-    default: "SignalSky — Market Signal Scanner",
+    default: "SignalSky — Stock Signal Scanner for India & US Markets",
     template: "%s | SignalSky",
   },
   description:
@@ -34,14 +34,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "SignalSky",
-    title: "SignalSky — Market Signal Scanner",
+    title: "SignalSky — Stock Signal Scanner for India & US Markets",
     description:
       "Find breakout setups across Nifty 50, S&P 100 & NASDAQ 100. Reset & Reclaim strategy scanner with backtests, trade journal & market health dashboard.",
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "SignalSky — Market Signal Scanner",
+    title: "SignalSky — Stock Signal Scanner for India & US Markets",
     description:
       "Find breakout setups across Nifty 50, S&P 100 & NASDAQ 100. Reset & Reclaim strategy scanner with backtests, trade journal & market health dashboard.",
   },
