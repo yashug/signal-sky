@@ -248,3 +248,7 @@ DIRECT_URL=            # Direct connection (for migrations)
 9. **Dev server lock** — If `next dev` crashes, you may need to `rm .next/dev/lock` and kill orphaned processes on port 3000.
 
 10. **Pre-existing TS error** — `app/(dashboard)/scanner/page.tsx:444` has a `string | null` type issue that predates recent changes.
+
+
+## Rules 
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.

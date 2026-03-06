@@ -1,6 +1,5 @@
 import { Suspense } from "react"
 import { getSignals, getUniverseMemberships } from "@/lib/data/signals"
-import { getWatchlistSymbolMap } from "@/lib/data/watchlist"
 import { ScannerClient } from "./scanner-client"
 import { UNIVERSE_OPTIONS } from "@/lib/universes"
 import { Loader2Icon, CrosshairIcon } from "lucide-react"
@@ -16,18 +15,26 @@ function ScannerSkeleton() {
   )
 }
 
-async function ScannerData({ initialUniverse }: { initialUniverse: string }) {
+async function ScannerData({
+  searchParams,
+}: {
+  searchParams: Promise<{ universe?: string; heat?: string }>
+}) {
+  const params = await searchParams
+  const initialUniverse =
+    params.universe && validUniverses.includes(params.universe as any)
+      ? params.universe
+      : "nifty50"
+
   try {
-    const [data, watchlistMap, universeMemberships] = await Promise.all([
+    const [data, universeMemberships] = await Promise.all([
       getSignals("all"),
-      getWatchlistSymbolMap(),
       getUniverseMemberships(),
     ])
     return (
       <ScannerClient
         data={data}
         initialUniverse={initialUniverse}
-        initialWatchlist={watchlistMap}
         universeMemberships={universeMemberships}
       />
     )
@@ -49,20 +56,14 @@ async function ScannerData({ initialUniverse }: { initialUniverse: string }) {
   }
 }
 
-export default async function ScannerPage({
+export default function ScannerPage({
   searchParams,
 }: {
   searchParams: Promise<{ universe?: string; heat?: string }>
 }) {
-  const params = await searchParams
-  const initialUniverse =
-    params.universe && validUniverses.includes(params.universe as any)
-      ? params.universe
-      : "nifty50"
-
   return (
     <Suspense fallback={<ScannerSkeleton />}>
-      <ScannerData initialUniverse={initialUniverse} />
+      <ScannerData searchParams={searchParams} />
     </Suspense>
   )
 }

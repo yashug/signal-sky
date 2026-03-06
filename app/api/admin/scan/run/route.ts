@@ -4,6 +4,8 @@ import { requireAdmin } from "@/lib/admin"
 import { exec } from "child_process"
 import path from "path"
 
+export const runtime = "nodejs"
+
 /**
  * POST /api/admin/scan/run
  * Triggers the strategy scan pipeline for a given market.
@@ -36,8 +38,8 @@ export async function POST(req: NextRequest) {
         if (stderr) console.error(`[scan/run] ${mode} stderr:`, stderr.slice(-500))
 
         try {
-          revalidateTag("signals", { expire: 0 })
-          revalidateTag("market-health", { expire: 0 })
+          revalidateTag("signals")
+          revalidateTag("market-health")
           console.log(`[scan/run] ${mode} cache revalidated`)
         } catch (e: any) {
           console.error(`[scan/run] revalidation failed:`, e.message)

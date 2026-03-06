@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   useReactTable,
@@ -281,12 +281,10 @@ const columns: ColumnDef<ApiSignal>[] = [
 export function ScannerClient({
   data,
   initialUniverse,
-  initialWatchlist,
   universeMemberships,
 }: {
   data: ApiSignalsResponse
   initialUniverse: string
-  initialWatchlist?: Record<string, string>
   universeMemberships: Record<string, string[]>
 }) {
   const router = useRouter()
@@ -304,10 +302,20 @@ export function ScannerClient({
     return h && validHeats.includes(h) ? h : "all"
   })
 
-  const [watchlistMap, setWatchlistMap] = useState<Map<string, string>>(() => {
-    if (initialWatchlist) return new Map(Object.entries(initialWatchlist))
-    return new Map()
-  })
+  const [watchlistMap, setWatchlistMap] = useState<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    fetch("/api/watchlist")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.items) {
+          setWatchlistMap(
+            new Map(d.items.map((i: { id: string; symbol: string }) => [i.symbol, i.id]))
+          )
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const updateURL = useCallback(
     (newUniverse: string, heat: string) => {
