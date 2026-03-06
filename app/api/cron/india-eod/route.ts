@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { connection } from "next/server"
 import { revalidateTag } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
@@ -21,6 +22,7 @@ const INDIA_UNIVERSES = [
  * Auth: CRON_SECRET header.
  */
 export async function GET(req: NextRequest) {
+  await connection()
   const authHeader = req.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
 

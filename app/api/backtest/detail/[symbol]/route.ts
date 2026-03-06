@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import { connection } from "next/server"
 import { getBacktestDetail } from "@/lib/data/backtests"
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  await connection()
   const { symbol } = await params
   const decoded = decodeURIComponent(symbol)
 

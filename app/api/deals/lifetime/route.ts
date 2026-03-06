@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { connection } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { LIFETIME_DEAL } from "@/lib/plans"
 
@@ -7,6 +8,7 @@ import { LIFETIME_DEAL } from "@/lib/plans"
  * Public endpoint — returns server-authoritative lifetime deal availability.
  */
 export async function GET() {
+  await connection()
   try {
     // Try to find existing row
     let deal = await prisma.lifetimeDeal.findFirst()

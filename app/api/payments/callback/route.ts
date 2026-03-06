@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { connection } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getOrderStatus } from "@/lib/phonepe"
 import { LIFETIME_DEAL } from "@/lib/plans"
@@ -9,6 +10,7 @@ import { LIFETIME_DEAL } from "@/lib/plans"
  * Verifies payment status and activates the subscription.
  */
 export async function GET(req: NextRequest) {
+  await connection()
   const orderId = req.nextUrl.searchParams.get("orderId")
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 

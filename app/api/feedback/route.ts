@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { connection } from "next/server"
 import { getSession } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
  * Query params: ?unreadOnly=1&limit=50&offset=0
  */
 export async function GET(req: NextRequest) {
+  await connection()
   const session = await getSession()
   if (!session?.user?.isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
