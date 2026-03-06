@@ -18,7 +18,17 @@ function BacktestsSkeleton() {
   )
 }
 
-async function BacktestsData({ initialUniverse }: { initialUniverse: string }) {
+async function BacktestsData({
+  searchParams,
+}: {
+  searchParams: Promise<{ universe?: string }>
+}) {
+  const params = await searchParams
+  const initialUniverse =
+    params.universe && validUniverses.includes(params.universe as any)
+      ? params.universe
+      : "nifty50"
+
   try {
     const [data, universeMemberships] = await Promise.all([
       getBacktests("all"),
@@ -50,20 +60,14 @@ async function BacktestsData({ initialUniverse }: { initialUniverse: string }) {
   }
 }
 
-export default async function BacktestsPage({
+export default function BacktestsPage({
   searchParams,
 }: {
   searchParams: Promise<{ universe?: string }>
 }) {
-  const params = await searchParams
-  const initialUniverse =
-    params.universe && validUniverses.includes(params.universe as any)
-      ? params.universe
-      : "nifty50"
-
   return (
     <Suspense fallback={<BacktestsSkeleton />}>
-      <BacktestsData initialUniverse={initialUniverse} />
+      <BacktestsData searchParams={searchParams} />
     </Suspense>
   )
 }

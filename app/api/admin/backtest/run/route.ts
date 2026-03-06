@@ -5,6 +5,8 @@ import { exec } from "child_process"
 import path from "path"
 import { setJob } from "@/lib/backtest-job"
 
+export const runtime = "nodejs"
+
 /**
  * POST /api/admin/backtest/run
  * Triggers the backtest pipeline as a background process and tracks status.
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
       })
 
       try {
-        revalidateTag("backtests", { expire: 0 })
+        revalidateTag("backtests")
         console.log(`[backtest/run] backtests cache revalidated`)
       } catch (e: any) {
         console.error(`[backtest/run] revalidation failed:`, e.message)

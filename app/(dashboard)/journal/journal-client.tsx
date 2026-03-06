@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -131,6 +131,18 @@ const EMPTY_MESSAGES: Record<FilterTab, { title: string; description: string }> 
 
 export function JournalClient({ initialTrades }: { initialTrades: JournalTradeData[] }) {
   const [trades, setTrades] = useState(initialTrades)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/journal")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.trades) setTrades(data.trades)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
   const [activeTab, setActiveTab] = useState<FilterTab>("all")
   const [marketFilter, setMarketFilter] = useState<"all" | "NSE" | "US">("all")
 

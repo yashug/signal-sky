@@ -35,7 +35,7 @@ async function MarketHealthData() {
   }
 }
 
-export default async function MarketHealthPage() {
+export default function MarketHealthPage() {
   return (
     <Suspense fallback={<MarketHealthSkeleton />}>
       <MarketHealthData />
