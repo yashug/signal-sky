@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { getJob } from "@/lib/backtest-job"
 
-export const runtime = "nodejs"
-
 /**
  * GET /api/admin/backtest/status?market=india
  * Returns current status of a backtest job.

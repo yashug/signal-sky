@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 
-export const runtime = "nodejs"
-
 /**
  * GET /api/admin/scan/status
  * Returns the latest scan status: last scan time, active signals, market health.

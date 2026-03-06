@@ -18,6 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-geist-mono",
   weight: ["400", "500", "600"],
+  preload: false,
 });
 
 const siteUrl = "https://signalsky.app"
