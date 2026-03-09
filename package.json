@@ -9,7 +9,7 @@
     "cron": "npm --prefix api run cron",
     "cron:india": "npm --prefix api run cron:india",
     "cron:us": "npm --prefix api run cron:us",
-    "build": "prisma generate --schema=prisma/schema.prisma && next build",
+    "build": "prisma generate --schema=prisma/schema.prisma && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
