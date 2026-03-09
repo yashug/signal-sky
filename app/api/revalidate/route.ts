@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const revalidated: string[] = []
     for (const tag of tags) {
       if (VALID_TAGS.includes(tag)) {
-        revalidateTag(tag, { expire: 0 })
+        revalidateTag(tag)
         revalidated.push(tag)
       }
     }
