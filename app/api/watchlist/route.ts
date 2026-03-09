@@ -8,43 +8,50 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const items = await prisma.watchlistItem.findMany({
-    where: { userId: session.userId },
-    orderBy: { addedAt: "desc" },
-  })
+  // Single query with lateral joins — avoids 2 extra round trips to Supabase
+  const rows = await prisma.$queryRawUnsafe(`
+    SELECT
+      w.id,
+      w.symbol,
+      w.exchange,
+      w.added_at    AS "addedAt",
+      w.notes,
+      um.name,
+      s.price,
+      s.ema200,
+      s.ath,
+      s.heat,
+      s.distance_pct AS "distancePct"
+    FROM watchlist_items w
+    LEFT JOIN LATERAL (
+      SELECT name FROM universe_members WHERE symbol = w.symbol LIMIT 1
+    ) um ON true
+    LEFT JOIN LATERAL (
+      SELECT price, ema200, ath, heat, distance_pct
+      FROM signals
+      WHERE symbol = w.symbol AND is_active = true
+      ORDER BY signal_date DESC
+      LIMIT 1
+    ) s ON true
+    WHERE w.user_id = $1
+    ORDER BY w.added_at DESC
+  `, session.userId) as any[]
 
-  // Enrich with signal data and universe member info
-  const symbols = [...new Set(items.map((i: any) => i.symbol as string))]
-  const [members, signals] = await Promise.all([
-    prisma.universeMember.findMany({ where: { symbol: { in: symbols } } }),
-    prisma.signal.findMany({
-      where: { symbol: { in: symbols }, isActive: true },
-      distinct: ["symbol"],
-    }),
-  ])
-  const memberMap = new Map(members.map((m: any) => [m.symbol, m]))
-  const signalMap = new Map(signals.map((s: any) => [s.symbol, s]))
+  const items = rows.map((r: any) => ({
+    id: r.id,
+    symbol: r.symbol,
+    exchange: r.exchange,
+    addedAt: r.addedAt,
+    notes: r.notes ?? "",
+    name: r.name ?? r.symbol.replace(".NS", ""),
+    currentPrice: r.price ? Number(r.price) : 0,
+    ema200: r.ema200 ? Number(r.ema200) : 0,
+    ath: r.ath ? Number(r.ath) : 0,
+    heat: r.heat ?? "cooling",
+    distanceToBreakout: r.distancePct ? Number(r.distancePct) : 0,
+  }))
 
-  const enriched = items.map((item: any) => {
-    const member = memberMap.get(item.symbol) as any
-    const sig = signalMap.get(item.symbol) as any
-
-    return {
-      id: item.id,
-      symbol: item.symbol,
-      name: member?.name ?? (item.symbol as string).replace(".NS", ""),
-      exchange: item.exchange,
-      addedAt: item.addedAt,
-      notes: item.notes ?? "",
-      currentPrice: sig ? Number(sig.price) : 0,
-      ema200: sig ? Number(sig.ema200) : 0,
-      ath: sig ? Number(sig.ath) : 0,
-      heat: sig?.heat ?? "cooling",
-      distanceToBreakout: sig ? Number(sig.distancePct) : 0,
-    }
-  })
-
-  return NextResponse.json({ items: enriched })
+  return NextResponse.json({ items })
 }
 
 export async function POST(request: Request) {
