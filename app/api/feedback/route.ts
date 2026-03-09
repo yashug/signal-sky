@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getSession } from "@/lib/auth"
+import { getSessionForApi, getInitialUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 const VALID_CATEGORIES = ["bug", "feature", "general"] as const
@@ -8,8 +8,8 @@ const VALID_CATEGORIES = ["bug", "feature", "general"] as const
  * POST /api/feedback — Submit feedback
  */
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   const feedback = await prisma.feedback.create({
     data: {
-      userId: session.user.id,
+      userId: session.userId,
       category,
       message,
     },
@@ -40,11 +40,10 @@ export async function POST(req: NextRequest) {
 
 /**
  * GET /api/feedback — Admin: list feedback
- * Query params: ?unreadOnly=1&limit=50&offset=0
  */
 export async function GET(req: NextRequest) {
-  const session = await getSession()
-  if (!session?.user?.isAdmin) {
+  const user = await getInitialUser()
+  if (!user?.isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -74,11 +73,10 @@ export async function GET(req: NextRequest) {
 
 /**
  * PATCH /api/feedback — Admin: mark feedback as read
- * Body: { id: string } or { ids: string[] }
  */
 export async function PATCH(req: NextRequest) {
-  const session = await getSession()
-  if (!session?.user?.isAdmin) {
+  const user = await getInitialUser()
+  if (!user?.isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

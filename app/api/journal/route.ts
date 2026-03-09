@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/auth"
+import { getSessionForApi } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const trades = await prisma.journalTrade.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.userId },
     orderBy: { createdAt: "desc" },
   })
 
@@ -61,8 +61,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
   // Check for existing open trade on the same symbol + side
   const existing = await prisma.journalTrade.findFirst({
     where: {
-      userId: session.user.id,
+      userId: session.userId,
       symbol,
       side,
       status: "OPEN",
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
   // No existing open trade — create new
   const trade = await prisma.journalTrade.create({
     data: {
-      userId: session.user.id,
+      userId: session.userId,
       symbol,
       exchange,
       side,

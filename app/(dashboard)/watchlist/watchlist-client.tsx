@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -51,26 +51,17 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editNotes, setEditNotes] = useState("")
 
-  // Refetch on mount so we always show latest after adding/removing from scanner
-  useEffect(() => {
-    let cancelled = false
-    fetch("/api/watchlist")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.items?.length !== undefined) setItems(data.items)
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [])
-
   async function removeItem(id: string) {
     const item = items.find(i => i.id === id)
+    // Optimistic: remove immediately
+    setItems(prev => prev.filter(i => i.id !== id))
     try {
       const res = await fetch(`/api/watchlist/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Failed to remove")
-      setItems(prev => prev.filter(i => i.id !== id))
-      if (item) toast(`Removed ${item.symbol} from watchlist`)
+      if (item) toast(`Removed ${item.symbol.replace(".NS", "")} from watchlist`)
     } catch {
+      // Revert on failure
+      if (item) setItems(prev => [item, ...prev])
       toast.error("Failed to remove from watchlist")
     }
   }

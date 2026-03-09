@@ -1,29 +1,28 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/auth"
+import { getSessionForApi } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const items = await prisma.watchlistItem.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.userId },
     orderBy: { addedAt: "desc" },
   })
 
   // Enrich with signal data and universe member info
   const symbols = [...new Set(items.map((i: any) => i.symbol as string))]
-  const members = await prisma.universeMember.findMany({
-    where: { symbol: { in: symbols } },
-  })
+  const [members, signals] = await Promise.all([
+    prisma.universeMember.findMany({ where: { symbol: { in: symbols } } }),
+    prisma.signal.findMany({
+      where: { symbol: { in: symbols }, isActive: true },
+      distinct: ["symbol"],
+    }),
+  ])
   const memberMap = new Map(members.map((m: any) => [m.symbol, m]))
-
-  const signals = await prisma.signal.findMany({
-    where: { symbol: { in: symbols }, isActive: true },
-    distinct: ["symbol"],
-  })
   const signalMap = new Map(signals.map((s: any) => [s.symbol, s]))
 
   const enriched = items.map((item: any) => {
@@ -49,8 +48,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -59,7 +58,7 @@ export async function POST(request: Request) {
 
   const item = await prisma.watchlistItem.create({
     data: {
-      userId: session.user.id,
+      userId: session.userId,
       symbol: body.symbol,
       exchange,
       notes: body.notes ?? null,

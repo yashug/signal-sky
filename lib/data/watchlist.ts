@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma"
-import { getSession } from "@/lib/auth"
+import { getInitialUser } from "@/lib/auth"
 
 export async function getWatchlistSymbolMap(): Promise<Record<string, string>> {
-  const session = await getSession()
-  if (!session?.user?.id) return {}
+  const user = await getInitialUser()
+  if (!user?.id) return {}
 
   const items = await prisma.watchlistItem.findMany({
-    where: { userId: session.user.id },
+    where: { userId: user.id },
     select: { id: true, symbol: true },
   })
 
@@ -30,11 +30,11 @@ export type WatchlistItemData = {
 }
 
 export async function getWatchlistItems(): Promise<WatchlistItemData[]> {
-  const session = await getSession()
-  if (!session?.user?.id) return []
+  const user = await getInitialUser()
+  if (!user?.id) return []
 
   const items = await prisma.watchlistItem.findMany({
-    where: { userId: session.user.id },
+    where: { userId: user.id },
     orderBy: { addedAt: "desc" },
   })
 

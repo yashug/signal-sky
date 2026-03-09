@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/auth"
+import { getSessionForApi } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -16,7 +16,7 @@ export async function PUT(
 
   // Verify ownership
   const existing = await prisma.journalTrade.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId: session.userId },
   })
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -55,7 +55,7 @@ export async function PUT(
 
       const closedTrade = await prisma.journalTrade.create({
         data: {
-          userId: session.user.id,
+          userId: session.userId,
           symbol: existing.symbol,
           exchange: existing.exchange,
           side: existing.side,
@@ -110,15 +110,15 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const { id } = await params
 
   const existing = await prisma.journalTrade.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId: session.userId },
   })
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })

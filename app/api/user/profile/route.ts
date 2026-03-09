@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@/lib/auth"
+import { getSessionForApi } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: session.userId },
     select: { id: true, name: true, email: true, image: true, tier: true, trialEndsAt: true, settings: true, isAdmin: true },
   })
 
@@ -21,8 +21,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const session = await getSession()
-  if (!session?.user?.id) {
+  const session = await getSessionForApi()
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -50,9 +50,8 @@ export async function PATCH(req: Request) {
   }
 
   if (body.settings != null && typeof body.settings === "object") {
-    // Merge incoming settings with existing ones
     const existing = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: session.userId },
       select: { settings: true },
     })
     const current = (existing?.settings as Record<string, unknown>) ?? {}
@@ -64,7 +63,7 @@ export async function PATCH(req: Request) {
   }
 
   const updated = await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: session.userId },
     data,
     select: { id: true, name: true, email: true, image: true, settings: true },
   })

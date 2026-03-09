@@ -388,6 +388,9 @@ export function ScannerClient({
         toast.error("Failed to remove from watchlist")
       }
     } else {
+      // Optimistic: add immediately with temp ID
+      const tempId = `temp-${signal.symbol}-${Date.now()}`
+      setWatchlistMap((prev) => new Map(prev).set(signal.symbol, tempId))
       try {
         const res = await fetch("/api/watchlist", {
           method: "POST",
@@ -396,9 +399,16 @@ export function ScannerClient({
         })
         if (!res.ok) throw new Error()
         const data = await res.json()
+        // Replace temp ID with real ID
         setWatchlistMap((prev) => new Map(prev).set(signal.symbol, data.id))
         toast(`Added ${signal.symbol.replace(".NS", "")} to watchlist`)
       } catch {
+        // Revert on failure
+        setWatchlistMap((prev) => {
+          const next = new Map(prev)
+          next.delete(signal.symbol)
+          return next
+        })
         toast.error("Failed to add to watchlist")
       }
     }
