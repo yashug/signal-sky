@@ -1,4 +1,4 @@
-import { cacheTag, cacheLife } from "next/cache"
+import { unstable_cache } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import type { ApiMarketHealth, ApiMarketHealthResponse } from "@/lib/api"
 
@@ -36,54 +36,54 @@ const ALL_KEYS = [
   "niftybank", "sp100", "nasdaq100",
 ]
 
-export async function getMarketHealth(): Promise<ApiMarketHealthResponse> {
-  "use cache"
-  cacheTag("market-health")
-  cacheLife("days")
+export const getMarketHealth = unstable_cache(
+  async (): Promise<ApiMarketHealthResponse> => {
+    const markets: ApiMarketHealth[] = []
 
-  const markets: ApiMarketHealth[] = []
-
-  for (const key of ALL_KEYS) {
-    const latest = await prisma.marketHealth.findFirst({
-      where: { universe: key },
-      orderBy: { date: "desc" },
-    })
-
-    if (latest) {
-      markets.push({
-        universe: key,
-        label: UNIVERSE_LABELS[key] ?? key,
-        date: latest.date.toISOString().split("T")[0],
-        totalStocks: latest.totalStocks,
-        aboveEma200: latest.aboveEma200,
-        percentAbove: Number(latest.pctAbove),
-        trafficLight: trafficLight(Number(latest.pctAbove)),
-      })
-    } else if (COMPOSITE_TAGS[key]) {
-      const tagRows = await prisma.marketHealth.findMany({
-        where: { universe: { in: COMPOSITE_TAGS[key] } },
+    for (const key of ALL_KEYS) {
+      const latest = await prisma.marketHealth.findFirst({
+        where: { universe: key },
         orderBy: { date: "desc" },
-        distinct: ["universe"],
       })
-      if (tagRows.length > 0) {
-        let above = 0, total = 0
-        for (const r of tagRows) {
-          above += r.aboveEma200
-          total += r.totalStocks
-        }
-        const pctAbove = total > 0 ? (above / total) * 100 : 0
+
+      if (latest) {
         markets.push({
           universe: key,
           label: UNIVERSE_LABELS[key] ?? key,
-          date: tagRows[0].date.toISOString().split("T")[0],
-          totalStocks: total,
-          aboveEma200: above,
-          percentAbove: pctAbove,
-          trafficLight: trafficLight(pctAbove),
+          date: latest.date.toISOString().split("T")[0],
+          totalStocks: latest.totalStocks,
+          aboveEma200: latest.aboveEma200,
+          percentAbove: Number(latest.pctAbove),
+          trafficLight: trafficLight(Number(latest.pctAbove)),
         })
+      } else if (COMPOSITE_TAGS[key]) {
+        const tagRows = await prisma.marketHealth.findMany({
+          where: { universe: { in: COMPOSITE_TAGS[key] } },
+          orderBy: { date: "desc" },
+          distinct: ["universe"],
+        })
+        if (tagRows.length > 0) {
+          let above = 0, total = 0
+          for (const r of tagRows) {
+            above += r.aboveEma200
+            total += r.totalStocks
+          }
+          const pctAbove = total > 0 ? (above / total) * 100 : 0
+          markets.push({
+            universe: key,
+            label: UNIVERSE_LABELS[key] ?? key,
+            date: tagRows[0].date.toISOString().split("T")[0],
+            totalStocks: total,
+            aboveEma200: above,
+            percentAbove: pctAbove,
+            trafficLight: trafficLight(pctAbove),
+          })
+        }
       }
     }
-  }
 
-  return { markets }
-}
+    return { markets }
+  },
+  ["market-health"],
+  { tags: ["market-health"], revalidate: 86400 }
+)
