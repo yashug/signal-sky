@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { connection } from "next/server"
 import { requireAdmin } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 
@@ -8,7 +7,6 @@ import { prisma } from "@/lib/prisma"
  * Returns all universe members with their dailyBar coverage stats.
  */
 export async function GET(req: NextRequest) {
-  await connection()
   const session = await requireAdmin()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
