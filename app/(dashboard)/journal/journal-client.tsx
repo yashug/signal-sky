@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo } from "react"
+import { useJournalTrades, useDeleteTrade, useExitTrade } from "@/hooks/use-journal"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -130,18 +131,9 @@ const EMPTY_MESSAGES: Record<FilterTab, { title: string; description: string }> 
 }
 
 export function JournalClient({ initialTrades }: { initialTrades: JournalTradeData[] }) {
-  const [trades, setTrades] = useState(initialTrades)
-
-  useEffect(() => {
-    let cancelled = false
-    fetch("/api/journal")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.trades) setTrades(data.trades)
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [])
+  const { data: trades = initialTrades } = useJournalTrades(initialTrades)
+  const deleteTrade = useDeleteTrade()
+  const exitTrade = useExitTrade()
 
   const [activeTab, setActiveTab] = useState<FilterTab>("all")
   const [marketFilter, setMarketFilter] = useState<"all" | "NSE" | "US">("all")
@@ -150,16 +142,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
   const [exitQty, setExitQty] = useState("")
   const [exitPrice, setExitPrice] = useState("")
   const [exitReason, setExitReason] = useState<"manual" | "stop" | "target">("manual")
-  const [exitLoading, setExitLoading] = useState(false)
 
-  const fetchTrades = useCallback(async () => {
-    try {
-      const res = await fetch("/api/journal")
-      if (!res.ok) throw new Error("Failed to fetch trades")
-      const data = await res.json()
-      setTrades(data.trades ?? [])
-    } catch {}
-  }, [])
 
   const alertTrades = useMemo(() => {
     return trades.filter(
@@ -252,7 +235,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
     setExitReason("manual")
   }
 
-  async function confirmExit() {
+  function confirmExit() {
     if (!exitingTradeId) return
     const qty = parseInt(exitQty) || 0
     const price = parseFloat(exitPrice) || 0
@@ -260,44 +243,10 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
       toast.error("Enter valid quantity and price")
       return
     }
-
-    setExitLoading(true)
-    try {
-      const res = await fetch(`/api/journal/${exitingTradeId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          exitPrice: price,
-          exitDate: new Date().toISOString(),
-          exitQuantity: qty,
-          exitReason,
-        }),
-      })
-      if (!res.ok) throw new Error()
-      const data = await res.json()
-      if (data.partial) {
-        toast(`Exited ${qty} shares — ${data.remainingQty} shares still open`)
-      } else {
-        toast("Trade closed")
-      }
-      cancelExit()
-      fetchTrades()
-    } catch {
-      toast.error("Failed to exit trade")
-    } finally {
-      setExitLoading(false)
-    }
-  }
-
-  async function deleteTrade(id: string) {
-    try {
-      const res = await fetch(`/api/journal/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Failed to delete")
-      setTrades((prev) => prev.filter((t) => t.id !== id))
-      toast("Trade deleted")
-    } catch {
-      toast.error("Failed to delete trade")
-    }
+    exitTrade.mutate(
+      { id: exitingTradeId, exitPrice: price, exitDate: new Date().toISOString(), exitQuantity: qty, exitReason },
+      { onSuccess: cancelExit }
+    )
   }
 
   return (
@@ -801,9 +750,9 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
                                     size="sm"
                                     className="h-5 px-1.5 text-[9px] bg-primary"
                                     onClick={confirmExit}
-                                    disabled={exitLoading}
+                                    disabled={exitTrade.isPending}
                                   >
-                                    {exitLoading ? "..." : "OK"}
+                                    {exitTrade.isPending ? "..." : "OK"}
                                   </Button>
                                   <Button
                                     variant="ghost"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { toast } from "sonner"
 import {
   StarIcon,
   Trash2Icon,
@@ -32,6 +31,12 @@ import {
   XIcon,
 } from "lucide-react"
 import type { WatchlistItemData } from "@/lib/data/watchlist"
+import {
+  useWatchlist,
+  useWatchlistMutations,
+  useUpdateWatchlistNotes,
+  type WatchlistItem,
+} from "@/hooks/use-watchlist"
 
 type HeatStatus = "breakout" | "boiling" | "simmering" | "cooling"
 
@@ -47,54 +52,22 @@ function HeatDot({ heat }: { heat: HeatStatus }) {
 }
 
 export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemData[] }) {
-  const [items, setItems] = useState(initialItems)
+  // TanStack Query — shows initialItems instantly, refetches in background
+  const { data: items = initialItems } = useWatchlist(initialItems as WatchlistItem[])
+  const { remove } = useWatchlistMutations()
+  const updateNotes = useUpdateWatchlistNotes()
+
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editNotes, setEditNotes] = useState("")
 
-  // Show cached server data immediately, then silently update from API in background
-  useEffect(() => {
-    let cancelled = false
-    fetch("/api/watchlist")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (!cancelled && data?.items) setItems(data.items) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [])
-
-  async function removeItem(id: string) {
-    const item = items.find(i => i.id === id)
-    // Optimistic: remove immediately
-    setItems(prev => prev.filter(i => i.id !== id))
-    try {
-      const res = await fetch(`/api/watchlist/${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Failed to remove")
-      if (item) toast(`Removed ${item.symbol.replace(".NS", "")} from watchlist`)
-    } catch {
-      // Revert on failure
-      if (item) setItems(prev => [item, ...prev])
-      toast.error("Failed to remove from watchlist")
-    }
-  }
-
-  function startEdit(item: WatchlistItemData) {
+  function startEdit(item: WatchlistItem) {
     setEditingId(item.id)
     setEditNotes(item.notes)
   }
 
-  async function saveEdit(id: string) {
-    try {
-      const res = await fetch(`/api/watchlist/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: editNotes }),
-      })
-      if (!res.ok) throw new Error("Failed to update")
-      setItems(prev => prev.map(i => i.id === id ? { ...i, notes: editNotes } : i))
-      setEditingId(null)
-      toast("Notes updated")
-    } catch {
-      toast.error("Failed to update notes")
-    }
+  function saveEdit(id: string) {
+    updateNotes.mutate({ id, notes: editNotes })
+    setEditingId(null)
   }
 
   return (
@@ -236,7 +209,7 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
                           variant="ghost"
                           size="icon-xs"
                           className="size-6 text-muted-foreground hover:text-bear"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => remove.mutate({ id: item.id, symbol: item.symbol })}
                         >
                           <Trash2Icon className="size-3" />
                         </Button>

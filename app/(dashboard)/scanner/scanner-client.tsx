@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useWatchlistMap, useWatchlistMutations } from "@/hooks/use-watchlist"
 import {
   useReactTable,
   getCoreRowModel,
@@ -39,7 +40,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { toast } from "sonner"
 import {
   CrosshairIcon,
   SearchIcon,
@@ -302,20 +302,8 @@ export function ScannerClient({
     return h && validHeats.includes(h) ? h : "all"
   })
 
-  const [watchlistMap, setWatchlistMap] = useState<Map<string, string>>(new Map())
-
-  useEffect(() => {
-    fetch("/api/watchlist")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.items) {
-          setWatchlistMap(
-            new Map(d.items.map((i: { id: string; symbol: string }) => [i.symbol, i.id]))
-          )
-        }
-      })
-      .catch(() => {})
-  }, [])
+  const watchlistMap = useWatchlistMap()
+  const { add: addToWatchlist, remove: removeFromWatchlist } = useWatchlistMutations()
 
   const updateURL = useCallback(
     (newUniverse: string, heat: string) => {
@@ -370,49 +358,14 @@ export function ScannerClient({
     },
   })
 
-  const toggleWatchlist = useCallback(async (signal: ApiSignal) => {
+  const toggleWatchlist = useCallback((signal: ApiSignal) => {
     const existing = watchlistMap.get(signal.symbol)
-
     if (existing) {
-      setWatchlistMap((prev) => {
-        const next = new Map(prev)
-        next.delete(signal.symbol)
-        return next
-      })
-      try {
-        const res = await fetch(`/api/watchlist/${existing}`, { method: "DELETE" })
-        if (!res.ok) throw new Error()
-        toast(`Removed ${signal.symbol.replace(".NS", "")} from watchlist`)
-      } catch {
-        setWatchlistMap((prev) => new Map(prev).set(signal.symbol, existing))
-        toast.error("Failed to remove from watchlist")
-      }
+      removeFromWatchlist.mutate({ id: existing, symbol: signal.symbol })
     } else {
-      // Optimistic: add immediately with temp ID
-      const tempId = `temp-${signal.symbol}-${Date.now()}`
-      setWatchlistMap((prev) => new Map(prev).set(signal.symbol, tempId))
-      try {
-        const res = await fetch("/api/watchlist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ symbol: signal.symbol, exchange: signal.exchange }),
-        })
-        if (!res.ok) throw new Error()
-        const data = await res.json()
-        // Replace temp ID with real ID
-        setWatchlistMap((prev) => new Map(prev).set(signal.symbol, data.id))
-        toast(`Added ${signal.symbol.replace(".NS", "")} to watchlist`)
-      } catch {
-        // Revert on failure
-        setWatchlistMap((prev) => {
-          const next = new Map(prev)
-          next.delete(signal.symbol)
-          return next
-        })
-        toast.error("Failed to add to watchlist")
-      }
+      addToWatchlist.mutate({ symbol: signal.symbol, exchange: signal.exchange })
     }
-  }, [watchlistMap])
+  }, [watchlistMap, addToWatchlist, removeFromWatchlist])
 
   return (
     <div className="flex flex-col gap-0 min-h-0">
