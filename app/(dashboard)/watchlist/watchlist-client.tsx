@@ -171,7 +171,7 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
                             <Input
                               value={editNotes}
                               onChange={(e) => setEditNotes(e.target.value)}
-                              className="h-7 text-xs bg-background"
+                              className="h-7 text-[16px] sm:text-xs bg-background"
                               autoFocus
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") saveEdit(item.id)

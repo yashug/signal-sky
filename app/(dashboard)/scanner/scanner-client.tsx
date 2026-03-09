@@ -422,7 +422,7 @@ export function ScannerClient({
               placeholder="Search symbol..."
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="h-8 pl-8 font-mono text-xs bg-surface border-border/40"
+              className="h-8 pl-8 font-mono text-[16px] sm:text-xs bg-surface border-border/40"
             />
           </div>
         </div>

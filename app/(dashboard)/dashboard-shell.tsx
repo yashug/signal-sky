@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, Suspense } from "react"
+import { useMemo, Suspense, useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -17,6 +17,7 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   ActivityIcon,
@@ -62,6 +63,16 @@ function formatTimeAgo(dateStr: string): string {
   return `${diffDays}d ago`
 }
 
+function NavLink({ href, className, children }: { href: string; className?: string; children?: React.ReactNode }) {
+  const { setOpenMobile } = useSidebar()
+  const handleClick = useCallback(() => setOpenMobile(false), [setOpenMobile])
+  return (
+    <Link href={href} className={className} onClick={handleClick}>
+      {children}
+    </Link>
+  )
+}
+
 export function DashboardShell({
   children,
   marketHealthData,
@@ -90,7 +101,7 @@ export function DashboardShell({
     <SidebarProvider defaultOpen={true}>
       <Sidebar collapsible="icon" className="border-r-0">
         <SidebarHeader className="px-3 py-4">
-          <Link href="/scanner" className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
+          <NavLink href="/scanner" className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <ZapIcon className="size-4" />
             </div>
@@ -102,7 +113,7 @@ export function DashboardShell({
                 Scanner
               </span>
             </div>
-          </Link>
+          </NavLink>
         </SidebarHeader>
 
         <SidebarSeparator />
@@ -114,7 +125,7 @@ export function DashboardShell({
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
-                      render={<Link href={item.href} />}
+                      render={<NavLink href={item.href} />}
                       isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
                       tooltip={item.label}
                     >
@@ -150,7 +161,7 @@ export function DashboardShell({
               <>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    render={<Link href="/admin/panel" />}
+                    render={<NavLink href="/admin/panel" />}
                     isActive={pathname === "/admin/panel"}
                     tooltip="Admin Panel"
                   >
@@ -160,7 +171,7 @@ export function DashboardShell({
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    render={<Link href="/admin/data" />}
+                    render={<NavLink href="/admin/data" />}
                     isActive={pathname === "/admin/data"}
                     tooltip="CSV Upload"
                   >
@@ -173,7 +184,7 @@ export function DashboardShell({
             {secondaryItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
-                  render={<Link href={item.href} />}
+                  render={<NavLink href={item.href} />}
                   isActive={pathname === item.href}
                   tooltip={item.label}
                 >
