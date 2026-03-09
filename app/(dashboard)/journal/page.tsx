@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { Suspense } from "react"
 import { getJournalTrades } from "@/lib/data/journal"
 import { JournalClient } from "./journal-client"
