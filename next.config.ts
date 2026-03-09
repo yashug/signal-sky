@@ -2,10 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    // Client-side router cache: keep RSC payloads for dynamic routes (dashboard) so
-    // in-app navigation doesn't refetch every time. Data changes daily after sync/scan.
     staleTimes: {
-      dynamic: 3600,   // 1 hour for dynamic (e.g. /scanner, /backtests)
+      dynamic: 0,      // Never cache dynamic RSC payloads client-side — user-specific pages (watchlist, journal) must always be fresh
       static: 86400,   // 24 hours for static/prefetched
     },
   },
