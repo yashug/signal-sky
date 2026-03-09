@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { Suspense } from "react"
 import { getWatchlistItems } from "@/lib/data/watchlist"
 import { WatchlistClient } from "./watchlist-client"
