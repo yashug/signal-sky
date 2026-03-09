@@ -4,11 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "rm -rf .next/dev 2>/dev/null; next dev",
-    "dev:api": "npm --prefix api run dev",
-    "dev:all": "npm run dev & npm run dev:api & wait",
-    "cron": "npm --prefix api run cron",
-    "cron:india": "npm --prefix api run cron:india",
-    "cron:us": "npm --prefix api run cron:us",
     "build": "prisma generate --schema=prisma/schema.prisma && next build --webpack",
     "start": "next start",
     "lint": "eslint",
