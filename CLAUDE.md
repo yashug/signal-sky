@@ -249,6 +249,10 @@ DIRECT_URL=            # Direct connection (for migrations)
 
 10. **Pre-existing TS error** — `app/(dashboard)/scanner/page.tsx:444` has a `string | null` type issue that predates recent changes.
 
+11. **NEVER use `cacheComponents: true`** — In Next.js 16, `cacheComponents: true` activates global PPR (Partial Pre-Rendering) which silently excludes ALL `app/api/` route handlers from the Vercel build output. Every API call returns a cached 404. Never add this to `next.config.ts`.
 
-## Rules 
+12. **Data caching: use `unstable_cache`** — The `"use cache"` directive is the preferred Next.js 16 API, but it requires `cacheComponents: true` which breaks API routes (see above). Use `unstable_cache` from `next/cache` for all server-side data caching in `lib/data/*.ts`. Do NOT use `cacheTag`/`cacheLife` — those only work with `"use cache"`. Do NOT pass `{ expire: 0 }` to `revalidateTag()` — that is PPR-only syntax.
+
+
+## Rules
 Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
