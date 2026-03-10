@@ -161,7 +161,7 @@ export const getSignalChart = unstable_cache(
       ? new Date(details.preSetATHDate)
       : null
 
-    const whereClause: any = { symbol: barSymbol }
+    const whereClause: any = { symbol: barSymbol, exchange: signal.exchange }
     if (preSetATHDate) whereClause.date = { gte: preSetATHDate }
 
     const bars = await prisma.dailyBar.findMany({

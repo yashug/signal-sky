@@ -29,6 +29,7 @@ type BarRow = {
   ema200: string | null
   volume: string
   ath: string
+  ath_date: string | null
   avg_vol: string | null
 }
 
@@ -62,10 +63,11 @@ export async function runScanForMarket(market: "india" | "us") {
       ORDER BY symbol, date DESC
     ),
     ath_data AS (
-      SELECT symbol, MAX(high) AS ath
+      SELECT DISTINCT ON (symbol)
+        symbol, high AS ath, date AS ath_date
       FROM daily_bars
       WHERE exchange = $1 AND symbol = ANY($2::text[])
-      GROUP BY symbol
+      ORDER BY symbol, high DESC, date DESC
     ),
     vol20 AS (
       SELECT db.symbol, AVG(v.volume::numeric) AS avg_vol
@@ -83,6 +85,7 @@ export async function runScanForMarket(market: "india" | "us") {
       l.ema200::float AS ema200,
       l.volume::bigint AS volume,
       a.ath::float AS ath,
+      a.ath_date::text AS ath_date,
       v.avg_vol::float AS avg_vol
     FROM latest l
     JOIN ath_data a ON a.symbol = l.symbol
@@ -134,7 +137,7 @@ export async function runScanForMarket(market: "india" | "us") {
       volumeAvg20: avgVol ? BigInt(Math.round(avgVol)) : null,
       signalDate,
       isActive: true,
-      details: {},
+      details: row.ath_date ? { preSetATHDate: row.ath_date.split("T")[0] } : {},
     })
   }
 
