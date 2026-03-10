@@ -138,7 +138,6 @@ export const getSignalBySymbol = unstable_cache(
 export const getLastScanTime = unstable_cache(
   async (): Promise<string | null> => {
     const row = await prisma.signal.findFirst({
-      where: { isActive: true },
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     })

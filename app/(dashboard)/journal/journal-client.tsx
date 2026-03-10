@@ -27,8 +27,11 @@ import {
   LogOutIcon,
   XIcon,
   ShieldCheckIcon,
+  LayoutGridIcon,
+  TableIcon,
 } from "lucide-react"
 import type { JournalTradeData } from "@/lib/data/journal"
+import { PortfolioHeatmap } from "@/components/signal-sky/portfolio-heatmap"
 
 type TradeStatus = "open" | "closed" | "stopped_out"
 type FilterTab = "all" | TradeStatus
@@ -138,6 +141,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
   const [activeTab, setActiveTab] = useState<FilterTab>("all")
   const [marketFilter, setMarketFilter] = useState<"all" | "NSE" | "US">("all")
 
+  const [viewMode, setViewMode] = useState<"table" | "heatmap">("table")
   const [exitingTradeId, setExitingTradeId] = useState<string | null>(null)
   const [exitQty, setExitQty] = useState("")
   const [exitPrice, setExitPrice] = useState("")
@@ -440,10 +444,52 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
             ))}
           </>
         )}
+
+        {/* View toggle — only meaningful on the open tab */}
+        {(activeTab === "open" || activeTab === "all") && (
+          <>
+            <div className="mx-2 h-4 w-px bg-border/30" />
+            <div className="flex items-center gap-0.5 rounded-md border border-border/30 p-0.5">
+              <button
+                onClick={() => setViewMode("table")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium transition-colors cursor-pointer",
+                  viewMode === "table"
+                    ? "bg-muted/60 text-foreground"
+                    : "text-muted-foreground/50 hover:text-muted-foreground"
+                )}
+              >
+                <TableIcon className="size-3" />
+                Table
+              </button>
+              <button
+                onClick={() => setViewMode("heatmap")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium transition-colors cursor-pointer",
+                  viewMode === "heatmap"
+                    ? "bg-muted/60 text-foreground"
+                    : "text-muted-foreground/50 hover:text-muted-foreground"
+                )}
+              >
+                <LayoutGridIcon className="size-3" />
+                Map
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Trades Table */}
-      {filteredTrades.length === 0 ? (
+      {/* Portfolio Heatmap */}
+      {viewMode === "heatmap" && (activeTab === "open" || activeTab === "all") && (
+        <Card className="border-border/40 bg-surface">
+          <CardContent className="p-4">
+            <PortfolioHeatmap trades={marketTrades} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Trades Table — hidden when heatmap is active */}
+      {viewMode === "heatmap" && (activeTab === "open" || activeTab === "all") ? null : filteredTrades.length === 0 ? (
         <Card className="border-border/40 bg-surface">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted mb-3">

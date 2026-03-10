@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignalSky — Feature Ideas That Drive Retention</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080c0f;
+  --bg2: #0d1318;
+  --bg3: #121920;
+  --border: rgba(255,255,255,0.07);
+  --border-hi: rgba(255,255,255,0.14);
+  --text: #e8edf2;
+  --muted: #6b7f8f;
+  --accent: #00d4aa;
+  --accent2: #3b82f6;
+  --accent3: #f59e0b;
+  --bull: #22c55e;
+  --bear: #ef4444;
+  --breakout: #f59e0b;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ─── NOISE OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ─── GRID LINES ─── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, black 40%, transparent 100%);
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+/* ─── HEADER ─── */
+header {
+  padding: 24px 0 0;
+  position: relative;
+  z-index: 10;
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+.logo span { color: var(--accent); }
+.tag {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--border-hi);
+  padding: 4px 10px;
+  border-radius: 100px;
+}
+
+/* ─── HERO ─── */
+.hero {
+  padding: 80px 0 60px;
+  text-align: center;
+  position: relative;
+}
+.hero-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.hero-eyebrow::before,
+.hero-eyebrow::after {
+  content: '';
+  width: 40px;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.4;
+}
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(36px, 6vw, 72px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  margin-bottom: 20px;
+}
+.hero h1 em {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  color: var(--accent);
+}
+.hero-sub {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 480px;
+  margin: 0 auto 48px;
+  line-height: 1.8;
+}
+.glow-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* ─── CATEGORY TABS ─── */
+.cats {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 64px;
+}
+.cat {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--muted);
+  cursor: default;
+}
+.cat.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,0.06); }
+.cat.soon { border-color: var(--border-hi); color: var(--text); }
+
+/* ─── SECTION HEADER ─── */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.section-head h2 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.section-count {
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.5;
+}
+.section-label {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.label-high { background: rgba(239,68,68,0.12); color: var(--bear); border: 1px solid rgba(239,68,68,0.2); }
+.label-med { background: rgba(245,158,11,0.1); color: var(--breakout); border: 1px solid rgba(245,158,11,0.2); }
+.label-low { background: rgba(107,127,143,0.1); color: var(--muted); border: 1px solid var(--border); }
+
+/* ─── FEATURE GRID ─── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+.feature-grid.two { grid-template-columns: repeat(2, 1fr); }
+.feature-grid.three { grid-template-columns: repeat(3, 1fr); }
+
+@media (max-width: 768px) {
+  .feature-grid.two,
+  .feature-grid.three { grid-template-columns: 1fr; }
+}
+
+/* ─── FEATURE CARD ─── */
+.fc {
+  background: var(--bg2);
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+.fc:hover { background: var(--bg3); }
+.fc.wide { grid-column: span 2; }
+.fc.tall { grid-row: span 2; }
+
+.fc-accent-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.fc-accent-line.green { background: linear-gradient(90deg, var(--accent), transparent); }
+.fc-accent-line.blue { background: linear-gradient(90deg, var(--accent2), transparent); }
+.fc-accent-line.amber { background: linear-gradient(90deg, var(--breakout), transparent); }
+.fc-accent-line.red { background: linear-gradient(90deg, var(--bear), transparent); }
+.fc-accent-line.purple { background: linear-gradient(90deg, #a78bfa, transparent); }
+.fc-accent-line.cyan { background: linear-gradient(90deg, #22d3ee, transparent); }
+
+.fc-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+.fc-icon.green { background: rgba(0,212,170,0.1); }
+.fc-icon.blue { background: rgba(59,130,246,0.1); }
+.fc-icon.amber { background: rgba(245,158,11,0.1); }
+.fc-icon.red { background: rgba(239,68,68,0.1); }
+.fc-icon.purple { background: rgba(167,139,250,0.1); }
+.fc-icon.cyan { background: rgba(34,211,238,0.1); }
+
+.fc-badge {
+  position: absolute;
+  top: 20px; right: 20px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+.badge-live { background: rgba(34,197,94,0.12); color: var(--bull); border: 1px solid rgba(34,197,94,0.2); }
+.badge-soon { background: rgba(245,158,11,0.1); color: var(--breakout); border: 1px solid rgba(245,158,11,0.2); }
+.badge-hot { background: rgba(239,68,68,0.12); color: var(--bear); border: 1px solid rgba(239,68,68,0.2); }
+.badge-idea { background: rgba(107,127,143,0.1); color: var(--muted); border: 1px solid var(--border-hi); }
+
+.fc h3 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+.fc p {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+/* ─── MINI PREVIEWS ─── */
+.mini-preview {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 16px;
+  background: var(--bg);
+}
+.mini-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+.mini-dot { width: 6px; height: 6px; border-radius: 50%; }
+.mini-content { padding: 12px; }
+
+/* Candlestick chart */
+.candle-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 56px;
+}
+.candle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.candle-wick { width: 1px; background: var(--muted); opacity: 0.4; }
+.candle-body { width: 6px; border-radius: 1px; }
+.candle-body.bull { background: var(--bull); }
+.candle-body.bear { background: var(--bear); }
+
+/* Sparkline */
+.sparkline {
+  height: 48px;
+  position: relative;
+}
+.sparkline svg { width: 100%; height: 100%; overflow: visible; }
+
+/* Alert rows */
+.alert-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+.alert-row:last-child { border-bottom: none; }
+.alert-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.alert-symbol { color: var(--text); font-weight: 500; min-width: 60px; }
+.alert-desc { color: var(--muted); flex: 1; }
+.alert-time { color: var(--muted); opacity: 0.5; }
+
+/* Heat map grid */
+.heat-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.heat-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  font-size: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+}
+
+/* Risk calculator mini */
+.risk-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.risk-row:last-child { border-bottom: none; }
+.risk-label { color: var(--muted); }
+.risk-val { color: var(--text); font-weight: 500; }
+.risk-val.green { color: var(--bull); }
+.risk-val.amber { color: var(--breakout); }
+
+/* Progress bar */
+.progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 3px; }
+.progress-fill { height: 100%; border-radius: 2px; }
+
+/* Flow table */
+.flow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.flow-row:last-child { border-bottom: none; }
+.flow-name { color: var(--muted); }
+.flow-fii { color: var(--bull); }
+.flow-dii { color: var(--bear); }
+
+/* Sector bars */
+.sector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 9px;
+}
+.sector-name { width: 60px; color: var(--muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+.sector-bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; }
+.sector-bar-fill { height: 100%; border-radius: 2px; }
+.sector-pct { width: 30px; text-align: right; color: var(--text); }
+
+/* Journal table */
+.j-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  font-size: 9px;
+  border-bottom: 1px solid var(--border);
+}
+.j-row:last-child { border-bottom: none; }
+.j-sym { color: var(--text); font-weight: 500; min-width: 50px; }
+.j-date { color: var(--muted); flex: 1; }
+.j-pnl { min-width: 45px; text-align: right; }
+.j-pnl.pos { color: var(--bull); }
+.j-pnl.neg { color: var(--bear); }
+
+/* Weekly report preview */
+.report-metric {
+  text-align: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.report-metric .val { font-size: 18px; font-weight: 700; font-family: 'Syne', sans-serif; }
+.report-metric .lbl { font-size: 9px; color: var(--muted); margin-top: 2px; }
+.report-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+/* Pattern match */
+.pattern-thumbs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.pattern-thumb {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: default;
+}
+.pattern-thumb:first-child { border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.04); }
+.pattern-mini { height: 28px; }
+.pattern-score { font-size: 8px; color: var(--muted); margin-top: 4px; display: flex; justify-content: space-between; }
+.pattern-score span { color: var(--accent); }
+
+/* Options chain mini */
+.options-row {
+  display: grid;
+  grid-template-columns: 1fr 60px 1fr;
+  gap: 4px;
+  padding: 3px 0;
+  font-size: 9px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.options-row:last-child { border-bottom: none; }
+.opt-call { color: var(--bull); }
+.opt-strike { color: var(--muted); }
+.opt-put { color: var(--bear); }
+.options-head { color: var(--muted); opacity: 0.6; }
+
+/* Screener builder */
+.screener-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--border-hi);
+  background: var(--bg2);
+  color: var(--text);
+  margin: 2px;
+}
+
+/* Community */
+.idea-card {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+.idea-card:last-child { border-bottom: none; }
+.idea-avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.idea-body { flex: 1; }
+.idea-sym { font-weight: 600; color: var(--text); }
+.idea-desc { color: var(--muted); line-height: 1.5; margin-top: 2px; }
+.idea-meta { color: var(--muted); opacity: 0.5; margin-top: 3px; }
+.idea-pnl { font-size: 11px; font-weight: 600; }
+
+/* ─── SECTION SPACER ─── */
+.section { margin-bottom: 64px; }
+
+/* ─── IMPACT TABLE ─── */
+.impact-table {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  border-collapse: collapse;
+}
+.impact-table th {
+  background: var(--bg2);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-weight: 500;
+}
+.impact-table td {
+  font-size: 11px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.impact-table tr:last-child td { border-bottom: none; }
+.impact-table tr:hover td { background: var(--bg2); }
+.impact-table td:first-child { font-weight: 600; color: var(--text); }
+.impact-table td:nth-child(2) { color: var(--muted); }
+.impact-impact { display: flex; gap: 3px; }
+.imp-dot { width: 8px; height: 8px; border-radius: 2px; }
+.imp-filled.h { background: var(--bear); }
+.imp-filled.m { background: var(--breakout); }
+.imp-filled.l { background: var(--muted); opacity: 0.3; }
+.imp-empty { background: var(--border); }
+td.effort-easy { color: var(--bull); }
+td.effort-med { color: var(--breakout); }
+td.effort-hard { color: var(--bear); }
+
+/* ─── FOOTER ─── */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 40px 0;
+  text-align: center;
+}
+.footer p { font-size: 11px; color: var(--muted); line-height: 1.8; }
+.footer strong { color: var(--text); }
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-fade { animation: fadeUp 0.6s ease both; }
+.animate-fade:nth-child(2) { animation-delay: 0.1s; }
+.animate-fade:nth-child(3) { animation-delay: 0.2s; }
+.animate-fade:nth-child(4) { animation-delay: 0.3s; }
+
+.live-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--bull);
+  animation: pulse 2s ease infinite;
+  margin-right: 4px;
+}
+
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">Signal<span>Sky</span></div>
+    <div class="tag">Feature Roadmap · Internal</div>
+  </div>
+</header>
+
+<section class="hero container">
+  <div class="glow-line"></div>
+  <div class="hero-eyebrow">What makes traders pay & stay</div>
+  <h1>Features that turn<br><em>free trials</em> into revenue</h1>
+  <p class="hero-sub">10 high-impact additions — ranked by retention value, sorted by build effort. Each one addresses a real gap traders complain about.</p>
+  <div class="cats">
+    <div class="cat active">All Features</div>
+    <div class="cat soon">🔴 High Impact</div>
+    <div class="cat soon">🟡 Medium</div>
+    <div class="cat soon">⚙ Alerts</div>
+    <div class="cat soon">📊 Analytics</div>
+    <div class="cat soon">🇮🇳 India-specific</div>
+  </div>
+</section>
+
+<div class="container">
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- SECTION 1: ALERTS & NOTIFICATIONS -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <h2>01 · Alerts &amp; Notifications</h2>
+      <div class="section-count">2 features</div>
+      <div class="section-label label-high">Highest Churn Prevention</div>
+    </div>
+
+    <div class="feature-grid two">
+
+      <!-- Multi-Channel Alerts -->
+      <div class="fc animate-fade">
+        <div class="fc-accent-line green"></div>
+        <div class="fc-badge badge-hot">🔥 #1 Priority</div>
+        <div class="fc-icon green">🔔</div>
+        <h3>Multi-Channel Signal Alerts</h3>
+        <p>Users miss signals because they don't have the app open. Push to WhatsApp, Email, and browser notifications the moment a stock enters the scanner range. This alone converts trials to paid.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:var(--bull)"></div>
+            <span>live alerts · 3 active</span>
+          </div>
+          <div class="mini-content">
+            <div class="alert-row">
+              <div class="alert-dot" style="background:var(--breakout)"></div>
+              <div class="alert-symbol">SBIN</div>
+              <div class="alert-desc">Entered boiling zone · 2.1% from ATH</div>
+              <div class="alert-time">2m ago</div>
+            </div>
+            <div class="alert-row">
+              <div class="alert-dot" style="background:var(--bull)"></div>
+              <div class="alert-symbol">INFY</div>
+              <div class="alert-desc">Breakout — closed above pre-set ATH</div>
+              <div class="alert-time">14m ago</div>
+            </div>
+            <div class="alert-row">
+              <div class="alert-dot" style="background:var(--accent2)"></div>
+              <div class="alert-symbol">TCS</div>
+              <div class="alert-desc">Added to your watchlist · now simmering</div>
+              <div class="alert-time">1h ago</div>
+            </div>
+            <div class="alert-row" style="margin-top:8px; border:none; gap:6px">
+              <span style="font-size:9px;padding:3px 7px;border-radius:4px;background:rgba(37,211,102,0.1);color:#25d366;border:1px solid rgba(37,211,102,0.2)">WhatsApp ✓</span>
+              <span style="font-size:9px;padding:3px 7px;border-radius:4px;background:rgba(59,130,246,0.1);color:var(--accent2);border:1px solid rgba(59,130,246,0.2)">Email ✓</span>
+              <span style="font-size:9px;padding:3px 7px;border-radius:4px;background:rgba(0,212,170,0.08);color:var(--accent);border:1px solid rgba(0,212,170,0.2)">Browser Push ✓</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Price Level Alerts -->
+      <div class="fc animate-fade">
+        <div class="fc-accent-line blue"></div>
+        <div class="fc-badge badge-soon">Soon</div>
+        <div class="fc-icon blue">🎯</div>
+        <h3>Custom Price Level Alerts</h3>
+        <p>Let users set their own price targets per stock — "alert me when RELIANCE hits ₹1,420" or "alert when it drops below EMA200." Sticky daily check-ins to the app.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:var(--accent2)"></div>
+            <span>RELIANCE · price alerts</span>
+          </div>
+          <div class="mini-content">
+            <div class="risk-row">
+              <span class="risk-label">Target (above)</span>
+              <span class="risk-val" style="color:var(--bull)">₹1,420.00 ↑</span>
+            </div>
+            <div class="risk-row">
+              <span class="risk-label">Stop (below)</span>
+              <span class="risk-val" style="color:var(--bear)">₹1,340.00 ↓</span>
+            </div>
+            <div class="risk-row">
+              <span class="risk-label">EMA200 break</span>
+              <span class="risk-val" style="color:var(--breakout)">₹1,365.40 ↓</span>
+            </div>
+            <div class="risk-row" style="border-bottom:none">
+              <span class="risk-label">Current price</span>
+              <span class="risk-val">₹1,381.25</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- SECTION 2: INDIA-SPECIFIC KILLER FEATURES -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <h2>02 · India-Specific Edge</h2>
+      <div class="section-count">2 features</div>
+      <div class="section-label label-high">Unique Moat</div>
+    </div>
+
+    <div class="feature-grid two">
+
+      <!-- FII/DII Flow -->
+      <div class="fc animate-fade">
+        <div class="fc-accent-line amber"></div>
+        <div class="fc-badge badge-hot">🇮🇳 Exclusive</div>
+        <div class="fc-icon amber">🏦</div>
+        <h3>FII / DII Institutional Flow Tracker</h3>
+        <p>No Indian trading app surface FII/DII flows alongside their scanner. Overlay SEBI-published daily buy/sell data on top of signals. When FII is buying AND a breakout is forming — that's a high-conviction trade.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:var(--breakout)"></div>
+            <span>institutional flow · last 10 days</span>
+          </div>
+          <div class="mini-content">
+            <div class="flow-row" style="font-size:9px;color:var(--muted);opacity:0.6;padding-bottom:6px">
+              <span>Date</span><span>FII Net</span><span>DII Net</span>
+            </div>
+            <div class="flow-row">
+              <span class="flow-name">Mar 10</span>
+              <span class="flow-fii">+₹4,821 Cr</span>
+              <span class="flow-dii">−₹1,204 Cr</span>
+            </div>
+            <div class="flow-row">
+              <span class="flow-name">Mar 07</span>
+              <span class="flow-fii">+₹2,103 Cr</span>
+              <span class="flow-dii">−₹880 Cr</span>
+            </div>
+            <div class="flow-row">
+              <span class="flow-name">Mar 06</span>
+              <span class="flow-fii" style="color:var(--bear)">−₹3,440 Cr</span>
+              <span class="flow-dii" style="color:var(--bull)">+₹2,901 Cr</span>
+            </div>
+            <div class="flow-row" style="border-bottom:none; margin-top:8px; padding:6px; background:rgba(245,158,11,0.06); border-radius:6px">
+              <span style="color:var(--breakout); font-size:9px">10-day FII net:</span>
+              <span style="color:var(--bull); font-weight:600">+₹18,432 Cr (Bullish)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sector Rotation -->
+      <div class="fc animate-fade">
+        <div class="fc-accent-line purple"></div>
+        <div class="fc-badge badge-soon">Soon</div>
+        <div class="fc-icon purple">🌡</div>
+        <h3>Sector Rotation Heatmap</h3>
+        <p>Which sectors are leading the market right now? Show % of stocks above EMA200 per sector, trending up or down week-over-week. Helps users filter scanner by hot sectors.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:#a78bfa"></div>
+            <span>sector strength · NSE</span>
+          </div>
+          <div class="mini-content">
+            <div class="sector-row">
+              <div class="sector-name">Banking</div>
+              <div class="sector-bar-track"><div class="sector-bar-fill" style="width:82%;background:var(--bull)"></div></div>
+              <div class="sector-pct" style="color:var(--bull)">82%</div>
+            </div>
+            <div class="sector-row">
+              <div class="sector-name">IT</div>
+              <div class="sector-bar-track"><div class="sector-bar-fill" style="width:71%;background:var(--bull)"></div></div>
+              <div class="sector-pct" style="color:var(--bull)">71%</div>
+            </div>
+            <div class="sector-row">
+              <div class="sector-name">FMCG</div>
+              <div class="sector-bar-track"><div class="sector-bar-fill" style="width:54%;background:var(--breakout)"></div></div>
+              <div class="sector-pct" style="color:var(--breakout)">54%</div>
+            </div>
+            <div class="sector-row">
+              <div class="sector-name">Auto</div>
+              <div class="sector-bar-track"><div class="sector-bar-fill" style="width:48%;background:var(--breakout)"></div></div>
+              <div class="sector-pct" style="color:var(--breakout)">48%</div>
+            </div>
+            <div class="sector-row">
+              <div class="sector-name">Pharma</div>
+              <div class="sector-bar-track"><div class="sector-bar-fill" style="width:29%;background:var(--bear)"></div></div>
+              <div class="sector-pct" style="color:var(--bear)">29%</div>
+            </div>
+            <div class="sector-row">
+              <div class="sector-name">Realty</div>
+              <div class="sector-bar-track"><div class="sector-bar-fill" style="width:18%;background:var(--bear)"></div></div>
+              <div class="sector-pct" style="color:var(--bear)">18%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- SECTION 3: RISK & PORTFOLIO TOOLS -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <h2>03 · Risk &amp; Position Sizing</h2>
+      <div class="section-count">2 features</div>
+      <div class="section-label label-med">High Daily Engagement</div>
+    </div>
+
+    <div class="feature-grid two">
+
+      <!-- Position Sizer -->
+      <div class="fc animate-fade">
+        <div class="fc-accent-line green"></div>
+        <div class="fc-badge badge-soon">Soon</div>
+        <div class="fc-icon green">⚖️</div>
+        <h3>Built-in Position Sizer</h3>
+        <p>Every signal detail page shows the exact quantity to buy based on the user's capital and risk %. "Risk 1% of ₹5L, stop at EMA200 → buy 47 shares." This is the #1 question traders ask themselves — answer it for them.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:var(--bull)"></div>
+            <span>SBIN · position calculator</span>
+          </div>
+          <div class="mini-content">
+            <div class="risk-row">
+              <span class="risk-label">Capital</span>
+              <span class="risk-val">₹5,00,000</span>
+            </div>
+            <div class="risk-row">
+              <span class="risk-label">Risk per trade</span>
+              <span class="risk-val amber">1.0% → ₹5,000</span>
+            </div>
+            <div class="risk-row">
+              <span class="risk-label">Entry (current)</span>
+              <span class="risk-val">₹892.40</span>
+            </div>
+            <div class="risk-row">
+              <span class="risk-label">Stop loss (EMA200)</span>
+              <span class="risk-val" style="color:var(--bear)">₹848.20</span>
+            </div>
+            <div class="risk-row">
+              <span class="risk-label">Risk per share</span>
+              <span class="risk-val">₹44.20</span>
+            </div>
+            <div style="margin-top:10px;padding:10px;background:rgba(0,212,170,0.06);border-radius:6px;border:1px solid rgba(0,212,170,0.15);display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:10px;color:var(--muted)">Recommended Qty</span>
+              <span style="font-size:18px;font-family:'Syne',sans-serif;font-weight:700;color:var(--accent)">113 shares</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Portfolio Heat Map -->
+      <div class="fc animate-fade">
+        <div class="fc-accent-line cyan"></div>
+        <div class="fc-badge badge-idea">Idea</div>
+        <div class="fc-icon cyan">🗺</div>
+        <h3>Open Trades Portfolio Heatmap</h3>
+        <p>Visual treemap of all open journal trades sized by position value, colored by current P&L. One glance and traders know which positions need attention. Addictive daily check-in feature.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:#22d3ee"></div>
+            <span>portfolio · 8 open positions</span>
+          </div>
+          <div class="mini-content">
+            <div class="heat-grid">
+              <div class="heat-cell" style="background:rgba(34,197,94,0.5);grid-column:span 3;grid-row:span 2;font-size:9px">RELIANCE +6.2%</div>
+              <div class="heat-cell" style="background:rgba(34,197,94,0.35);grid-column:span 2">TCS +3.1%</div>
+              <div class="heat-cell" style="background:rgba(239,68,68,0.35)">SBIN −1.8%</div>
+              <div class="heat-cell" style="background:rgba(245,158,11,0.3)">INFY +0.4%</div>
+              <div class="heat-cell" style="background:rgba(34,197,94,0.25)">HDFC +2.1%</div>
+              <div class="heat-cell" style="background:rgba(239,68,68,0.4)">AXIS −3.2%</div>
+              <div class="heat-cell" style="background:rgba(34,197,94,0.2)">WIPRO +1.2%</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:9px;color:var(--muted)">
+              <span>Total invested: <strong style="color:var(--text)">₹4.8L</strong></span>
+              <span>Unrealized P&L: <strong style="color:var(--bull)">+₹12,440</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- SECTION 4: DISCOVERY & INTELLIGENCE -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <h2>04 · Discovery &amp; Intelligence</h2>
+      <div class="section-count">2 features</div>
+      <div class="section-label label-med">Increases Perceived Value</div>
+    </div>
+
+    <div class="feature-grid two">
+
+      <!-- Similar Setups -->
+      <div class="fc animate-fade">
+        <div class="fc-accent-line amber"></div>
+        <div class="fc-badge badge-idea">Idea</div>
+        <div class="fc-icon amber">🔍</div>
+        <h3>Similar Chart Pattern Finder</h3>
+        <p>On any signal detail page, show 3 stocks with the most similar recent chart shape. "Stocks with similar setups right now." Increases time-on-app and cross-discovery of signals.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:var(--breakout)"></div>
+            <span>similar setups to SBIN</span>
+          </div>
+          <div class="mini-content">
+            <div class="pattern-thumbs">
+              <div class="pattern-thumb">
+                <div class="pattern-mini">
+                  <svg viewBox="0 0 60 28" fill="none">
+                    <polyline points="0,20 8,18 16,22 24,14 32,10 40,8 48,12 60,4" stroke="#00d4aa" stroke-width="1.5" fill="none" opacity="0.8"/>
+                    <line x1="0" y1="16" x2="60" y2="12" stroke="#6b7f8f" stroke-width="0.8" stroke-dasharray="3,2"/>
+                  </svg>
+                </div>
+                <div class="pattern-score"><span>AXISBANK</span><span style="color:var(--accent)">94%</span></div>
+              </div>
+              <div class="pattern-thumb">
+                <div class="pattern-mini">
+                  <svg viewBox="0 0 60 28" fill="none">
+                    <polyline points="0,22 10,20 20,24 30,16 42,11 55,6" stroke="#22c55e" stroke-width="1.5" fill="none" opacity="0.7"/>
+                    <line x1="0" y1="18" x2="60" y2="13" stroke="#6b7f8f" stroke-width="0.8" stroke-dasharray="3,2"/>
+                  </svg>
+                </div>
+                <div class="pattern-score"><span>ICICIBANK</span><span style="color:var(--bull)">89%</span></div>
+              </div>
+              <div class="pattern-thumb">
+                <div class="pattern-mini">
+                  <svg viewBox="0 0 60 28" fill="none">
+                    <polyline points="0,24 12,21 24,25 36,17 48,12 60,8" stroke="#3b82f6" stroke-width="1.5" fill="none" opacity="0.7"/>
+                    <line x1="0" y1="20" x2="60" y2="14" stroke="#6b7f8f" stroke-width="0.8" stroke-dasharray="3,2"/>
+                  </svg>
+                </div>
+                <div class="pattern-score"><span>KOTAKBANK</span><span style="color:var(--accent2)">81%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Summary Report -->
+      <div class="fc animate-fade">
+        <div class="fc-accent-line blue"></div>
+        <div class="fc-badge badge-soon">Soon</div>
+        <div class="fc-icon blue">📋</div>
+        <h3>Weekly Email Digest</h3>
+        <p>Auto-generated Sunday report: new signals this week, watchlist performance, market health summary, top movers. Keeps users engaged even when they don't log in — and reminds them the subscription is working for them.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:var(--accent2)"></div>
+            <span>your week · Mar 03 – Mar 07, 2026</span>
+          </div>
+          <div class="mini-content">
+            <div class="report-metrics">
+              <div class="report-metric">
+                <div class="val" style="color:var(--bull)">24</div>
+                <div class="lbl">New Signals</div>
+              </div>
+              <div class="report-metric">
+                <div class="val" style="color:var(--breakout)">68%</div>
+                <div class="lbl">Market Breadth</div>
+              </div>
+              <div class="report-metric">
+                <div class="val" style="color:var(--accent)">+8.2%</div>
+                <div class="lbl">Best Signal</div>
+              </div>
+            </div>
+            <div style="margin-top:10px;font-size:9px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border);padding-top:8px">
+              <strong style="color:var(--text)">Top signal this week:</strong> TATAMOTORS entered boiling zone on Wed, up 4.1% since. Banking sector strengthened: 82% above EMA200 vs 71% last week.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- SECTION 5: SOCIAL & COMMUNITY -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <h2>05 · Community &amp; Social Proof</h2>
+      <div class="section-count">1 feature</div>
+      <div class="section-label label-low">Long-term Retention</div>
+    </div>
+
+    <div class="feature-grid" style="grid-template-columns:1fr">
+      <div class="fc animate-fade">
+        <div class="fc-accent-line purple"></div>
+        <div class="fc-badge badge-idea">Long-term</div>
+        <div class="fc-icon purple">👥</div>
+        <h3>Community Trade Ideas &amp; Leaderboard</h3>
+        <p>Members share their own trades (entry, thesis, outcome). Show a live leaderboard of top traders by P&L this month. When users see others making money with the same signals, they upgrade and stay longer. Community creates switching costs — they don't just lose features, they lose their trading community.</p>
+        <div class="mini-preview">
+          <div class="mini-bar">
+            <div class="mini-dot" style="background:#a78bfa"></div>
+            <span>community ideas · live</span>
+          </div>
+          <div class="mini-content">
+            <div class="idea-card">
+              <div class="idea-avatar" style="background:rgba(34,197,94,0.15);color:var(--bull)">RK</div>
+              <div class="idea-body">
+                <div style="display:flex;justify-content:space-between">
+                  <span class="idea-sym">RELIANCE</span>
+                  <span class="idea-pnl pos">+6.2%</span>
+                </div>
+                <div class="idea-desc">Entered at ₹1,341 on reclaim. ATH at ₹1,608 — still 16% room. Holding with stop at EMA200.</div>
+                <div class="idea-meta">@rahulk · 14 likes · 3 comments · 2 days ago</div>
+              </div>
+            </div>
+            <div class="idea-card">
+              <div class="idea-avatar" style="background:rgba(245,158,11,0.15);color:var(--breakout)">PS</div>
+              <div class="idea-body">
+                <div style="display:flex;justify-content:space-between">
+                  <span class="idea-sym">AXISBANK</span>
+                  <span class="idea-pnl neg">−1.8%</span>
+                </div>
+                <div class="idea-desc">Got stopped out. EMA200 broke again. Will re-enter on next reclaim. Lesson: wait for weekly close.</div>
+                <div class="idea-meta">@priya_s · 8 likes · 7 comments · 5 hours ago</div>
+              </div>
+            </div>
+            <div class="idea-card" style="border-bottom:none">
+              <div class="idea-avatar" style="background:rgba(59,130,246,0.15);color:var(--accent2)">AM</div>
+              <div class="idea-body">
+                <div style="display:flex;justify-content:space-between">
+                  <span class="idea-sym">TATAMOTORS</span>
+                  <span class="idea-pnl pos">+11.4%</span>
+                </div>
+                <div class="idea-desc">Took profits at ₹886. Boiling → Breakout in 3 weeks. Classic Reset &amp; Reclaim.</div>
+                <div class="idea-meta">@akshay_m · 31 likes · 12 comments · 1 week ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- IMPACT vs EFFORT TABLE -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <h2>Priority Matrix</h2>
+      <div class="section-count">10 features ranked</div>
+      <div class="section-label label-high">Build Order</div>
+    </div>
+
+    <table class="impact-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Feature</th>
+          <th>Why it drives payment</th>
+          <th>Retention Impact</th>
+          <th>Build Effort</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">01</td>
+          <td>Multi-Channel Alerts (WhatsApp + Email)</td>
+          <td style="color:var(--muted);font-size:11px">Users miss signals → feel app isn't working → cancel</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div></div></td>
+          <td class="effort-med">Medium</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">02</td>
+          <td>Built-in Position Sizer</td>
+          <td style="color:var(--muted);font-size:11px">Answers the #1 question traders have every time they see a signal</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-empty"></div></div></td>
+          <td class="effort-easy">Easy</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">03</td>
+          <td>FII / DII Institutional Flow Tracker</td>
+          <td style="color:var(--muted);font-size:11px">Unique data no other Indian scanner shows — strong moat</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-empty"></div></div></td>
+          <td class="effort-med">Medium</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">04</td>
+          <td>Weekly Email Digest</td>
+          <td style="color:var(--muted);font-size:11px">Engagement even on days they don't log in; reminds them they're paying for value</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-empty"></div></div></td>
+          <td class="effort-easy">Easy</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">05</td>
+          <td>Sector Rotation Heatmap</td>
+          <td style="color:var(--muted);font-size:11px">Context for market conditions — users open app to check it daily</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-empty"></div><div class="imp-dot imp-empty"></div></div></td>
+          <td class="effort-easy">Easy</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">06</td>
+          <td>Custom Price Level Alerts</td>
+          <td style="color:var(--muted);font-size:11px">Personalisation = stickiness; harder to cancel when alerts are set up</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-empty"></div><div class="imp-dot imp-empty"></div></div></td>
+          <td class="effort-med">Medium</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">07</td>
+          <td>Open Trades Portfolio Heatmap</td>
+          <td style="color:var(--muted);font-size:11px">Visual P&L overview drives daily opens; complements existing journal</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-empty"></div><div class="imp-dot imp-empty"></div></div></td>
+          <td class="effort-easy">Easy</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">08</td>
+          <td>Similar Chart Pattern Finder</td>
+          <td style="color:var(--muted);font-size:11px">Increases time on signal detail pages and cross-discovery</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-empty"></div><div class="imp-dot imp-empty"></div><div class="imp-dot imp-empty"></div></div></td>
+          <td class="effort-hard">Hard</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">09</td>
+          <td>Multi-Timeframe Confluence Score</td>
+          <td style="color:var(--muted);font-size:11px">Weekly + daily alignment gives traders more confidence in signals</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-filled m"></div><div class="imp-dot imp-empty"></div><div class="imp-dot imp-empty"></div><div class="imp-dot imp-empty"></div></div></td>
+          <td class="effort-med">Medium</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:11px">10</td>
+          <td>Community Trade Ideas + Leaderboard</td>
+          <td style="color:var(--muted);font-size:11px">Social proof + switching cost — strongest long-term retention</td>
+          <td><div class="impact-impact"><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div><div class="imp-dot imp-filled h"></div></div></td>
+          <td class="effort-hard">Hard</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- TL;DR -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="section">
+    <div style="border:1px solid var(--border-hi);border-radius:12px;padding:32px;background:var(--bg2);position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2),transparent)"></div>
+      <div style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:16px">TL;DR — Build Order</div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.03em;line-height:1.4;margin-bottom:20px">
+        Start with <em style="font-family:'Instrument Serif',serif;font-style:italic;color:var(--accent)">alerts + position sizer</em>.<br>
+        Add <em style="font-family:'Instrument Serif',serif;font-style:italic;color:var(--accent2)">FII flow + weekly digest</em>.<br>
+        Build <em style="font-family:'Instrument Serif',serif;font-style:italic;color:var(--breakout)">community</em> when you have 200+ active users.
+      </div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.8;max-width:640px">
+        The scanner is the hook — but <strong style="color:var(--text)">alerts are what keep users subscribed</strong>. Every day they miss a signal because they weren't watching the screen, they question why they're paying. Close that gap first. Position sizing and FII flow are <strong style="color:var(--text)">differentiation</strong> that no competitor offers in one place. Community comes last but creates the deepest lock-in.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>
+      <strong>SignalSky</strong> · Internal Feature Roadmap<br>
+      <span style="opacity:0.5">Generated March 2026 · Not for distribution</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

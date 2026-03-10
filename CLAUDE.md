@@ -262,6 +262,92 @@ DIRECT_URL=            # Direct connection (for migrations)
 - **Feedback** — userId, category (bug/feature/general), message, isRead
 - **LifetimeDeal** — cap, sold (tracks lifetime deal availability)
 
+## Scan Pipeline — "Reset & Reclaim" Strategy
+
+### Strategy Logic
+A signal triggers when a stock:
+1. Hit a **Pre-Set ATH** (all-time high before the most recent EMA200 reset)
+2. **Pulled back below EMA200** (the "reset")
+3. **Reclaimed above EMA200** (the "reclaim")
+4. Is currently trading **within range of the pre-set ATH**
+
+### Key Files
+- `lib/scan-pipeline.ts` — Core scan logic, runs via cron or admin panel
+- `lib/data/signals.ts` — Data access layer (read-time filters, chart data)
+- `app/api/cron/india-eod/route.ts` — India EOD cron (Yahoo .NS → NSE)
+- `app/api/cron/us-eod/route.ts` — US EOD cron
+- `app/api/admin/scan/run/route.ts` — Manual scan trigger from admin panel
+- `app/api/admin/sync/india/backfill/route.ts` — Historical data backfill (default 10 years, max 20)
+- `app/api/admin/sync/us/backfill/route.ts` — Same for US
+
+### Pre-Set ATH Detection (PostgreSQL SQL in `lib/scan-pipeline.ts`)
+Uses PostgreSQL `LAG()` window function to detect the exact day price crossed from above → below EMA200:
+
+```sql
+bar_states → detects above/below EMA200 per bar using LAG()
+break_start → DISTINCT ON (symbol) most recent day where above_ema=false AND prev_above_ema=true
+              (i.e., first day of the most recent pullback below EMA200)
+ath_before_break → MAX(high) from ALL bars BEFORE break_start_date (this is the pre-set ATH)
+ath_data → exact date when that high was recorded
+```
+
+**No date cap on the SQL** — it queries ALL available data in `daily_bars`. History depth depends on what was loaded via backfill.
+
+### Signal Storage vs Display Filtering
+- **Scan writes ALL above-EMA200 stocks** with a valid pre-set ATH (no range filter at write time)
+- **Scanner page (`getSignals`)** filters at read time: `distance_pct BETWEEN -5 AND 15`
+  - `-5` allows up to 5% above pre-set ATH (breakout stocks)
+  - `15` excludes stocks more than 15% below pre-set ATH
+- **Watchlist** reads signals without the range filter — stocks added to watchlist remain visible even when they drift out of range
+
+### Heat Levels (distance from pre-set ATH)
+- `breakout` — at or above ATH (distancePct ≤ 0)
+- `boiling` — 0–2% below ATH
+- `simmering` — 2–5% below ATH
+- `cooling` — >5% below ATH (stored but filtered out of scanner at >15%)
+
+### Break Date & EMA200 at Break (`lib/data/signals.ts` — `getSignalChart`)
+For the signal detail chart and "Why This Triggered" section:
+- **`breakDate`** — FIRST day (scanning FORWARD from preSetATHDate) where `close < EMA200`
+- **`breakEma200`** — EMA200 value on that specific break date (NOT the current EMA200)
+- **`reclaimDate`** — Most recent day (scanning BACKWARD) where `close >= EMA200` AND previous day `close < EMA200` (the most recent cross from below → above)
+
+```typescript
+// Forward scan for FIRST break after pre-set ATH date
+for (let i = 0; i < bars.length; i++) {
+  if (Number(bars[i].close) < ema) { breakDate = ...; breakEma200 = ema; break }
+}
+// Backward scan for most recent reclaim
+for (let i = bars.length - 1; i >= 1; i--) {
+  if (bars[i].close >= ema && bars[i-1].close < prevEma) { reclaimDate = ...; break }
+}
+```
+
+The `preSetATHDate` is stored in `signal.details.preSetATHDate` and used as the starting point for `daily_bars` queries in `getSignalChart`.
+
+### Data Depth
+- **Cron jobs** (daily delta): fallback to 30 days if no prior data exists — for day-to-day updates only
+- **Backfill routes**: fetch up to 20 years (default 10 years), smart gap detection per symbol
+- **EMA200 needs 200+ trading days** (~10 months) — must run backfill before scanning
+- **Pre-set ATH detection** may need 2–3+ years depending on when the last reset occurred
+
+### Cron Concurrency
+Both cron routes use `CONCURRENCY = 15` (15 concurrent Yahoo Finance fetches per batch):
+```typescript
+for (let i = 0; i < symbols.length; i += CONCURRENCY) {
+  await Promise.allSettled(symbols.slice(i, i + CONCURRENCY).map(processSymbol))
+}
+```
+This keeps India EOD under 60s (Vercel Hobby plan hard limit). Do NOT use sequential loops with `await` per symbol — that causes `FUNCTION_INVOCATION_TIMEOUT`.
+
+### revalidateTag in Next.js 16
+`revalidateTag()` requires 2 arguments in Next.js 16 TypeScript types. Always pass an empty object as second arg:
+```typescript
+revalidateTag("signals", {})       // ✓ correct
+revalidateTag("signals")           // ✗ TS error: Expected 2 arguments
+```
+Do NOT pass `{ expire: 0 }` — that is PPR-only syntax.
+
 ## Known Gotchas
 
 1. **Supabase Auth trigger creates users** — Users may exist in `public.users` before `getSession()` runs. The upsert `update: {}` block won't set `trialEndsAt`. This is handled by a follow-up check in `lib/auth.ts`.
@@ -293,6 +379,10 @@ DIRECT_URL=            # Direct connection (for migrations)
 14. **Mobile sidebar auto-close** — `app/(dashboard)/dashboard-shell.tsx` uses a `NavLink` wrapper component that calls `setOpenMobile(false)` from `useSidebar()` on click. All sidebar nav items use `NavLink` instead of `Link` directly.
 
 15. **iOS Safari zoom prevention** — `app/layout.tsx` exports `viewport` with `maximumScale: 1, userScalable: false`. All search/filter inputs use `text-[16px] sm:text-xs` (16px on mobile prevents auto-zoom, small on desktop).
+
+16. **`getSessionForApi()` uses `getUser()` not `getSession()`** — `lib/auth.ts` has two auth helpers: `getSession()` (for dashboard pages, does DB upsert) and `getSessionForApi()` (for API routes). The API helper uses `supabase.auth.getUser()` which validates with the Supabase Auth server — NOT `getSession()` which only reads cookies and can be spoofed. Never switch `getSessionForApi()` back to `getSession()`.
+
+17. **Pre-set ATH ≠ All-Time High** — The pre-set ATH is the MAX(high) from BEFORE the most recent pullback below EMA200, NOT the absolute all-time high. A stock may have made a new ATH after recovering — only the high from before the most recent reset counts. This is what the LAG-based SQL detects in `lib/scan-pipeline.ts`.
 
 
 ## Rules
