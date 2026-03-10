@@ -70,8 +70,8 @@ export async function GET(req: NextRequest) {
     // Step 2: Run strategy scan in-process
     try {
       results.scanResult = await runScanForMarket("india")
-      revalidateTag("signals")
-      revalidateTag("market-health")
+      revalidateTag("signals", {})
+      revalidateTag("market-health", {})
       console.log(`[cron/india-eod] scan complete:`, results.scanResult)
     } catch (e: any) {
       results.errors.push(`scan failed: ${e.message?.slice(0, 80)}`)

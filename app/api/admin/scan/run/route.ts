@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
     const totalSignals = results.reduce((sum, r) => sum + r.signals, 0)
     const totalSymbols = results.reduce((sum, r) => sum + r.total, 0)
 
-    revalidateTag("signals")
-    revalidateTag("market-health")
+    revalidateTag("signals", {})
+    revalidateTag("market-health", {})
 
     const marketLabel = market === "all" ? "India + US" : market.toUpperCase()
     console.log(`[scan/run] ${marketLabel}: ${totalSignals} signals from ${totalSymbols} symbols`)

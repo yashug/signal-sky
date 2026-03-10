@@ -100,7 +100,7 @@ async function handleOrderCompleted(payload: any) {
 
   if (isLifetime) {
     await incrementLifetimeDeal()
-    revalidateTag("lifetime-deals")
+    revalidateTag("lifetime-deals", {})
   }
 
   console.log(`[payments/webhook] One-time order activated for user ${subscription.userId}`)
