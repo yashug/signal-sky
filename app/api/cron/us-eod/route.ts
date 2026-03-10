@@ -38,7 +38,8 @@ export async function GET(req: NextRequest) {
     })
     const symbols = [...new Set(members.map((m) => m.symbol))]
 
-    for (const symbol of symbols) {
+    const CONCURRENCY = 10
+    const processSymbol = async (symbol: string) => {
       try {
         const lastDate = await getLastBarDate(symbol, "US")
         const from = lastDate
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
 
         if (from >= to) {
           results.symbolsProcessed++
-          continue
+          return
         }
 
         const candles = await getYahooDailyCandles(symbol, from, to)
@@ -60,10 +61,13 @@ export async function GET(req: NextRequest) {
           }
         }
         results.symbolsProcessed++
-        await new Promise((r) => setTimeout(r, 150))
       } catch (e: any) {
         results.errors.push(`${symbol}: ${e.message?.slice(0, 80)}`)
       }
+    }
+
+    for (let i = 0; i < symbols.length; i += CONCURRENCY) {
+      await Promise.allSettled(symbols.slice(i, i + CONCURRENCY).map(processSymbol))
     }
 
     // Step 2: Run strategy scan in-process
