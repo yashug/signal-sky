@@ -256,6 +256,7 @@ export function SignalDetailClient({
       date: (chartData as any).dates?.[i]
         ? new Date((chartData as any).dates[i]).toLocaleDateString("en-US", {
             month: "short",
+            day: "numeric",
             year: "2-digit",
           })
         : String(i + 1),
@@ -266,8 +267,18 @@ export function SignalDetailClient({
 
   const isAboveEma = signal.price > signal.ema200
   const currency = signal.exchange === "NSE" ? "\u20B9" : "$"
-  const breakDateStr = signal.details?.breakDate as string | undefined
   const athDateStr = signal.details?.preSetATHDate as string | undefined
+  const breakDateStr = serverChartData?.breakDate
+  const breakEma200 = serverChartData?.breakEma200
+  const reclaimDateStr = serverChartData?.reclaimDate
+
+  function fmtDate(dateStr: string) {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -468,22 +479,27 @@ export function SignalDetailClient({
                   </span>{" "}
                   hit an all-time high of{" "}
                   <span className="font-mono text-foreground">
-                    {currency}
-                    {signal.ath.toLocaleString()}
+                    {currency}{signal.ath.toLocaleString()}
                   </span>
+                  {athDateStr && (
+                    <> on <span className="font-mono text-foreground/70">{fmtDate(athDateStr)}</span></>
+                  )}
                   , then pulled back below its 200-day EMA (
                   <span className="font-mono text-foreground">
-                    {currency}
-                    {signal.ema200.toLocaleString()}
+                    {currency}{(breakEma200 ?? signal.ema200).toLocaleString()}
                   </span>
-                  ) — a classic &ldquo;reset.&rdquo;
+                  ){breakDateStr ? (
+                    <> on <span className="font-mono text-foreground/70">{fmtDate(breakDateStr)}</span></>
+                  ) : null}{" "}— a classic &ldquo;reset.&rdquo;
                 </p>
                 <p>
-                  The stock has since reclaimed the EMA 200 and is now trading
-                  at{" "}
+                  The stock reclaimed the EMA 200 on{" "}
+                  <span className="font-mono text-foreground/70">
+                    {reclaimDateStr ? fmtDate(reclaimDateStr) : fmtDate(signal.signalDate)}
+                  </span>{" "}
+                  and is now trading at{" "}
                   <span className="font-mono text-foreground">
-                    {currency}
-                    {signal.price.toLocaleString()}
+                    {currency}{signal.price.toLocaleString()}
                   </span>
                   , just{" "}
                   <span

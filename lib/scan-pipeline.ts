@@ -62,12 +62,39 @@ export async function runScanForMarket(market: "india" | "us") {
       WHERE exchange = $1 AND symbol = ANY($2::text[])
       ORDER BY symbol, date DESC
     ),
-    ath_data AS (
-      SELECT DISTINCT ON (symbol)
-        symbol, high AS ath, date AS ath_date
+    -- Detect the day price first crossed FROM above EMA200 TO below EMA200
+    -- (the start of the most recent "reset" period)
+    bar_states AS (
+      SELECT
+        symbol, date,
+        (close::numeric >= ema200::numeric) AS above_ema,
+        LAG(close::numeric >= ema200::numeric) OVER (PARTITION BY symbol ORDER BY date) AS prev_above_ema
       FROM daily_bars
-      WHERE exchange = $1 AND symbol = ANY($2::text[])
-      ORDER BY symbol, high DESC, date DESC
+      WHERE exchange = $1 AND symbol = ANY($2::text[]) AND ema200 IS NOT NULL
+    ),
+    break_start AS (
+      SELECT DISTINCT ON (symbol)
+        symbol, date AS break_start_date
+      FROM bar_states
+      WHERE NOT above_ema AND prev_above_ema
+      ORDER BY symbol, date DESC
+    ),
+    -- Pre-set ATH = max high from before the most recent reset
+    ath_before_break AS (
+      SELECT db.symbol, MAX(db.high) AS ath
+      FROM daily_bars db
+      JOIN break_start bs ON bs.symbol = db.symbol AND db.date < bs.break_start_date
+      WHERE db.exchange = $1
+      GROUP BY db.symbol
+    ),
+    ath_data AS (
+      SELECT DISTINCT ON (a.symbol)
+        a.symbol, a.ath, db.date AS ath_date
+      FROM ath_before_break a
+      JOIN daily_bars db ON db.symbol = a.symbol AND db.exchange = $1
+        AND db.high = a.ath
+      JOIN break_start bs ON bs.symbol = a.symbol AND db.date < bs.break_start_date
+      ORDER BY a.symbol, db.date DESC
     ),
     vol20 AS (
       SELECT db.symbol, AVG(v.volume::numeric) AS avg_vol
@@ -118,9 +145,10 @@ export async function runScanForMarket(market: "india" | "us") {
 
     if (close <= ema200 || ath <= 0) continue
 
+    const distancePct = ((ath - close) / ath) * 100
+
     const memberSymbol = dbToMember.get(row.symbol) ?? row.symbol
     const heat = computeHeat(close, ath)
-    const distancePct = ((ath - close) / ath) * 100
     const volSurge = avgVol && avgVol > 0 ? volume / avgVol : null
 
     signalsToCreate.push({

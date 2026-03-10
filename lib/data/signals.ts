@@ -34,6 +34,7 @@ export const getSignals = unstable_cache(
           (SELECT um.name FROM universe_members um WHERE um.symbol = s.symbol LIMIT 1) as member_name
         FROM signals s
         WHERE s.is_active = true
+          AND s.distance_pct BETWEEN -5 AND 15
         ${univSQL}
         ORDER BY s.distance_pct ASC
         LIMIT 500
@@ -42,12 +43,14 @@ export const getSignals = unstable_cache(
         SELECT COUNT(*)::int as count
         FROM signals s
         WHERE s.is_active = true
+          AND s.distance_pct BETWEEN -5 AND 15
         ${univSQL}
       `) as Promise<[{ count: number }]>,
       prisma.$queryRawUnsafe(`
         SELECT s.heat, COUNT(*)::int as count
         FROM signals s
         WHERE s.is_active = true
+          AND s.distance_pct BETWEEN -5 AND 15
         ${univSQL}
         GROUP BY s.heat
       `) as Promise<{ heat: string; count: number }[]>,
@@ -149,7 +152,7 @@ export const getLastScanTime = unstable_cache(
 export const getSignalChart = unstable_cache(
   async (signalId: string): Promise<ApiSignalChart> => {
     const signal = await prisma.signal.findUnique({ where: { id: signalId } })
-    if (!signal) return { priceHistory: [], ema200History: [], dates: [], ath: null }
+    if (!signal) return { priceHistory: [], ema200History: [], dates: [], ath: null, breakDate: null, breakEma200: null, reclaimDate: null }
 
     const barSymbol =
       signal.exchange === "NSE"
@@ -169,11 +172,43 @@ export const getSignalChart = unstable_cache(
       orderBy: { date: "asc" },
     })
 
+    // breakDate = FIRST day after the pre-set ATH that close dropped below EMA200
+    // breakEma200 = the EMA200 value on that specific break date
+    // reclaimDate = most recent day price crossed from below to above EMA200
+    let breakDate: string | null = null
+    let breakEma200: number | null = null
+    let reclaimDate: string | null = null
+
+    // Scan FORWARD from bar[0] (starts at preSetATHDate) to find the first break
+    for (let i = 0; i < bars.length; i++) {
+      const ema = bars[i].ema200 ? Number(bars[i].ema200) : null
+      if (!ema) continue
+      if (Number(bars[i].close) < ema) {
+        breakDate = bars[i].date.toISOString().split("T")[0]
+        breakEma200 = ema
+        break
+      }
+    }
+
+    // Scan BACKWARD from end to find the most recent cross from below → above EMA200
+    for (let i = bars.length - 1; i >= 1; i--) {
+      const ema = bars[i].ema200 ? Number(bars[i].ema200) : null
+      const prevEma = bars[i - 1].ema200 ? Number(bars[i - 1].ema200) : null
+      if (!ema || !prevEma) continue
+      if (Number(bars[i].close) >= ema && Number(bars[i - 1].close) < prevEma) {
+        reclaimDate = bars[i].date.toISOString().split("T")[0]
+        break
+      }
+    }
+
     return {
       priceHistory: bars.map((b) => Number(b.close)),
       ema200History: bars.map((b) => (b.ema200 ? Number(b.ema200) : null)),
       dates: bars.map((b) => b.date.toISOString().split("T")[0]),
       ath: details?.preSetATH ? Number(details.preSetATH) : null,
+      breakDate,
+      breakEma200,
+      reclaimDate,
     }
   },
   ["signal-chart"],

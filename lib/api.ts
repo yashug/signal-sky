@@ -70,6 +70,9 @@ export type ApiSignalChart = {
   ema200History: (number | null)[]
   dates: string[]
   ath: number | null
+  breakDate: string | null
+  breakEma200: number | null
+  reclaimDate: string | null
 }
 
 export type ApiSymbolResult = {
