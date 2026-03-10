@@ -3,22 +3,14 @@ import { revalidateTag } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
 import { upsertDailyBars, getLastBarDate, updateMovingAverages } from "@/lib/market-data/store"
-import { exec } from "child_process"
-import path from "path"
-
-const INDIA_UNIVERSES = [
-  "nifty50", "niftynext50", "nifty200",
-  "niftymidcap50", "niftymidcap100",
-  "niftysmallcap50", "niftysmallcap100",
-  "niftybank",
-]
+import { runScanForMarket, INDIA_UNIVERSES } from "@/lib/scan-pipeline"
 
 /**
  * GET /api/cron/india-eod
  *
  * Automated India EOD pipeline: sync daily bars + run strategy scan.
  * Called by Vercel Cron at 10:30 UTC (4:00 PM IST) Mon–Fri.
- * Auth: CRON_SECRET header.
+ * Auth: Vercel sends Authorization: Bearer {CRON_SECRET} automatically.
  */
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization")
@@ -34,7 +26,7 @@ export async function GET(req: NextRequest) {
     barsInserted: 0,
     skipped: 0,
     errors: [] as string[],
-    scanTriggered: false,
+    scanResult: null as any,
   }
 
   try {
@@ -75,32 +67,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Step 2: Trigger strategy scan via cron-pipeline worker
+    // Step 2: Run strategy scan in-process
     try {
-      const apiDir = path.resolve(process.cwd(), "api")
-      exec(
-        `npx tsx src/workers/cron-pipeline.ts scan-india`,
-        { cwd: apiDir, env: { ...process.env } },
-        (error, stdout, stderr) => {
-          if (error) console.error(`[cron/india-eod] scan error:`, error.message)
-          if (stdout) console.log(`[cron/india-eod] scan stdout:`, stdout.slice(-500))
-          if (stderr) console.error(`[cron/india-eod] scan stderr:`, stderr.slice(-500))
-
-          try {
-            revalidateTag("signals", { expire: 0 })
-            revalidateTag("market-health", { expire: 0 })
-            console.log(`[cron/india-eod] cache revalidated`)
-          } catch (e: any) {
-            console.error(`[cron/india-eod] revalidation failed:`, e.message)
-          }
-        }
-      )
-      results.scanTriggered = true
+      results.scanResult = await runScanForMarket("india")
+      revalidateTag("signals")
+      revalidateTag("market-health")
+      console.log(`[cron/india-eod] scan complete:`, results.scanResult)
     } catch (e: any) {
-      results.errors.push(`scan trigger failed: ${e.message?.slice(0, 80)}`)
+      results.errors.push(`scan failed: ${e.message?.slice(0, 80)}`)
+      console.error(`[cron/india-eod] scan error:`, e.message)
     }
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(1)
+    console.log(`[cron/india-eod] done in ${elapsed}s — ${results.barsInserted} bars inserted, ${results.symbolsProcessed} symbols`)
+
     return NextResponse.json({
       success: true,
       market: "india",

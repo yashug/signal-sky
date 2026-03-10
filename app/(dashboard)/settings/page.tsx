@@ -23,8 +23,13 @@ import {
   BugIcon,
   LightbulbIcon,
   MessageCircleIcon,
+  InfinityIcon,
+  CalendarIcon,
+  RefreshCwIcon,
+  XCircleIcon,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
+import { toast } from "sonner"
 
 function ProfileCard() {
   const { user, refresh } = useAuth()
@@ -421,16 +426,231 @@ function FeedbackCard() {
   )
 }
 
-export default function SettingsPage() {
+type SubInfo = {
+  billingInterval: string
+  status: string
+  currentPeriodStart: string | null
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+  isAutopay: boolean
+} | null
+
+function SubscriptionCard() {
   const { user } = useAuth()
   const tier = user?.tier
   const isPro = tier === "PRO" || tier === "INSTITUTIONAL"
+  const isInstitutional = tier === "INSTITUTIONAL"
   const trialEndsAt = user?.trialEndsAt ? new Date(user.trialEndsAt) : null
   const isTrialActive = trialEndsAt ? trialEndsAt.getTime() > Date.now() : false
   const daysRemaining = trialEndsAt
     ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
     : 0
 
+  const [sub, setSub] = useState<SubInfo>(null)
+  const [loadingSub, setLoadingSub] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+
+  useEffect(() => {
+    if (!isPro || isInstitutional) return
+    setLoadingSub(true)
+    fetch("/api/payments/subscription/status")
+      .then((r) => r.json())
+      .then((d) => setSub(d.subscription ?? null))
+      .catch(() => {})
+      .finally(() => setLoadingSub(false))
+  }, [isPro, isInstitutional])
+
+  async function handleCancel() {
+    if (!cancelConfirm) {
+      setCancelConfirm(true)
+      setTimeout(() => setCancelConfirm(false), 5000)
+      return
+    }
+    setCancelling(true)
+    try {
+      const res = await fetch("/api/payments/subscription/cancel", { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to cancel")
+        return
+      }
+      toast("Subscription cancelled — you'll keep access until the end of your billing period")
+      setSub((prev) => prev ? { ...prev, cancelAtPeriodEnd: true } : prev)
+      setCancelConfirm(false)
+    } catch {
+      toast.error("Failed to cancel subscription")
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  function formatDate(iso: string | null) {
+    if (!iso) return "—"
+    return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+  }
+
+  function planLabel() {
+    if (!sub) return "Pro Plan"
+    if (sub.billingInterval === "lifetime") return "Lifetime Plan"
+    if (sub.billingInterval === "yearly") return "Pro — Yearly"
+    return "Pro — Monthly"
+  }
+
+  return (
+    <Card className="border-border/40 bg-surface">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <CreditCardIcon className="size-4 text-primary" />
+          <CardTitle className="text-sm">Subscription</CardTitle>
+        </div>
+        <CardDescription className="text-xs">
+          Manage your plan and billing details.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
+              {isPro ? (
+                sub?.billingInterval === "lifetime"
+                  ? <InfinityIcon className="size-4 text-primary" />
+                  : <SparklesIcon className="size-4 text-primary" />
+              ) : (
+                <CreditCardIcon className="size-4 text-muted-foreground" />
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium">
+                {isPro
+                  ? planLabel()
+                  : isTrialActive
+                    ? `Trial — ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} remaining`
+                    : "Trial Expired"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isPro
+                  ? sub?.cancelAtPeriodEnd
+                    ? `Cancels on ${formatDate(sub.currentPeriodEnd)}`
+                    : sub?.isAutopay
+                      ? `Renews ${formatDate(sub.currentPeriodEnd)}`
+                      : "Full access to all features"
+                  : isTrialActive
+                    ? "Full access during your trial period"
+                    : "Subscribe to continue using SignalSky"}
+              </p>
+            </div>
+          </div>
+          {!isPro && (
+            <Button size="sm" className="h-8 text-xs gap-1" nativeButton={false} render={<Link href="/pricing" />}>
+              <SparklesIcon className="size-3" />
+              {isTrialActive ? "Subscribe Now" : "View Plans"}
+            </Button>
+          )}
+        </div>
+
+        {isPro && !isInstitutional && (
+          <>
+            <Separator />
+
+            {/* Billing details */}
+            {loadingSub ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2Icon className="size-3 animate-spin" />
+                Loading billing info...
+              </div>
+            ) : sub ? (
+              <div className="grid grid-cols-2 gap-y-2 text-xs">
+                <span className="text-muted-foreground">Plan</span>
+                <span className="font-medium capitalize">{sub.billingInterval}</span>
+
+                <span className="text-muted-foreground">Status</span>
+                <span className="font-medium capitalize">
+                  {sub.cancelAtPeriodEnd ? "Cancels at period end" : sub.status}
+                </span>
+
+                {sub.currentPeriodStart && (
+                  <>
+                    <span className="text-muted-foreground">Started</span>
+                    <span className="font-mono">{formatDate(sub.currentPeriodStart)}</span>
+                  </>
+                )}
+
+                {sub.currentPeriodEnd && sub.billingInterval !== "lifetime" && (
+                  <>
+                    <span className="text-muted-foreground">
+                      {sub.cancelAtPeriodEnd ? "Access until" : "Next renewal"}
+                    </span>
+                    <span className="font-mono">{formatDate(sub.currentPeriodEnd)}</span>
+                  </>
+                )}
+
+                {sub.isAutopay && (
+                  <>
+                    <span className="text-muted-foreground">Autopay</span>
+                    <span className="flex items-center gap-1 text-bull">
+                      <RefreshCwIcon className="size-3" />
+                      UPI Mandate active
+                    </span>
+                  </>
+                )}
+              </div>
+            ) : null}
+
+            {/* Cancel / resubscribe */}
+            {sub && sub.isAutopay && !sub.cancelAtPeriodEnd && (
+              <div className="pt-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs text-muted-foreground hover:text-bear gap-1.5"
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                >
+                  {cancelling ? (
+                    <Loader2Icon className="size-3 animate-spin" />
+                  ) : (
+                    <XCircleIcon className="size-3" />
+                  )}
+                  {cancelConfirm ? "Tap again to confirm cancellation" : "Cancel subscription"}
+                </Button>
+              </div>
+            )}
+
+            {sub?.cancelAtPeriodEnd && (
+              <div className="rounded-md border border-border/40 bg-muted/30 px-3 py-2">
+                <p className="text-xs text-muted-foreground">
+                  Your subscription is cancelled. You have access until <span className="font-medium text-foreground">{formatDate(sub.currentPeriodEnd)}</span>.
+                  {" "}<Link href="/pricing" className="text-primary hover:underline">Resubscribe</Link> anytime.
+                </p>
+              </div>
+            )}
+
+            {!sub && !loadingSub && (
+              <div className="grid grid-cols-2 gap-y-1.5 text-xs">
+                {["All Nifty indices + S&P 100 & NASDAQ 100", "Unlimited backtests", "Unlimited trade journal", "Priority support"].map((f) => (
+                  <div key={f} className="flex items-center gap-1.5 text-muted-foreground">
+                    <CheckIcon className="size-3 text-bull" />
+                    {f}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {isInstitutional && (
+          <>
+            <Separator />
+            <p className="text-xs text-muted-foreground">Institutional access — managed by your organisation.</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-6 px-4 sm:px-6 py-5 max-w-2xl">
       <div className="flex items-center gap-3">
@@ -449,67 +669,7 @@ export default function SettingsPage() {
       <ProfileCard />
 
       {/* Subscription */}
-      <Card className="border-border/40 bg-surface">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <CreditCardIcon className="size-4 text-primary" />
-            <CardTitle className="text-sm">Subscription</CardTitle>
-          </div>
-          <CardDescription className="text-xs">
-            Manage your plan and billing details.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-                {isPro ? (
-                  <SparklesIcon className="size-4 text-primary" />
-                ) : (
-                  <CreditCardIcon className="size-4 text-muted-foreground" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-medium">
-                  {isPro ? "Pro Plan" : isTrialActive ? `Trial — ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} remaining` : "Trial Expired"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {isPro
-                    ? "Full access to all features"
-                    : isTrialActive
-                      ? "Full access during your trial period"
-                      : "Subscribe to continue using SignalSky"}
-                </p>
-              </div>
-            </div>
-            {!isPro && (
-              <Button size="sm" className="h-8 text-xs gap-1" nativeButton={false} render={<Link href="/pricing" />}>
-                <SparklesIcon className="size-3" />
-                {isTrialActive ? "Subscribe Now" : "View Plans"}
-              </Button>
-            )}
-          </div>
-
-          {isPro && (
-            <div className="mt-4 space-y-1.5">
-              <Separator />
-              <div className="pt-2 grid grid-cols-2 gap-y-1.5 text-xs">
-                {[
-                  "All Nifty indices + S&P 100 & NASDAQ 100",
-                  "Unlimited backtests",
-                  "Unlimited trade journal",
-                  "Priority support",
-                ].map((f) => (
-                  <div key={f} className="flex items-center gap-1.5 text-muted-foreground">
-                    <CheckIcon className="size-3 text-bull" />
-                    {f}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <SubscriptionCard />
 
       {/* Appearance */}
       <Card className="border-border/40 bg-surface">

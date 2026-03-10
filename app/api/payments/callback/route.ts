@@ -5,7 +5,7 @@ import { LIFETIME_DEAL } from "@/lib/plans"
 
 /**
  * GET /api/payments/callback?orderId=...
- * PhonePe redirects the user here after payment.
+ * PhonePe redirects the user here after payment (one-time or subscription setup).
  * Verifies payment status and activates the subscription.
  */
 export async function GET(req: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Check payment status with PhonePe
+    // Verify the setup/payment order with PhonePe
     const status = await getOrderStatus(orderId)
 
     if (status.state !== "COMPLETED") {
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/pricing?error=payment_failed`)
     }
 
-    // Find the subscription record we created during checkout
+    // Find the subscription record
     const subscription = await prisma.subscription.findFirst({
       where: { paymentOrderId: orderId },
       include: { user: true },
@@ -36,30 +36,40 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/pricing?error=order_not_found`)
     }
 
+    // Already activated (e.g., by webhook arriving first)
+    if (subscription.status === "active") {
+      return NextResponse.redirect(`${appUrl}/scanner?payment=success`)
+    }
+
     const isLifetime = subscription.billingInterval === "lifetime"
     const now = new Date()
 
-    // Activate the subscription
+    // If user had a future period end (cancelled and resubscribed), extend from there
+    const base = !isLifetime && subscription.currentPeriodEnd && subscription.currentPeriodEnd > now
+      ? subscription.currentPeriodEnd
+      : now
+
+    const periodEnd = isLifetime
+      ? new Date("2099-12-31")
+      : subscription.billingInterval === "yearly"
+        ? new Date(base.getTime() + 365 * 24 * 60 * 60 * 1000)
+        : new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000)
+
     await prisma.subscription.update({
       where: { id: subscription.id },
       data: {
         status: "active",
         currentPeriodStart: now,
-        currentPeriodEnd: isLifetime
-          ? new Date("2099-12-31")
-          : subscription.billingInterval === "yearly"
-            ? new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
-            : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        currentPeriodEnd: periodEnd,
+        cancelAtPeriodEnd: false,
       },
     })
 
-    // Upgrade user to PRO
     await prisma.user.update({
       where: { id: subscription.userId },
       data: { tier: "PRO" },
     })
 
-    // Increment lifetime deal counter if applicable
     if (isLifetime) {
       try {
         await prisma.lifetimeDeal.updateMany({
@@ -71,7 +81,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    console.log(`[payments/callback] Activated ${subscription.billingInterval} subscription for user ${subscription.userId}`)
+    console.log(`[payments/callback] Activated ${subscription.billingInterval} for user ${subscription.userId}`)
+
+    // For autopay subscriptions, verify mandate was registered with PhonePe
+    if (!isLifetime && subscription.paymentSubscriptionId) {
+      try {
+        const { getSubscriptionStatus } = await import("@/lib/phonepe")
+        const subStatus = await getSubscriptionStatus(subscription.paymentSubscriptionId)
+        console.log(`[payments/callback] PhonePe mandate status for ${subscription.paymentSubscriptionId}:`, JSON.stringify(subStatus))
+      } catch (e: any) {
+        console.warn(`[payments/callback] Could not fetch mandate status: ${e.message}`)
+      }
+    }
+
     return NextResponse.redirect(`${appUrl}/scanner?payment=success`)
   } catch (e: any) {
     console.error("[payments/callback] Error:", e.message)

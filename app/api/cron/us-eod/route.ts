@@ -3,17 +3,14 @@ import { revalidateTag } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
 import { upsertDailyBars, getLastBarDate, updateMovingAverages } from "@/lib/market-data/store"
-import { exec } from "child_process"
-import path from "path"
-
-const US_UNIVERSES = ["sp100", "nasdaq100"]
+import { runScanForMarket, US_UNIVERSES } from "@/lib/scan-pipeline"
 
 /**
  * GET /api/cron/us-eod
  *
  * Automated US EOD pipeline: sync daily bars + run strategy scan.
  * Called by Vercel Cron at 20:30 UTC (2:00 AM IST) Mon–Fri.
- * Auth: CRON_SECRET header.
+ * Auth: Vercel sends Authorization: Bearer {CRON_SECRET} automatically.
  */
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization")
@@ -29,7 +26,7 @@ export async function GET(req: NextRequest) {
     barsInserted: 0,
     skipped: 0,
     errors: [] as string[],
-    scanTriggered: false,
+    scanResult: null as any,
   }
 
   try {
@@ -69,32 +66,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Step 2: Trigger strategy scan via cron-pipeline worker
+    // Step 2: Run strategy scan in-process
     try {
-      const apiDir = path.resolve(process.cwd(), "api")
-      exec(
-        `npx tsx src/workers/cron-pipeline.ts scan-us`,
-        { cwd: apiDir, env: { ...process.env } },
-        (error, stdout, stderr) => {
-          if (error) console.error(`[cron/us-eod] scan error:`, error.message)
-          if (stdout) console.log(`[cron/us-eod] scan stdout:`, stdout.slice(-500))
-          if (stderr) console.error(`[cron/us-eod] scan stderr:`, stderr.slice(-500))
-
-          try {
-            revalidateTag("signals", { expire: 0 })
-            revalidateTag("market-health", { expire: 0 })
-            console.log(`[cron/us-eod] cache revalidated`)
-          } catch (e: any) {
-            console.error(`[cron/us-eod] revalidation failed:`, e.message)
-          }
-        }
-      )
-      results.scanTriggered = true
+      results.scanResult = await runScanForMarket("us")
+      revalidateTag("signals")
+      revalidateTag("market-health")
+      console.log(`[cron/us-eod] scan complete:`, results.scanResult)
     } catch (e: any) {
-      results.errors.push(`scan trigger failed: ${e.message?.slice(0, 80)}`)
+      results.errors.push(`scan failed: ${e.message?.slice(0, 80)}`)
+      console.error(`[cron/us-eod] scan error:`, e.message)
     }
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(1)
+    console.log(`[cron/us-eod] done in ${elapsed}s — ${results.barsInserted} bars inserted, ${results.symbolsProcessed} symbols`)
+
     return NextResponse.json({
       success: true,
       market: "us",

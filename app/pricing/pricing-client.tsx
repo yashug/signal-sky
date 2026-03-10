@@ -15,8 +15,10 @@ import {
   ShieldCheckIcon,
   UsersIcon,
   AlertCircleIcon,
+  Loader2Icon,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 import type { LifetimeDealInfo } from "@/lib/data/deals"
 
 const PRO_FEATURES = [
@@ -50,9 +52,12 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
       if (data.redirectUrl) {
         window.location.href = data.redirectUrl
       } else {
+        const msg = data.error ?? "Failed to initiate payment. Please try again."
+        toast.error(msg)
         setCheckingOut(null)
       }
-    } catch {
+    } catch (e: any) {
+      toast.error("Something went wrong. Please try again.")
       setCheckingOut(null)
     }
   }
@@ -167,9 +172,13 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
               className="w-full h-10 text-xs"
               variant="outline"
               onClick={() => handleCheckout("monthly")}
-              disabled={checkingOut !== null}
+              disabled={checkingOut === "monthly"}
             >
-              <SparklesIcon className="size-3 mr-1" />
+              {checkingOut === "monthly" ? (
+                <Loader2Icon className="size-3 mr-1 animate-spin" />
+              ) : (
+                <SparklesIcon className="size-3 mr-1" />
+              )}
               {checkingOut === "monthly" ? "Redirecting..." : "Go Monthly"}
             </Button>
           </div>
@@ -220,9 +229,13 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
             <Button
               className="w-full h-10 text-xs glow-signal"
               onClick={() => handleCheckout("yearly")}
-              disabled={checkingOut !== null}
+              disabled={checkingOut === "yearly"}
             >
-              <SparklesIcon className="size-3 mr-1" />
+              {checkingOut === "yearly" ? (
+                <Loader2Icon className="size-3 mr-1 animate-spin" />
+              ) : (
+                <SparklesIcon className="size-3 mr-1" />
+              )}
               {checkingOut === "yearly" ? "Redirecting..." : "Upgrade to Pro"}
             </Button>
           </div>
@@ -304,10 +317,14 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
 
             <Button
               className="w-full h-10 text-xs bg-gradient-to-r from-heat-simmering to-heat-boiling text-white hover:brightness-110"
-              disabled={!deal.available || checkingOut !== null}
+              disabled={!deal.available || checkingOut === "lifetime"}
               onClick={() => handleCheckout("lifetime")}
             >
-              <CrownIcon className="size-3 mr-1" />
+              {checkingOut === "lifetime" ? (
+                <Loader2Icon className="size-3 mr-1 animate-spin" />
+              ) : (
+                <CrownIcon className="size-3 mr-1" />
+              )}
               {checkingOut === "lifetime" ? "Redirecting..." : deal.available ? "Claim Lifetime Access" : "Sold Out"}
             </Button>
           </div>

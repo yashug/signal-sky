@@ -115,11 +115,46 @@ After schema changes: run `npx prisma generate` in root AND `cd api && npx prism
 
 ### Subscription & Payments
 - No free tier — only 7-day trial, then must subscribe
-- Plans: Monthly (₹499), Yearly (₹4,999), Lifetime (₹9,999)
+- Plans: Monthly (₹299/mo), Yearly (₹2,999/yr), Lifetime (₹4,999 one-time)
 - Payment via PhonePe Payment Gateway (Indian PG, 0% commission)
 - Flow: `/api/payments/checkout` → PhonePe → `/api/payments/callback` (redirect) + `/api/payments/webhook` (server-to-server)
 - On payment success: user tier → PRO, subscription record activated
-- Lifetime deal has a cap of 100 seats tracked in `lifetime_deals` table
+- Lifetime deal has a cap tracked in `lifetime_deals` table
+
+#### PhonePe Payment Routes
+- `app/api/payments/checkout/route.ts` — creates PhonePe session; monthly/yearly → `createSubscription()`, lifetime → `createPayment()`
+- `app/api/payments/callback/route.ts` — user redirected here after payment; verifies via `getOrderStatus()`, activates subscription
+- `app/api/payments/webhook/route.ts` — server-to-server events from PhonePe; handles setup/redemption/cancel events
+- `app/api/payments/subscription/status/route.ts` — GET billing info for settings page
+- `app/api/payments/subscription/cancel/route.ts` — POST to cancel mandate, sets `cancelAtPeriodEnd: true`
+- `app/api/payments/renewal/route.ts` — POST (cron) to trigger recurring charges via `notifyRedemption()`
+
+#### PhonePe lib (`lib/phonepe.ts`) functions
+- `getToken()` — OAuth2 client_credentials token (cached, auto-refreshed)
+- `createPayment()` — one-time checkout via `POST /checkout/v2/pay` with `paymentFlow.type: "PG_CHECKOUT"`
+- `createSubscription()` — autopay mandate setup via `POST /checkout/v2/pay` with `paymentFlow.type: "SUBSCRIPTION_CHECKOUT_SETUP"`, `subscriptionDetails: { subscriptionType:"RECURRING", productType:"UPI_MANDATE", authWorkflowType:"TRANSACTION", amountType:"FIXED", frequency, maxAmount, expireAt }`
+- `getOrderStatus()` — tries `/subscriptions/v2/order/{id}/status` first, falls back to `/checkout/v2/order/{id}/status`
+- `getSubscriptionStatus()` — GET `/subscriptions/v2/{merchantSubscriptionId}/status`
+- `notifyRedemption()` — POST `/subscriptions/v2/notify` with `autoDebit:true` (pre-debit notification, PhonePe auto-executes after 24h)
+- `executeRedemption()` — POST `/subscriptions/v2/redeem` (direct debit, bypasses 24h window)
+- `cancelSubscription()` — POST `/subscriptions/v2/{id}/cancel`
+
+#### PhonePe Webhook Events handled
+- `checkout.order.completed` / `checkout.order.failed` — one-time lifetime payment
+- `subscription.setup.order.completed` / `subscription.setup.order.failed` — mandate setup result
+- `subscription.redemption.order.completed` / `subscription.redemption.order.failed` — recurring charge result
+- `subscription.cancelled` / `subscription.revoked` — mandate cancelled
+
+#### PhonePe Subscription Gotchas
+- **`checkout` route must use `getSession()` not `getSessionForApi()`** — `getSession()` upserts the user into `public.users`, ensuring the FK on `subscriptions.user_id` doesn't fail with "Null constraint violation"
+- **`subscriptions.id` needs `gen_random_uuid()` DB default** — migration applied; without it Prisma sends NULL for the PK and the insert fails
+- **"Template with name not found" (500)** — PhonePe sandbox requires a subscription/autopay template configured in the merchant dashboard. Until configured, `SUBSCRIPTION_CHECKOUT_SETUP` falls back to regular payment. Card/netbanking recurring (`CARD_MANDATE`, `NB_MANDATE`) also require separate PhonePe merchant account enablement.
+- **Sandbox webhooks don't reach localhost** — use ngrok or similar tunnel to test webhooks locally; callback is the fallback for local dev
+- **`checkout/ui/v2/login/details` 400 on PhonePe checkout page** — PhonePe's own UI call for pre-filling user details; fails in sandbox (no real sessions). Safe to ignore — payment flow completes normally.
+- **Cancel before checkout**: "Template with name not found" when cancelling a subscription that was never registered as a live PhonePe mandate (e.g., sandbox test records). Already in try/catch, non-blocking.
+- **Period extension on resubscribe** — if user cancels (`cancelAtPeriodEnd:true`) then resubscribes before period ends, new `currentPeriodEnd` is calculated from existing `currentPeriodEnd` (not from today). Both callback and webhook `activateSubscription()` handle this.
+- **Autopay `authWorkflowType: "TRANSACTION"`** — first payment IS an actual charge during mandate setup (not penny drop). Looks identical to one-time payment on checkout page. This is correct/expected.
+- **`revalidateTag()` must NOT use `{ expire: 0 }`** — that is PPR-only syntax. Call `revalidateTag("tag")` with no options.
 
 ### User Tiers
 - `FREE` — Default, no access after trial expires
@@ -252,6 +287,12 @@ DIRECT_URL=            # Direct connection (for migrations)
 11. **NEVER use `cacheComponents: true`** — In Next.js 16, `cacheComponents: true` activates global PPR (Partial Pre-Rendering) which silently excludes ALL `app/api/` route handlers from the Vercel build output. Every API call returns a cached 404. Never add this to `next.config.ts`.
 
 12. **Data caching: use `unstable_cache`** — The `"use cache"` directive is the preferred Next.js 16 API, but it requires `cacheComponents: true` which breaks API routes (see above). Use `unstable_cache` from `next/cache` for all server-side data caching in `lib/data/*.ts`. Do NOT use `cacheTag`/`cacheLife` — those only work with `"use cache"`. Do NOT pass `{ expire: 0 }` to `revalidateTag()` — that is PPR-only syntax.
+
+13. **Admin backtest/scan routes run in-process** — `app/api/admin/backtest/run/route.ts` and `app/api/admin/scan/run/route.ts` use in-process execution (Prisma + `runBacktest()`), NOT `exec()`/`child_process`. The Fastify worker scripts they used to shell out to no longer exist. Do NOT add `exec()` calls back.
+
+14. **Mobile sidebar auto-close** — `app/(dashboard)/dashboard-shell.tsx` uses a `NavLink` wrapper component that calls `setOpenMobile(false)` from `useSidebar()` on click. All sidebar nav items use `NavLink` instead of `Link` directly.
+
+15. **iOS Safari zoom prevention** — `app/layout.tsx` exports `viewport` with `maximumScale: 1, userScalable: false`. All search/filter inputs use `text-[16px] sm:text-xs` (16px on mobile prevents auto-zoom, small on desktop).
 
 
 ## Rules
