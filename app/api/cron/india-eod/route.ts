@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     })
     const symbols = [...new Set(members.map((m) => m.symbol))]
 
-    const CONCURRENCY = 10
+    const CONCURRENCY = 15
     const processSymbol = async (yahooSymbol: string) => {
       const dbSymbol = yahooSymbol.replace(/\.NS$/, "")
       try {
