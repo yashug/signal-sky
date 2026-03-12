@@ -37,8 +37,8 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Trade name:</strong> YG IT Global Solutions</li>
             <li><strong>GSTIN:</strong> 36BKTPG1266J1ZS</li>
-            <li><strong>Email:</strong> <a href="mailto:gosulayaswanth2@gmail.com" className="text-primary hover:underline">gosulayaswanth2@gmail.com</a></li>
-            <li><strong>Phone:</strong> <a href="tel:+917207477206" className="text-primary hover:underline">+91 72074 77206</a></li>
+            <li><strong>Email:</strong> <a href="mailto:support@signalsky.app" className="text-primary hover:underline">support@signalsky.app</a></li>
+            <li></li>
           </ul>
 
           <h2>2. Information We Collect</h2>
@@ -101,7 +101,7 @@ export default function PrivacyPage() {
             <li><strong>Deletion:</strong> Request deletion of your account and associated data.</li>
             <li><strong>Portability:</strong> Request your data in a machine-readable format.</li>
           </ul>
-          <p>To exercise these rights, contact us at <a href="mailto:gosulayaswanth2@gmail.com" className="text-primary hover:underline">gosulayaswanth2@gmail.com</a> or call +91 72074 77206.</p>
+          <p>To exercise these rights, contact us at <a href="mailto:support@signalsky.app" className="text-primary hover:underline">support@signalsky.app</a> or call .</p>
 
           <h2>10. Children&apos;s Privacy</h2>
           <p>
@@ -115,7 +115,7 @@ export default function PrivacyPage() {
 
           <h2>12. Contact</h2>
           <p>
-            For privacy-related questions or concerns, contact YG IT Global Solutions — Email: <a href="mailto:gosulayaswanth2@gmail.com" className="text-primary hover:underline">gosulayaswanth2@gmail.com</a>, Phone: <a href="tel:+917207477206" className="text-primary hover:underline">+91 72074 77206</a>.
+            For privacy-related questions or concerns, contact YG IT Global Solutions — Email: <a href="mailto:support@signalsky.app" className="text-primary hover:underline">support@signalsky.app</a>.
           </p>
         </div>
       </main>

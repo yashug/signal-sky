@@ -10,18 +10,24 @@ datasource db {
 // ─── Users (linked to auth.users via Supabase Auth) ─────────────
 
 model User {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email           String?   @unique
-  name            String?
-  image           String?
-  telegramId      String?   @map("telegram_id")
-  telegramHandle  String?   @map("telegram_handle")
-  tier            Tier      @default(FREE)
-  isAdmin         Boolean   @default(false) @map("is_admin")
-  trialEndsAt     DateTime? @map("trial_ends_at")
-  settings        Json      @default("{}")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                      String?   @unique
+  name                       String?
+  image                      String?
+  telegramId                 String?   @map("telegram_id")
+  telegramHandle             String?   @map("telegram_handle")
+  telegramChatId             String?   @map("telegram_chat_id")
+  telegramVerifyToken        String?   @map("telegram_verify_token")
+  telegramVerifyTokenExpiry  DateTime? @map("telegram_verify_token_expiry")
+  emailDigest                String    @default("daily") @map("email_digest")
+  emailMarketing             Boolean   @default(true) @map("email_marketing")
+  emailUnsubscribeToken      String?   @map("email_unsubscribe_token")
+  tier                       Tier      @default(FREE)
+  isAdmin                    Boolean   @default(false) @map("is_admin")
+  trialEndsAt                DateTime? @map("trial_ends_at")
+  settings                   Json      @default("{}")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
 
   watchlistItems   WatchlistItem[]
   journalTrades    JournalTrade[]

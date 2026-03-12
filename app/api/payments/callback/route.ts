@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getOrderStatus } from "@/lib/phonepe"
-import { LIFETIME_DEAL } from "@/lib/plans"
+import { LIFETIME_DEAL, PRO_PLAN } from "@/lib/plans"
 
 /**
  * GET /api/payments/callback?orderId=...
@@ -82,6 +82,21 @@ export async function GET(req: NextRequest) {
     }
 
     console.log(`[payments/callback] Activated ${subscription.billingInterval} for user ${subscription.userId}`)
+
+    // Send invoice email (non-blocking)
+    if (subscription.user.email) {
+      const planName = isLifetime ? "Lifetime Plan" : subscription.billingInterval === "yearly" ? "Pro — Yearly" : "Pro — Monthly"
+      const amount = isLifetime ? PRO_PLAN.price.lifetime : subscription.billingInterval === "yearly" ? PRO_PLAN.price.yearly : PRO_PLAN.price.monthly
+      import("@/lib/email/send").then(({ sendInvoice }) =>
+        sendInvoice({
+          to: subscription.user.email!,
+          userName: subscription.user.name ?? undefined,
+          planName,
+          amount,
+          transactionId: orderId,
+        })
+      ).catch((e) => console.error("[payments/callback] Invoice email error:", e.message))
+    }
 
     // For autopay subscriptions, verify mandate was registered with PhonePe
     if (!isLifetime && subscription.paymentSubscriptionId) {

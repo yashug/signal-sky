@@ -169,8 +169,24 @@ export async function runScanForMarket(market: "india" | "us") {
     })
   }
 
+  let createdSignals: Array<{ id: string; symbol: string; exchange: string; heat: string; price: number; ath: number; ema200: number; distancePct: number }> = []
   if (signalsToCreate.length > 0) {
     await prisma.signal.createMany({ data: signalsToCreate })
+    // Fetch newly created signals so callers can dispatch alerts with IDs
+    const freshSignals = await prisma.signal.findMany({
+      where: { exchange, isActive: true, signalDate },
+      select: { id: true, symbol: true, exchange: true, heat: true, price: true, ath: true, ema200: true, distancePct: true },
+    })
+    createdSignals = freshSignals.map((s) => ({
+      id: s.id,
+      symbol: s.symbol,
+      exchange: s.exchange,
+      heat: s.heat as string,
+      price: Number(s.price),
+      ath: Number(s.ath),
+      ema200: Number(s.ema200),
+      distancePct: Number(s.distancePct),
+    }))
   }
 
   // Update MarketHealth per universe
@@ -200,5 +216,5 @@ export async function runScanForMarket(market: "india" | "us") {
     })
   }
 
-  return { exchange, total: uniqueDbSymbols.length, signals: signalsToCreate.length }
+  return { exchange, total: uniqueDbSymbols.length, signals: signalsToCreate.length, createdSignals }
 }

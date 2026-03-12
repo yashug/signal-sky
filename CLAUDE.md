@@ -385,5 +385,127 @@ Do NOT pass `{ expire: 0 }` — that is PPR-only syntax.
 17. **Pre-set ATH ≠ All-Time High** — The pre-set ATH is the MAX(high) from BEFORE the most recent pullback below EMA200, NOT the absolute all-time high. A stock may have made a new ATH after recovering — only the high from before the most recent reset counts. This is what the LAG-based SQL detects in `lib/scan-pipeline.ts`.
 
 
+## Alert & Notification System
+
+### Overview
+Multi-channel notification system that fires after each EOD scan. Supports immediate signal alerts (Telegram + email), daily/weekly digest emails, invoice receipts on payment, trial expiry reminders, and admin broadcast emails.
+
+| Trigger | Channel | Route/File |
+|---|---|---|
+| After EOD scan | Telegram + Email | `lib/alerts/dispatch.ts` |
+| Daily 7 AM IST | Email digest | `app/api/cron/digest/route.ts` |
+| 2 days before trial ends | Email | `app/api/cron/trial-reminder/route.ts` |
+| Payment success | Email invoice | `app/api/payments/callback` + `webhook` |
+| Admin manual blast | Email | `app/api/admin/alerts/broadcast/route.ts` |
+
+### Environment Variables
+```
+RESEND_API_KEY=re_...                          # Resend email API
+TELEGRAM_BOT_TOKEN=...                         # BotFather token
+TELEGRAM_WEBHOOK_SECRET=...                    # Secret header Telegram sends on every update
+NEXT_PUBLIC_TELEGRAM_BOT_NAME=signalskyin_bot  # Used in deep link URLs
+```
+
+### Email System (Resend)
+- **Domain**: `signalsky.app` — verified on Resend (DKIM + SPF, region: ap-northeast-1)
+- **Transactional sender**: `support@signalsky.app` (alerts, invoices, trial reminders)
+- **Marketing sender**: `hi@signalsky.app` (digest, promos)
+- **Client**: `lib/email/resend.ts` — singleton `getResend()`
+- **Send helpers**: `lib/email/send.ts`
+  - `sendSignalAlert()` — single signal, immediate
+  - `sendDigest()` — daily or weekly batch
+  - `sendInvoice()` — payment receipt with GSTIN
+  - `sendTrialReminder()` — upgrade CTA, sent once per user
+  - `sendWelcome()` — sent on first sign-up
+- **Templates**: `lib/email/templates/` — React Email components (dark theme, `@react-email/components`)
+- All marketing/digest emails include `List-Unsubscribe` header and footer unsubscribe links
+
+### Telegram Bot (`@signalskyin_bot`)
+- **Webhook**: `POST https://signalsky.app/api/telegram/webhook` (excluded from auth middleware in `proxy.ts`)
+- **Secret**: Telegram sends `X-Telegram-Bot-Api-Secret-Token` header on every update — must match `TELEGRAM_WEBHOOK_SECRET` exactly (no trailing newline in env var — use `--value` flag or `printf`, NOT `echo`)
+- **Bot lib**: `lib/telegram.ts`
+  - `sendTelegramMessage(chatId, text)` — sends HTML-formatted message
+  - `generateVerifyToken(userId)` — creates 10-min token, stores on user
+  - `getTelegramDeepLink(token)` — `https://t.me/signalskyin_bot?start=TOKEN`
+  - `formatSignalMessage(opts)` — formats signal with heat emoji, prices, deep link
+
+#### Telegram Verification Flow
+1. User clicks "Connect Telegram" in Settings → `POST /api/alerts/telegram/connect` → returns deep link
+2. Deep link opens `t.me/signalskyin_bot?start=TOKEN`
+3. User taps Start → Telegram POSTs `/start TOKEN` to webhook
+4. Webhook finds user by token (checks expiry), saves `telegramChatId`, creates/activates `AlertPreference` for channel "telegram"
+5. Bot replies "✅ Connected!"
+6. Settings page shows "Connected ✓" on next load
+
+### Alert Dispatch (`lib/alerts/dispatch.ts`)
+Called from cron jobs after scan: `dispatchAlerts(market, createdSignals)`
+- Loads `AlertPreference` rows with `isActive: true`
+- Filters to PRO users + active trial users only
+- Applies each user's `heatFilter` (empty = all heats)
+- Deduplicates via `AlertHistory` — skips if already sent today for this signal+user+channel
+- **Telegram**: batches of 25, 1.1s delay between batches (Telegram limit: 30 msg/sec)
+- **Email**: batches of 50
+- Logs every send attempt to `AlertHistory` with `status: "sent" | "error"`
+- Lazy-generates `emailUnsubscribeToken` (UUID) on User if missing
+
+### Alert Preferences API
+- `GET /api/alerts/preferences` — returns preferences array + `telegramConnected`, `emailDigest`, `emailMarketing`
+- `PATCH /api/alerts/preferences` — upserts preference for a channel, also updates `emailDigest`/`emailMarketing` on User
+- `POST /api/alerts/telegram/connect` — generates verify token, returns deep link
+- `POST /api/alerts/telegram/disconnect` — clears `telegramChatId`, deactivates telegram preference
+
+### Cron Routes
+- `GET /api/cron/digest` — schedule `0 1 * * *` (1 AM UTC = 7 AM IST)
+  - Sends daily digest every day; weekly digest only on Sunday
+  - Only to users with `emailDigest = "daily" | "weekly"` who are PRO or on active trial
+- `GET /api/cron/trial-reminder` — schedule `0 2 * * *` (2 AM UTC)
+  - Finds users with `trialEndsAt` in 2–3 day window
+  - Checks `AlertHistory` for `channel: "trial-reminder"` to avoid re-sending
+  - Only to users with `emailMarketing = true`
+
+### Unsubscribe
+- `GET /api/email/unsubscribe?token=XXX&type=alerts|digest|all` — excluded from auth middleware
+- `type=alerts` → deactivates email AlertPreference
+- `type=digest` → sets `emailDigest = "off"`
+- `type=all` → sets `emailDigest = "off"`, `emailMarketing = false`, deactivates all email preferences
+- Returns plain HTML confirmation page (no JS, works in any email client)
+
+### Admin Broadcast
+- `POST /api/admin/alerts/broadcast` — requires admin session
+- Body: `{ subject, heading, body, ctaLabel?, ctaUrl? }`
+- Targets all PRO + active trial users with `emailMarketing = true`
+- Sends from `hi@signalsky.app` with unsubscribe footer
+
+### New User Fields (added via migration)
+```
+users.telegram_chat_id           TEXT         — linked Telegram chat ID
+users.telegram_verify_token      TEXT         — short-lived token (10 min)
+users.telegram_verify_token_expiry TIMESTAMPTZ
+users.email_digest               TEXT         — 'daily' | 'weekly' | 'off' (default 'daily')
+users.email_marketing            BOOLEAN      — default true
+users.email_unsubscribe_token    TEXT         — UUID, lazy-generated on first email send
+```
+
+### Invoice Email Content
+Sent on every successful payment (callback + webhook). Includes:
+- Plan name + billing interval
+- Amount in ₹
+- PhonePe transaction/order ID
+- Business: YG IT Global Solutions, GSTIN: 36BKTPG1266J1ZS
+- Contact: support@signalsky.app
+
+### Settings Page — Alerts Card
+`app/(dashboard)/settings/page.tsx` → `AlertsCard` component:
+- Telegram: connect/disconnect button, connection status, heat filter toggles, enabled toggle
+- Email: immediate alerts toggle, heat filter, digest cadence (daily/weekly/off), marketing toggle
+- Saves via `PATCH /api/alerts/preferences`
+
+### Known Gotchas
+- **`TELEGRAM_WEBHOOK_SECRET` must have no trailing newline** — use `npx vercel env add ... --value VALUE` not `echo VALUE | vercel env add`. A newline mismatch causes 401 on every Telegram update.
+- **`/start` without token** — bot replies with instructions but does NOT link the account. Account linking requires going through Settings → Connect Telegram to get the deep link with the token.
+- **`scan-pipeline.ts` now returns `createdSignals`** — the return type of `runScanForMarket()` includes `createdSignals: Array<{id, symbol, exchange, heat, price, ath, ema200, distancePct}>`. Cron jobs use this to dispatch alerts.
+- **Alert dispatch is non-blocking** — cron jobs call `dispatchAlerts(...).then(...).catch(...)` so alert failures never break the scan response.
+- **`proxy.ts` exclusions** — `/api/telegram/webhook` and `/api/email/unsubscribe` are excluded from Supabase session middleware so unauthenticated requests (from Telegram servers and email clients) reach the handlers.
+
 ## Rules
 Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.

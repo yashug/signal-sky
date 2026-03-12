@@ -42,8 +42,8 @@ export default function TermsPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Trade name:</strong> YG IT Global Solutions</li>
             <li><strong>GSTIN:</strong> 36BKTPG1266J1ZS</li>
-            <li><strong>Email:</strong> <a href="mailto:gosulayaswanth2@gmail.com" className="text-primary hover:underline">gosulayaswanth2@gmail.com</a></li>
-            <li><strong>Phone:</strong> <a href="tel:+917207477206" className="text-primary hover:underline">+91 72074 77206</a></li>
+            <li><strong>Email:</strong> <a href="mailto:support@signalsky.app" className="text-primary hover:underline">support@signalsky.app</a></li>
+            <li></li>
           </ul>
 
           <h2>3. Description of Service</h2>
@@ -108,7 +108,7 @@ export default function TermsPage() {
 
           <h2>15. Contact</h2>
           <p>
-            For questions about these Terms, contact the Service Provider: YG IT Global Solutions — Email: <a href="mailto:gosulayaswanth2@gmail.com" className="text-primary hover:underline">gosulayaswanth2@gmail.com</a>, Phone: <a href="tel:+917207477206" className="text-primary hover:underline">+91 72074 77206</a>.
+            For questions about these Terms, contact the Service Provider: YG IT Global Solutions — Email: <a href="mailto:support@signalsky.app" className="text-primary hover:underline">support@signalsky.app</a>.
           </p>
         </div>
       </main>

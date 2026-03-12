@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
 import { upsertDailyBars, getLastBarDate, updateMovingAverages } from "@/lib/market-data/store"
 import { runScanForMarket, US_UNIVERSES } from "@/lib/scan-pipeline"
+import { dispatchAlerts } from "@/lib/alerts/dispatch"
 
 /**
  * GET /api/cron/us-eod
@@ -76,6 +77,15 @@ export async function GET(req: NextRequest) {
       revalidateTag("signals", {})
       revalidateTag("market-health", {})
       console.log(`[cron/us-eod] scan complete:`, results.scanResult)
+
+      // Dispatch alerts for new signals (non-blocking)
+      if (results.scanResult?.createdSignals?.length > 0) {
+        dispatchAlerts("us", results.scanResult.createdSignals).then((r) => {
+          console.log(`[cron/us-eod] alerts dispatched:`, r)
+        }).catch((e) => {
+          console.error(`[cron/us-eod] alert dispatch error:`, e.message)
+        })
+      }
     } catch (e: any) {
       results.errors.push(`scan failed: ${e.message?.slice(0, 80)}`)
       console.error(`[cron/us-eod] scan error:`, e.message)

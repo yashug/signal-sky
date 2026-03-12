@@ -27,6 +27,11 @@ import {
   CalendarIcon,
   RefreshCwIcon,
   XCircleIcon,
+  BellIcon,
+  BotIcon,
+  MailIcon,
+  ExternalLinkIcon,
+  ZapIcon,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { toast } from "sonner"
@@ -426,6 +431,325 @@ function FeedbackCard() {
   )
 }
 
+const HEAT_OPTIONS = [
+  { value: "breakout", label: "Breakout", emoji: "🚀" },
+  { value: "boiling", label: "Boiling", emoji: "🔥" },
+  { value: "simmering", label: "Simmering", emoji: "🌡️" },
+  { value: "cooling", label: "Cooling", emoji: "❄️" },
+]
+
+const UNIVERSE_OPTIONS = [
+  { value: "nifty50", label: "Nifty 50" },
+  { value: "niftynext50", label: "Nifty Next 50" },
+  { value: "nifty200", label: "Nifty 200" },
+  { value: "niftymidcap50", label: "Midcap 50" },
+  { value: "niftymidcap100", label: "Midcap 100" },
+  { value: "sp100", label: "S&P 100" },
+  { value: "nasdaq100", label: "NASDAQ 100" },
+]
+
+type AlertPrefs = {
+  preferences: Array<{ id: string; channel: string; heatFilter: string[]; universes: string[]; isActive: boolean }>
+  telegramConnected: boolean
+  emailDigest: string
+  emailMarketing: boolean
+}
+
+function AlertsCard() {
+  const { user } = useAuth()
+  const [prefs, setPrefs] = useState<AlertPrefs | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Local state for editable preferences
+  const [telegramPref, setTelegramPref] = useState<{ heatFilter: string[]; universes: string[]; isActive: boolean } | null>(null)
+  const [emailPref, setEmailPref] = useState<{ heatFilter: string[]; universes: string[]; isActive: boolean } | null>(null)
+  const [emailDigest, setEmailDigest] = useState("daily")
+  const [emailMarketing, setEmailMarketing] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch("/api/alerts/preferences")
+      .then((r) => r.json())
+      .then((data: AlertPrefs) => {
+        setPrefs(data)
+        setEmailDigest(data.emailDigest)
+        setEmailMarketing(data.emailMarketing)
+        const tg = data.preferences.find((p) => p.channel === "telegram")
+        const em = data.preferences.find((p) => p.channel === "email")
+        setTelegramPref(tg ? { heatFilter: tg.heatFilter, universes: tg.universes, isActive: tg.isActive } : { heatFilter: [], universes: [], isActive: true })
+        setEmailPref(em ? { heatFilter: em.heatFilter, universes: em.universes, isActive: em.isActive } : { heatFilter: [], universes: [], isActive: true })
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handleConnectTelegram() {
+    setConnecting(true)
+    try {
+      const res = await fetch("/api/alerts/telegram/connect", { method: "POST" })
+      const data = await res.json()
+      if (data.deepLink) {
+        window.open(data.deepLink, "_blank")
+        toast("Telegram opened — tap Start to connect your account")
+      }
+    } catch {
+      toast.error("Failed to generate Telegram link")
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  async function handleDisconnectTelegram() {
+    setDisconnecting(true)
+    try {
+      await fetch("/api/alerts/telegram/disconnect", { method: "POST" })
+      setPrefs((p) => p ? { ...p, telegramConnected: false } : p)
+      toast("Telegram disconnected")
+    } catch {
+      toast.error("Failed to disconnect")
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  function toggleHeat(pref: "telegram" | "email", heat: string) {
+    if (pref === "telegram" && telegramPref) {
+      const current = telegramPref.heatFilter
+      setTelegramPref({ ...telegramPref, heatFilter: current.includes(heat) ? current.filter((h) => h !== heat) : [...current, heat] })
+    }
+    if (pref === "email" && emailPref) {
+      const current = emailPref.heatFilter
+      setEmailPref({ ...emailPref, heatFilter: current.includes(heat) ? current.filter((h) => h !== heat) : [...current, heat] })
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await Promise.all([
+        telegramPref && fetch("/api/alerts/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channel: "telegram", ...telegramPref, emailDigest, emailMarketing }),
+        }),
+        emailPref && fetch("/api/alerts/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channel: "email", ...emailPref }),
+        }),
+      ])
+      toast("Alert preferences saved")
+    } catch {
+      toast.error("Failed to save preferences")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card className="border-border/40 bg-surface">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <BellIcon className="size-4 text-primary" />
+          <CardTitle className="text-sm">Alerts</CardTitle>
+        </div>
+        <CardDescription className="text-xs">
+          Get notified when new signals appear — via Telegram or email.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2Icon className="size-3 animate-spin" />
+            Loading preferences…
+          </div>
+        ) : (
+          <>
+            {/* ── Telegram ─────────────────────────────── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BotIcon className="size-3.5 text-primary" />
+                  <span className="text-sm font-medium">Telegram</span>
+                </div>
+                {prefs?.telegramConnected ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-bull flex items-center gap-1">
+                      <CheckIcon className="size-3" /> Connected
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-[11px] text-muted-foreground hover:text-bear px-2"
+                      onClick={handleDisconnectTelegram}
+                      disabled={disconnecting}
+                    >
+                      {disconnecting ? <Loader2Icon className="size-3 animate-spin" /> : "Disconnect"}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={handleConnectTelegram}
+                    disabled={connecting}
+                  >
+                    {connecting ? <Loader2Icon className="size-3 animate-spin" /> : <ExternalLinkIcon className="size-3" />}
+                    Connect Telegram
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {prefs?.telegramConnected
+                  ? "You'll receive a message for each new signal matching your filters."
+                  : "Click to open our Telegram bot and tap Start to link your account."}
+              </p>
+              {prefs?.telegramConnected && telegramPref && (
+                <div className="rounded-lg border border-border/30 p-3 space-y-2.5 bg-background/50">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1.5">Heat filter (leave empty = all)</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {HEAT_OPTIONS.map((h) => (
+                        <button
+                          key={h.value}
+                          type="button"
+                          onClick={() => toggleHeat("telegram", h.value)}
+                          className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] transition-all ${
+                            telegramPref.heatFilter.includes(h.value)
+                              ? "border-primary/40 bg-primary/10 text-foreground"
+                              : "border-border/30 bg-background text-muted-foreground hover:border-border/60"
+                          }`}
+                        >
+                          {h.emoji} {h.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Enabled</label>
+                    <button
+                      type="button"
+                      onClick={() => setTelegramPref({ ...telegramPref, isActive: !telegramPref.isActive })}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors ${telegramPref.isActive ? "bg-primary" : "bg-muted"}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${telegramPref.isActive ? "translate-x-4" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* ── Email alerts ─────────────────────────── */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <MailIcon className="size-3.5 text-primary" />
+                <span className="text-sm font-medium">Email</span>
+              </div>
+              {emailPref && (
+                <div className="rounded-lg border border-border/30 p-3 space-y-3 bg-background/50">
+                  {/* Immediate signal alerts toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium">Immediate signal alerts</p>
+                      <p className="text-[11px] text-muted-foreground">Get an email for each new signal</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEmailPref({ ...emailPref, isActive: !emailPref.isActive })}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors ${emailPref.isActive ? "bg-primary" : "bg-muted"}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${emailPref.isActive ? "translate-x-4" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+
+                  {emailPref.isActive && (
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1.5">Heat filter (leave empty = all)</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {HEAT_OPTIONS.map((h) => (
+                          <button
+                            key={h.value}
+                            type="button"
+                            onClick={() => toggleHeat("email", h.value)}
+                            className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] transition-all ${
+                              emailPref.heatFilter.includes(h.value)
+                                ? "border-primary/40 bg-primary/10 text-foreground"
+                                : "border-border/30 bg-background text-muted-foreground hover:border-border/60"
+                            }`}
+                          >
+                            {h.emoji} {h.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Digest cadence */}
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1.5">Signal digest</label>
+                    <div className="flex gap-1.5">
+                      {[
+                        { value: "daily", label: "Daily" },
+                        { value: "weekly", label: "Weekly" },
+                        { value: "off", label: "Off" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setEmailDigest(opt.value)}
+                          className={`inline-flex items-center rounded-md border px-3 py-1 text-[11px] transition-all ${
+                            emailDigest === opt.value
+                              ? "border-primary/40 bg-primary/10 text-foreground"
+                              : "border-border/30 bg-background text-muted-foreground hover:border-border/60"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">Summary of all active signals, sent at 7 AM IST</p>
+                  </div>
+
+                  {/* Marketing toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium">Product updates</p>
+                      <p className="text-[11px] text-muted-foreground">Feature announcements &amp; news</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEmailMarketing(!emailMarketing)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors ${emailMarketing ? "bg-primary" : "bg-muted"}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${emailMarketing ? "translate-x-4" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Save */}
+            <Button
+              size="sm"
+              className="h-7 text-xs gap-1.5"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? <Loader2Icon className="size-3 animate-spin" /> : <ZapIcon className="size-3" />}
+              Save Alert Preferences
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 type SubInfo = {
   billingInterval: string
   status: string
@@ -667,6 +991,9 @@ export default function SettingsPage() {
 
       {/* Profile */}
       <ProfileCard />
+
+      {/* Alerts */}
+      <AlertsCard />
 
       {/* Subscription */}
       <SubscriptionCard />

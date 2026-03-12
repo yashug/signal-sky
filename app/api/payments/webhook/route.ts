@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { revalidateTag } from "next/cache"
 import { prisma } from "@/lib/prisma"
-import { LIFETIME_DEAL } from "@/lib/plans"
+import { LIFETIME_DEAL, PRO_PLAN } from "@/lib/plans"
 
 /**
  * POST /api/payments/webhook
@@ -90,6 +90,7 @@ async function handleOrderCompleted(payload: any) {
 
   const subscription = await prisma.subscription.findFirst({
     where: { paymentOrderId: merchantOrderId },
+    include: { user: { select: { email: true, name: true } } },
   })
   if (!subscription || subscription.status === "active") return
 
@@ -101,6 +102,15 @@ async function handleOrderCompleted(payload: any) {
   if (isLifetime) {
     await incrementLifetimeDeal()
     revalidateTag("lifetime-deals", {})
+  }
+
+  // Send invoice email (non-blocking)
+  if (subscription.user.email) {
+    const planName = isLifetime ? "Lifetime Plan" : subscription.billingInterval === "yearly" ? "Pro — Yearly" : "Pro — Monthly"
+    const amount = isLifetime ? PRO_PLAN.price.lifetime : subscription.billingInterval === "yearly" ? PRO_PLAN.price.yearly : PRO_PLAN.price.monthly
+    import("@/lib/email/send").then(({ sendInvoice }) =>
+      sendInvoice({ to: subscription.user.email!, userName: subscription.user.name ?? undefined, planName, amount, transactionId: merchantOrderId })
+    ).catch((e) => console.error("[payments/webhook] Invoice email error:", e.message))
   }
 
   console.log(`[payments/webhook] One-time order activated for user ${subscription.userId}`)
@@ -121,11 +131,22 @@ async function handleSubscriptionSetupCompleted(payload: any) {
 
   const subscription = await prisma.subscription.findFirst({
     where: { paymentOrderId: merchantOrderId },
+    include: { user: { select: { email: true, name: true } } },
   })
   if (!subscription || subscription.status === "active") return
 
   const now = new Date()
   await activateSubscription(subscription.id, subscription.userId, subscription.billingInterval, now, subscription.currentPeriodEnd)
+
+  // Send invoice email (non-blocking)
+  if (subscription.user.email) {
+    const planName = subscription.billingInterval === "yearly" ? "Pro — Yearly" : "Pro — Monthly"
+    const amount = subscription.billingInterval === "yearly" ? PRO_PLAN.price.yearly : PRO_PLAN.price.monthly
+    import("@/lib/email/send").then(({ sendInvoice }) =>
+      sendInvoice({ to: subscription.user.email!, userName: subscription.user.name ?? undefined, planName, amount, transactionId: merchantOrderId })
+    ).catch((e) => console.error("[payments/webhook] Invoice email error:", e.message))
+  }
+
   console.log(`[payments/webhook] Autopay setup completed for user ${subscription.userId} (${subscription.billingInterval})`)
 }
 
