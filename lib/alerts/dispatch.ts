@@ -5,7 +5,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { sendTelegramMessage, formatSignalMessage } from "@/lib/telegram"
-import { sendSignalAlert } from "@/lib/email/send"
+import { sendBundledAlerts } from "@/lib/email/send"
 import { randomUUID } from "crypto"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://signalsky.app"
@@ -61,51 +61,40 @@ export async function dispatchAlerts(
     return false
   })
 
+  // Filter signals to this market's exchange
+  const marketSignals = signals.filter((s) => s.exchange === exchange)
+  if (marketSignals.length === 0) return { telegramSent: 0, emailSent: 0, errors: 0 }
+
+  // Already-sent lookup for all signals × users today
+  const alreadySentRows = await prisma.alertHistory.findMany({
+    where: {
+      signalId: { in: marketSignals.map((s) => s.id) },
+      sentAt: { gte: today },
+      status: "sent",
+    },
+    select: { userId: true, signalId: true, channel: true },
+  })
+  const alreadySentSet = new Set(alreadySentRows.map((a) => `${a.userId}:${a.signalId}:${a.channel}`))
+
   let telegramSent = 0
   let emailSent = 0
   let errors = 0
 
-  for (const signal of signals) {
-    if (signal.exchange !== exchange) continue
-
-    // Get users who already received this signal today (de-duplicate)
-    const alreadySent = await prisma.alertHistory.findMany({
-      where: {
-        signalId: signal.id,
-        sentAt: { gte: today },
-        status: "sent",
-      },
-      select: { userId: true, channel: true },
-    })
-    const alreadySentSet = new Set(alreadySent.map((a) => `${a.userId}:${a.channel}`))
-
-    // Find matching preferences for this signal
-    const matchingPrefs = activePrefs.filter((p) => {
+  // ── Telegram: one message per signal (unchanged — Telegram is already compact) ──
+  for (const signal of marketSignals) {
+    const telegramPrefs = activePrefs.filter((p) => {
+      if (p.channel !== "telegram" || !p.user.telegramChatId) return false
       if (p.heatFilter.length > 0 && !p.heatFilter.includes(signal.heat as any)) return false
-      if (p.universes.length > 0) {
-        // Check if signal symbol is in one of the user's selected universes
-        // universes filter is a best-effort match — we skip if user has no filter
-      }
       return true
     })
 
-    // Batch: Telegram (max 25 at a time, 33ms between batches to stay under 30/s limit)
-    const telegramPrefs = matchingPrefs.filter(
-      (p) => p.channel === "telegram" && p.user.telegramChatId
-    )
-    const emailPrefs = matchingPrefs.filter(
-      (p) => p.channel === "email" && p.user.email && p.user.emailDigest !== "off"
-    )
-
-    // ── Telegram ─────────────────────────────────────────
     const TELEGRAM_BATCH = 25
     for (let i = 0; i < telegramPrefs.length; i += TELEGRAM_BATCH) {
       const batch = telegramPrefs.slice(i, i + TELEGRAM_BATCH)
       await Promise.allSettled(
         batch.map(async (pref) => {
-          const key = `${pref.userId}:telegram`
+          const key = `${pref.userId}:${signal.id}:telegram`
           if (alreadySentSet.has(key)) return
-
           try {
             const msg = formatSignalMessage({
               symbol: signal.symbol,
@@ -119,88 +108,99 @@ export async function dispatchAlerts(
             })
             await sendTelegramMessage(pref.user.telegramChatId!, msg)
             await prisma.alertHistory.create({
-              data: {
-                userId: pref.userId,
-                signalId: signal.id,
-                channel: "telegram",
-                status: "sent",
-                sentAt: new Date(),
-              },
+              data: { userId: pref.userId, signalId: signal.id, channel: "telegram", status: "sent", sentAt: new Date() },
             })
             telegramSent++
-          } catch (e: any) {
+          } catch {
             errors++
             await prisma.alertHistory.create({
-              data: {
-                userId: pref.userId,
-                signalId: signal.id,
-                channel: "telegram",
-                status: "error",
-              },
+              data: { userId: pref.userId, signalId: signal.id, channel: "telegram", status: "error" },
             }).catch(() => {})
           }
         })
       )
-      if (i + TELEGRAM_BATCH < telegramPrefs.length) await delay(1100) // ~1 batch/sec
+      if (i + TELEGRAM_BATCH < telegramPrefs.length) await delay(1100)
     }
+  }
 
-    // ── Email (immediate signal alerts) ──────────────────
-    const EMAIL_BATCH = 50
-    for (let i = 0; i < emailPrefs.length; i += EMAIL_BATCH) {
-      const batch = emailPrefs.slice(i, i + EMAIL_BATCH)
-      await Promise.allSettled(
-        batch.map(async (pref) => {
-          const key = `${pref.userId}:email`
-          if (alreadySentSet.has(key)) return
-          if (!pref.user.email) return
+  // ── Email: ONE bundled email per user with ALL their matching new signals ──
+  // Build a map: userId → signals they should receive
+  const userSignalMap = new Map<string, { pref: (typeof activePrefs)[0]; signals: typeof marketSignals }>()
 
-          // Ensure user has an unsubscribe token
-          let unsubToken = pref.user.emailUnsubscribeToken
-          if (!unsubToken) {
-            unsubToken = randomUUID()
-            await prisma.user.update({
-              where: { id: pref.userId },
-              data: { emailUnsubscribeToken: unsubToken },
-            })
-          }
-
-          try {
-            await sendSignalAlert({
-              to: pref.user.email!,
-              userName: pref.user.name ?? undefined,
-              symbol: signal.symbol,
-              exchange: signal.exchange as "NSE" | "US",
-              heat: signal.heat,
-              price: signal.price,
-              ath: signal.ath,
-              ema200: signal.ema200,
-              distancePct: signal.distancePct,
-              unsubscribeToken: unsubToken,
-            })
-            await prisma.alertHistory.create({
-              data: {
-                userId: pref.userId,
-                signalId: signal.id,
-                channel: "email",
-                status: "sent",
-                sentAt: new Date(),
-              },
-            })
-            emailSent++
-          } catch (e: any) {
-            errors++
-            await prisma.alertHistory.create({
-              data: {
-                userId: pref.userId,
-                signalId: signal.id,
-                channel: "email",
-                status: "error",
-              },
-            }).catch(() => {})
-          }
-        })
-      )
+  for (const signal of marketSignals) {
+    const emailPrefs = activePrefs.filter((p) => {
+      if (p.channel !== "email" || !p.user.email || p.user.emailDigest === "off") return false
+      if (p.heatFilter.length > 0 && !p.heatFilter.includes(signal.heat as any)) return false
+      const key = `${p.userId}:${signal.id}:email`
+      if (alreadySentSet.has(key)) return false
+      return true
+    })
+    for (const pref of emailPrefs) {
+      if (!userSignalMap.has(pref.userId)) {
+        userSignalMap.set(pref.userId, { pref, signals: [] })
+      }
+      userSignalMap.get(pref.userId)!.signals.push(signal)
     }
+  }
+
+  // Send one bundled email per user
+  const EMAIL_BATCH = 50
+  const userEntries = Array.from(userSignalMap.entries())
+  for (let i = 0; i < userEntries.length; i += EMAIL_BATCH) {
+    const batch = userEntries.slice(i, i + EMAIL_BATCH)
+    await Promise.allSettled(
+      batch.map(async ([userId, { pref, signals: userSignals }]) => {
+        if (!pref.user.email) return
+
+        // Ensure unsubscribe token
+        let unsubToken = pref.user.emailUnsubscribeToken
+        if (!unsubToken) {
+          unsubToken = randomUUID()
+          await prisma.user.update({ where: { id: userId }, data: { emailUnsubscribeToken: unsubToken } })
+        }
+
+        try {
+          await sendBundledAlerts({
+            to: pref.user.email!,
+            userName: pref.user.name ?? undefined,
+            market,
+            signals: userSignals.map((s) => ({
+              symbol: s.symbol,
+              exchange: s.exchange as "NSE" | "US",
+              heat: s.heat,
+              price: s.price,
+              ath: s.ath,
+              ema200: s.ema200,
+              distancePct: s.distancePct,
+            })),
+            unsubscribeToken: unsubToken,
+          })
+          // Log history for each signal in this bundle
+          await prisma.alertHistory.createMany({
+            data: userSignals.map((s) => ({
+              userId,
+              signalId: s.id,
+              channel: "email",
+              status: "sent",
+              sentAt: new Date(),
+            })),
+            skipDuplicates: true,
+          })
+          emailSent++
+        } catch {
+          errors++
+          await prisma.alertHistory.createMany({
+            data: userSignals.map((s) => ({
+              userId,
+              signalId: s.id,
+              channel: "email",
+              status: "error",
+            })),
+            skipDuplicates: true,
+          }).catch(() => {})
+        }
+      })
+    )
   }
 
   return { telegramSent, emailSent, errors }

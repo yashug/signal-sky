@@ -1,6 +1,7 @@
 import { getResend } from "./resend"
 import { render } from "@react-email/components"
 import SignalAlertEmail from "./templates/signal-alert"
+import SignalAlertsBundleEmail from "./templates/signal-alerts-bundle"
 import DigestEmail from "./templates/digest"
 import InvoiceEmail from "./templates/invoice"
 import TrialReminderEmail from "./templates/trial-reminder"
@@ -48,6 +49,55 @@ export async function sendSignalAlert(opts: {
     from: FROM_TRANSACTIONAL,
     to: opts.to,
     subject: `🔔 New signal: ${opts.symbol} (${opts.exchange})`,
+    html,
+    headers: {
+      "List-Unsubscribe": `<${unsub}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  })
+}
+
+export async function sendBundledAlerts(opts: {
+  to: string
+  userName?: string
+  market: "india" | "us"
+  signals: Array<{
+    symbol: string
+    exchange: "NSE" | "US"
+    heat: "breakout" | "boiling" | "simmering" | "cooling"
+    price: number
+    ath: number
+    ema200: number
+    distancePct: number
+  }>
+  unsubscribeToken: string
+}) {
+  const resend = getResend()
+  const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+  const unsub = unsubscribeUrl(opts.unsubscribeToken)
+  const count = opts.signals.length
+  const marketLabel = opts.market === "india" ? "India (NSE)" : "US Markets"
+
+  const signalsWithUrl = opts.signals.map((s) => ({
+    ...s,
+    signalUrl: `${APP_URL}/scanner/${s.symbol}`,
+  }))
+
+  const html = await render(
+    SignalAlertsBundleEmail({
+      userName: opts.userName,
+      signals: signalsWithUrl,
+      market: opts.market,
+      date,
+      unsubscribeUrl: unsub,
+    })
+  )
+
+  return resend.emails.send({
+    from: FROM_TRANSACTIONAL,
+    to: opts.to,
+    replyTo: "support@signalsky.app",
+    subject: `🔔 ${count} new signal${count !== 1 ? "s" : ""} — ${marketLabel} · ${date}`,
     html,
     headers: {
       "List-Unsubscribe": `<${unsub}>`,
