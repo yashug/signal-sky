@@ -35,6 +35,7 @@ import {
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { toast } from "sonner"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 function ProfileCard() {
   const { user, refresh } = useAuth()
@@ -974,61 +975,100 @@ function SubscriptionCard() {
   )
 }
 
+const SETTINGS_TABS = [
+  { value: "account",  label: "Account",  icon: UserIcon },
+  { value: "alerts",   label: "Alerts",   icon: BellIcon },
+  { value: "billing",  label: "Billing",  icon: CreditCardIcon },
+  { value: "trading",  label: "Trading",  icon: ScaleIcon },
+  { value: "feedback", label: "Feedback", icon: MessageSquareIcon },
+]
+
 export default function SettingsPage() {
   return (
-    <div className="flex flex-col gap-6 px-4 sm:px-6 py-5 max-w-2xl">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col px-4 sm:px-6 py-5 max-w-2xl">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
         <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
           <SettingsIcon className="size-4 text-primary" />
         </div>
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
           <p className="text-xs text-muted-foreground">
-            Configure your profile, alerts, preferences, and billing
+            Manage your account, alerts, and preferences
           </p>
         </div>
       </div>
 
-      {/* Profile */}
-      <ProfileCard />
+      <Tabs defaultValue="account" className="w-full">
+        {/* Tab bar — scrollable on mobile */}
+        <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 border-b border-border/40 overflow-x-auto overflow-y-hidden">
+          <TabsList className="bg-transparent rounded-none p-0 h-auto w-auto inline-flex gap-0">
+            {SETTINGS_TABS.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="
+                  gap-1.5 rounded-none px-4 h-auto py-2.5 text-[11px] font-medium
+                  border-0 border-b-2 border-b-transparent
+                  data-active:border-b-primary data-active:text-foreground
+                  data-active:bg-transparent data-active:shadow-none
+                  dark:data-active:bg-transparent
+                  text-muted-foreground hover:text-foreground
+                  bg-transparent whitespace-nowrap transition-colors
+                "
+              >
+                <tab.icon className="size-3.5" />
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-      {/* Alerts */}
-      <AlertsCard />
-
-      {/* Subscription */}
-      <SubscriptionCard />
-
-      {/* Appearance */}
-      <Card className="border-border/40 bg-surface">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <PaletteIcon className="size-4 text-primary" />
-            <CardTitle className="text-sm">Appearance</CardTitle>
-          </div>
-          <CardDescription className="text-xs">
-            Switch between light and dark mode to match your preference.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div>
-                <p className="text-sm font-medium">Theme</p>
-                <p className="text-xs text-muted-foreground">
-                  Toggle between light and dark interface
-                </p>
+        {/* Account — Profile + Appearance */}
+        <TabsContent value="account" className="mt-6 space-y-5">
+          <ProfileCard />
+          <Card className="border-border/40 bg-surface">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <PaletteIcon className="size-4 text-primary" />
+                <CardTitle className="text-sm">Appearance</CardTitle>
               </div>
-            </div>
-            <ThemeToggle />
-          </div>
-        </CardContent>
-      </Card>
+              <CardDescription className="text-xs">
+                Switch between light and dark mode to match your preference.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Theme</p>
+                  <p className="text-xs text-muted-foreground">Toggle between light and dark interface</p>
+                </div>
+                <ThemeToggle />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Position Defaults */}
-      <PositionDefaultsCard />
+        {/* Alerts */}
+        <TabsContent value="alerts" className="mt-6">
+          <AlertsCard />
+        </TabsContent>
 
-      {/* Feedback */}
-      <FeedbackCard />
+        {/* Billing */}
+        <TabsContent value="billing" className="mt-6">
+          <SubscriptionCard />
+        </TabsContent>
+
+        {/* Trading — Position Defaults */}
+        <TabsContent value="trading" className="mt-6">
+          <PositionDefaultsCard />
+        </TabsContent>
+
+        {/* Feedback */}
+        <TabsContent value="feedback" className="mt-6">
+          <FeedbackCard />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
