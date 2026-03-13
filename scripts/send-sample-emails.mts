@@ -57,11 +57,12 @@ async function generateInvoicePDF(): Promise<Buffer> {
 
   const browser = await puppeteer.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] })
   const page = await browser.newPage()
-  await page.setContent(html, { waitUntil: "networkidle0" })
   await page.setViewport({ width: 800, height: 1080 })
+  await page.setContent(html, { waitUntil: "networkidle0" })
+  const contentHeight = await page.evaluate(() => document.documentElement.scrollHeight)
   const pdf = await page.pdf({
     width: "800px",
-    height: "1080px",
+    height: `${contentHeight}px`,
     printBackground: true,
     margin: { top: "0", bottom: "0", left: "0", right: "0" },
   })

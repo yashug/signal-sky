@@ -49,7 +49,7 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <button className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors w-full text-left" />
+          <button className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors w-full text-left cursor-pointer" />
         }
       >
         <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">

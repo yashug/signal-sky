@@ -16,6 +16,7 @@ import {
   UsersIcon,
   AlertCircleIcon,
   Loader2Icon,
+  BellIcon,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -24,6 +25,7 @@ import type { LifetimeDealInfo } from "@/lib/data/deals"
 const PRO_FEATURES = [
   "All Nifty indices (50, 100, 200, Midcap, Smallcap)",
   "S&P 100 & NASDAQ 100 coverage",
+  "Telegram & email signal alerts",
   "Unlimited backtests",
   "Unlimited trade journal",
   "Priority support",
@@ -129,7 +131,7 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
             Invest in your edge
           </h1>
           <p className="text-sm text-muted-foreground max-w-md">
-            Start with a 7-day free trial. Then choose a plan to unlock all Nifty indices, unlimited backtests, and real-time alerts.
+            Start with a 7-day free trial. Unlock all Nifty &amp; US indices, Telegram &amp; email alerts, unlimited backtests, and more.
           </p>
         </div>
 
@@ -162,8 +164,17 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
             <ul className="space-y-2 mb-6 flex-1">
               {PRO_FEATURES.map((feature) => (
                 <li key={feature} className="flex items-start gap-2 text-[12px]">
-                  <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
-                  <span className="text-muted-foreground">{feature}</span>
+                  {feature.startsWith("Telegram") ? (
+                    <BellIcon className="size-3.5 mt-0.5 shrink-0 text-heat-boiling" />
+                  ) : (
+                    <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
+                  )}
+                  <span className={feature.startsWith("Telegram") ? "text-foreground font-medium" : "text-muted-foreground"}>
+                    {feature}
+                    {feature.startsWith("Telegram") && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-heat-boiling/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-heat-boiling">New</span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -220,8 +231,17 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
             <ul className="space-y-2 mb-6 flex-1">
               {PRO_FEATURES.map((feature) => (
                 <li key={feature} className="flex items-start gap-2 text-[12px]">
-                  <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
-                  <span className="text-muted-foreground">{feature}</span>
+                  {feature.startsWith("Telegram") ? (
+                    <BellIcon className="size-3.5 mt-0.5 shrink-0 text-heat-boiling" />
+                  ) : (
+                    <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
+                  )}
+                  <span className={feature.startsWith("Telegram") ? "text-foreground font-medium" : "text-muted-foreground"}>
+                    {feature}
+                    {feature.startsWith("Telegram") && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-heat-boiling/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-heat-boiling">New</span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>

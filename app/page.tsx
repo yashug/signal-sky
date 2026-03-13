@@ -16,6 +16,8 @@ import {
   GlobeIcon,
   RocketIcon,
   CrownIcon,
+  BellIcon,
+  SendIcon,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { LifetimeSlots } from "@/components/signal-sky/lifetime-slots"
@@ -83,13 +85,21 @@ function HeroSection() {
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="flex flex-col items-center text-center">
           {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-bull opacity-60" />
               <span className="relative inline-flex size-1.5 rounded-full bg-bull" />
             </span>
             <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-primary">
               Live market scanning
+            </span>
+          </div>
+
+          {/* New alerts badge */}
+          <div className="mb-8 inline-flex items-center gap-1.5 rounded-full border border-heat-boiling/30 bg-heat-boiling/5 px-3 py-1">
+            <SparklesIcon className="size-3 text-heat-boiling" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-heat-boiling">
+              New — Telegram &amp; Email Alerts
             </span>
           </div>
 
@@ -110,7 +120,7 @@ function HeroSection() {
           {/* Subheading */}
           <p className="mt-6 max-w-lg text-base leading-relaxed text-muted-foreground">
             Professional-grade signal scanner for India & US markets.
-            Detect Reset & Reclaim setups, track market health, and journal every trade — all in one place.
+            Detect Reset & Reclaim setups, get instant Telegram & email alerts, and journal every trade — all in one place.
           </p>
 
           {/* CTA */}
@@ -298,24 +308,35 @@ function FeaturesSection() {
       title: "Signal Scanner",
       description: "Real-time detection of Reset & Reclaim setups across all Nifty & US universes. Classified by distance to prior peak — from Warming to Breakout.",
       accent: "from-primary to-[oklch(0.65_0.17_250)]",
+      isNew: false,
     },
     {
       icon: HeartPulseIcon,
       title: "Market Health",
       description: "Track market breadth with % of stocks above EMA 200. Sector-level breakdown with traffic light system for regime detection.",
       accent: "from-bull to-[oklch(0.78_0.16_80)]",
+      isNew: false,
     },
     {
       icon: BookOpenIcon,
       title: "Trade Journal",
       description: "Log entries, exits, stop losses and targets. Track realized and unrealized P&L with win rate analytics.",
       accent: "from-[oklch(0.78_0.16_80)] to-[oklch(0.68_0.22_25)]",
+      isNew: false,
     },
     {
       icon: BarChart3Icon,
       title: "Backtests",
       description: "Validate the strategy on 20 years of data. Run full backtests per symbol with win rate, drawdown and Sharpe — then compare with live signals.",
       accent: "from-[oklch(0.65_0.17_250)] to-primary",
+      isNew: false,
+    },
+    {
+      icon: BellIcon,
+      title: "Telegram & Email Alerts",
+      description: "Get notified the moment a new signal appears. Connect your Telegram for instant push alerts, or receive a daily digest email — never miss a setup again.",
+      accent: "from-heat-boiling to-heat-simmering",
+      isNew: true,
     },
   ]
 
@@ -336,26 +357,55 @@ function FeaturesSection() {
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="group relative rounded-2xl border border-border/25 bg-card/60 p-7 transition-all hover:border-border/40 hover:bg-card/80"
+              className={`group relative rounded-2xl border bg-card/60 p-7 transition-all hover:bg-card/80 ${
+                feature.isNew
+                  ? "border-heat-boiling/30 hover:border-heat-boiling/50 sm:col-span-2"
+                  : "border-border/25 hover:border-border/40"
+              }`}
             >
+              {feature.isNew && (
+                <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full border border-heat-boiling/30 bg-heat-boiling/10 px-2.5 py-0.5">
+                  <SparklesIcon className="size-2.5 text-heat-boiling" />
+                  <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-heat-boiling">New</span>
+                </div>
+              )}
               <div
                 className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                 style={{
                   background: `radial-gradient(300px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), oklch(0.72 0.19 220 / 0.04), transparent 60%)`,
                 }}
               />
-              <div className="relative">
-                <div className={`mb-5 inline-flex size-11 items-center justify-center rounded-xl bg-gradient-to-br ${feature.accent} p-[1px]`}>
-                  <div className="flex size-full items-center justify-center rounded-[10px] bg-card">
-                    <feature.icon className="size-5 text-foreground" />
+              <div className={`relative ${feature.isNew ? "flex flex-col sm:flex-row sm:items-center gap-6" : ""}`}>
+                <div className={`${feature.isNew ? "shrink-0" : ""}`}>
+                  <div className={`mb-5 inline-flex size-11 items-center justify-center rounded-xl bg-gradient-to-br ${feature.accent} p-[1px] ${feature.isNew ? "sm:mb-0" : ""}`}>
+                    <div className="flex size-full items-center justify-center rounded-[10px] bg-card">
+                      <feature.icon className="size-5 text-foreground" />
+                    </div>
                   </div>
                 </div>
-                <h3 className="text-[15px] font-semibold text-foreground mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  {feature.description}
-                </p>
+                <div className={feature.isNew ? "flex-1" : ""}>
+                  <h3 className="text-[15px] font-semibold text-foreground mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-[13px] leading-relaxed text-muted-foreground">
+                    {feature.description}
+                  </p>
+                  {feature.isNew && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {[
+                        { icon: SendIcon, label: "Telegram push alerts" },
+                        { icon: BellIcon, label: "Daily & weekly email digest" },
+                        { icon: FlameIcon, label: "Filter by heat level" },
+                        { icon: ActivityIcon, label: "Per-universe filtering" },
+                      ].map((chip) => (
+                        <span key={chip.label} className="inline-flex items-center gap-1.5 rounded-full border border-border/30 bg-surface/60 px-3 py-1 text-[11px] text-muted-foreground">
+                          <chip.icon className="size-3 text-heat-boiling" />
+                          {chip.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -392,12 +442,19 @@ function PreviewSection() {
                 },
                 {
                   step: "02",
+                  title: "Get alerted instantly",
+                  description: "Connect Telegram or set up email alerts. The moment a new signal appears after the EOD scan, you're notified — no need to check the app.",
+                  icon: BellIcon,
+                  isNew: true,
+                },
+                {
+                  step: "03",
                   title: "Analyze with context",
                   description: "Check market health, review backtests, and use the position calculator to size your trade based on risk parameters.",
                   icon: BarChart3Icon,
                 },
                 {
-                  step: "03",
+                  step: "04",
                   title: "Track every trade",
                   description: "Log your entries in the journal, track your positions, and monitor your P&L in real time.",
                   icon: TrendingUpIcon,
@@ -405,17 +462,24 @@ function PreviewSection() {
               ].map((item) => (
                 <div key={item.step} className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/30 bg-surface text-primary">
+                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl border bg-surface ${"isNew" in item && item.isNew ? "border-heat-boiling/40 text-heat-boiling" : "border-border/30 text-primary"}`}>
                       <item.icon className="size-4.5" />
                     </div>
-                    {item.step !== "03" && (
+                    {item.step !== "04" && (
                       <div className="w-px flex-1 bg-gradient-to-b from-border/40 to-transparent mt-2" />
                     )}
                   </div>
                   <div className="pb-6">
-                    <span className="font-mono text-[10px] font-semibold text-primary tracking-wider">
-                      STEP {item.step}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-semibold text-primary tracking-wider">
+                        STEP {item.step}
+                      </span>
+                      {"isNew" in item && item.isNew && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-heat-boiling/30 bg-heat-boiling/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-heat-boiling">
+                          <SparklesIcon className="size-2.5" />New
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-[15px] font-semibold text-foreground mt-1">
                       {item.title}
                     </h3>
@@ -910,7 +974,7 @@ function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
             Invest in your edge
           </h2>
           <p className="text-sm text-muted-foreground mt-3 max-w-md mx-auto">
-            Start with a 7-day free trial. Then choose a plan to unlock all Nifty indices, and unlimited backtests.
+            Start with a 7-day free trial. Unlock all Nifty &amp; US indices, Telegram &amp; email alerts, unlimited backtests, and more.
           </p>
           <p className="text-[11px] text-heat-simmering font-medium mt-2">
             Prices increase after launch
@@ -931,10 +995,16 @@ function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
             </div>
             <p className="text-[10px] text-muted-foreground mb-6">7-day free trial included</p>
             <ul className="space-y-2 mb-6 flex-1">
-              {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Unlimited backtests", "Unlimited trade journal", "Priority support"].map((f) => (
+              {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Telegram & email signal alerts", "Unlimited backtests", "Unlimited trade journal", "Priority support"].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-[12px]">
-                  <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
-                  <span className="text-muted-foreground">{f}</span>
+                  {f.startsWith("Telegram") ? (
+                    <BellIcon className="size-3.5 mt-0.5 shrink-0 text-heat-boiling" />
+                  ) : (
+                    <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
+                  )}
+                  <span className={f.startsWith("Telegram") ? "text-foreground font-medium" : "text-muted-foreground"}>
+                    {f}{f.startsWith("Telegram") && <span className="ml-1.5 inline-flex items-center rounded-full bg-heat-boiling/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-heat-boiling">New</span>}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -969,10 +1039,16 @@ function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
             </div>
             <p className="text-[10px] text-bull font-medium mb-6">That&apos;s just &#8377;250/month</p>
             <ul className="space-y-2 mb-6 flex-1">
-              {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Unlimited backtests", "Unlimited trade journal", "Priority support"].map((f) => (
+              {["All Nifty indices (50, 100, 200, Midcap, Smallcap)", "S&P 100 & NASDAQ 100 coverage", "Telegram & email signal alerts", "Unlimited backtests", "Unlimited trade journal", "Priority support"].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-[12px]">
-                  <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
-                  <span className="text-muted-foreground">{f}</span>
+                  {f.startsWith("Telegram") ? (
+                    <BellIcon className="size-3.5 mt-0.5 shrink-0 text-heat-boiling" />
+                  ) : (
+                    <CheckIcon className="size-3.5 mt-0.5 shrink-0 text-primary" />
+                  )}
+                  <span className={f.startsWith("Telegram") ? "text-foreground font-medium" : "text-muted-foreground"}>
+                    {f}{f.startsWith("Telegram") && <span className="ml-1.5 inline-flex items-center rounded-full bg-heat-boiling/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-heat-boiling">New</span>}
+                  </span>
                 </li>
               ))}
             </ul>

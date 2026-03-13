@@ -18,6 +18,9 @@ export type InvoiceTemplateData = {
   paymentMethod: string
 }
 
+// Logo SVG inline (blue rounded square + lightning bolt)
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#2563eb"/><path d="M17.5 6L10 18h5.5l-1 8L22 14h-5.5l1-8z" fill="#ffffff" stroke="#ffffff" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/></svg>`
+
 export function renderInvoiceHtml(d: InvoiceTemplateData): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -25,104 +28,89 @@ export function renderInvoiceHtml(d: InvoiceTemplateData): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
     width: 800px;
-    background: #080d1a;
-    font-family: 'Trebuchet MS', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    color: #e2e8f0;
+    background: #ffffff;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #111827;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   .page {
     width: 800px;
     min-height: 1080px;
-    background:
-      radial-gradient(ellipse 80% 50% at 20% -5%, rgba(59,130,246,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(16,185,129,0.05) 0%, transparent 55%),
-      radial-gradient(circle at 1px 1px, rgba(148,163,184,0.06) 1px, transparent 0);
-    background-size: 100% 100%, 100% 100%, 28px 28px;
-    padding: 56px 60px 48px;
+    background: #ffffff;
+    padding: 0;
     position: relative;
-    overflow: hidden;
   }
-  /* Decorative corner accent */
-  .page::before {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 280px; height: 280px;
-    background: radial-gradient(ellipse at top right, rgba(59,130,246,0.12) 0%, transparent 70%);
-    pointer-events: none;
+
+  /* ── Top accent bar ── */
+  .top-bar {
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 40%, #3b82f6 100%);
   }
-  .page::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0;
-    width: 200px; height: 200px;
-    background: radial-gradient(ellipse at bottom left, rgba(16,185,129,0.06) 0%, transparent 70%);
-    pointer-events: none;
-  }
+
+  .content { padding: 48px 56px 40px; }
 
   /* ── Header ── */
   .header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 36px;
+    margin-bottom: 40px;
   }
-  .brand-wrap { position: relative; }
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-text-wrap {}
   .brand {
-    font-size: 30px;
+    font-size: 24px;
     font-weight: 800;
+    color: #111827;
     letter-spacing: -0.03em;
-    color: #ffffff;
     line-height: 1;
-  }
-  .brand-accent {
-    display: block;
-    width: 36px;
-    height: 3px;
-    margin-top: 7px;
-    background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 60%, transparent 100%);
-    border-radius: 2px;
   }
   .brand-tagline {
     font-size: 10px;
-    color: #475569;
-    letter-spacing: 0.06em;
-    margin-top: 6px;
-    text-transform: uppercase;
+    color: #6b7280;
+    letter-spacing: 0.04em;
+    margin-top: 4px;
   }
   .invoice-label-wrap { text-align: right; }
   .invoice-label {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: #3b82f6;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #1d4ed8;
     line-height: 1;
   }
   .gstin {
     font-size: 10px;
-    color: #64748b;
-    margin-top: 6px;
+    color: #9ca3af;
+    margin-top: 5px;
     letter-spacing: 0.04em;
     font-family: 'Courier New', monospace;
   }
 
-  /* ── Glow divider ── */
-  .glow-hr {
+  /* ── Divider ── */
+  .divider {
     height: 1px;
-    border: none;
-    background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(59,130,246,0.3) 20%,
-      rgba(99,179,237,0.7) 50%,
-      rgba(59,130,246,0.3) 80%,
-      transparent 100%);
-    box-shadow: 0 0 8px 1px rgba(59,130,246,0.25);
-    margin: 0 0 32px;
+    background: #e5e7eb;
+    margin-bottom: 32px;
+  }
+  .divider-accent {
+    height: 2px;
+    background: #2563eb;
+    width: 48px;
+    border-radius: 2px;
+    margin-bottom: 32px;
   }
 
   /* ── Meta row ── */
@@ -130,15 +118,15 @@ export function renderInvoiceHtml(d: InvoiceTemplateData): string {
     display: flex;
     gap: 0;
     margin-bottom: 36px;
-    background: rgba(15,23,42,0.6);
-    border: 1px solid rgba(51,65,85,0.6);
-    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
     overflow: hidden;
+    background: #f9fafb;
   }
   .meta-cell {
     flex: 1;
-    padding: 18px 24px;
-    border-right: 1px solid rgba(51,65,85,0.5);
+    padding: 16px 22px;
+    border-right: 1px solid #e5e7eb;
   }
   .meta-cell:last-child { border-right: none; }
   .meta-label {
@@ -146,99 +134,100 @@ export function renderInvoiceHtml(d: InvoiceTemplateData): string {
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #475569;
-    margin-bottom: 7px;
+    color: #9ca3af;
+    margin-bottom: 6px;
   }
   .meta-value {
     font-size: 14px;
     font-weight: 700;
-    color: #f1f5f9;
+    color: #111827;
     letter-spacing: -0.01em;
     font-family: 'Courier New', monospace;
   }
   .badge-paid {
-    display: inline-block;
-    background: linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(5,150,105,0.15) 100%);
-    border: 1px solid rgba(16,185,129,0.4);
-    color: #34d399;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
     font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.14em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding: 5px 14px;
+    padding: 5px 12px;
     border-radius: 20px;
+  }
+  .badge-dot {
+    width: 6px; height: 6px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: inline-block;
   }
 
   /* ── Billing section ── */
   .billing-row {
     display: flex;
-    gap: 24px;
+    gap: 20px;
     margin-bottom: 36px;
   }
   .billing-card {
     flex: 1;
-    background: rgba(15,23,42,0.5);
-    border: 1px solid rgba(51,65,85,0.5);
-    border-radius: 10px;
-    padding: 20px 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 18px 22px;
+    background: #ffffff;
   }
   .billing-title {
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #3b82f6;
-    margin-bottom: 12px;
+    color: #2563eb;
+    margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 1px solid rgba(59,130,246,0.2);
+    border-bottom: 1px solid #dbeafe;
   }
   .billing-name {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
-    color: #f8fafc;
+    color: #111827;
     margin-bottom: 4px;
-    letter-spacing: -0.01em;
   }
   .billing-detail {
     font-size: 11px;
-    color: #64748b;
-    line-height: 1.6;
+    color: #6b7280;
+    line-height: 1.7;
   }
-  .billing-detail a, .billing-link {
-    color: #60a5fa;
-    text-decoration: none;
-  }
+  .billing-link { color: #2563eb; }
 
   /* ── Items table ── */
   .table-wrap {
-    margin-bottom: 28px;
-    border-radius: 10px;
+    margin-bottom: 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
     overflow: hidden;
-    border: 1px solid rgba(51,65,85,0.5);
   }
   .table-head {
     display: flex;
-    background: linear-gradient(135deg, #1e3a5f 0%, #172d4d 100%);
-    padding: 12px 24px;
-    gap: 0;
+    background: #1d4ed8;
+    padding: 11px 22px;
   }
   .th {
     font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #7dd3fc;
+    color: #bfdbfe;
   }
   .th-desc { flex: 1; }
   .th-period { width: 200px; }
   .th-amount { width: 120px; text-align: right; }
-  .table-body {}
   .table-row {
     display: flex;
-    padding: 20px 24px;
-    background: rgba(15,23,42,0.4);
-    border-bottom: 1px solid rgba(30,42,60,0.8);
-    gap: 0;
+    padding: 18px 22px;
+    background: #ffffff;
+    border-bottom: 1px solid #f3f4f6;
     align-items: center;
   }
   .table-row:last-child { border-bottom: none; }
@@ -248,26 +237,23 @@ export function renderInvoiceHtml(d: InvoiceTemplateData): string {
   .item-name {
     font-size: 14px;
     font-weight: 700;
-    color: #f1f5f9;
+    color: #111827;
     margin-bottom: 3px;
-    letter-spacing: -0.01em;
   }
   .item-sub {
     font-size: 10px;
-    color: #475569;
-    letter-spacing: 0.01em;
+    color: #9ca3af;
   }
   .period-text {
     font-size: 11px;
-    color: #64748b;
+    color: #6b7280;
     font-family: 'Courier New', monospace;
   }
   .amount-text {
     font-size: 14px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: #111827;
     font-family: 'Courier New', monospace;
-    letter-spacing: -0.01em;
   }
 
   /* ── Totals ── */
@@ -277,216 +263,210 @@ export function renderInvoiceHtml(d: InvoiceTemplateData): string {
     margin-bottom: 32px;
   }
   .totals-card {
-    width: 320px;
-    background: rgba(15,23,42,0.5);
-    border: 1px solid rgba(51,65,85,0.5);
-    border-radius: 10px;
+    width: 300px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
     overflow: hidden;
   }
   .totals-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
-    border-bottom: 1px solid rgba(30,42,60,0.8);
+    padding: 10px 18px;
+    border-bottom: 1px solid #f3f4f6;
+    background: #f9fafb;
   }
   .totals-row:last-child { border-bottom: none; }
-  .totals-label {
-    font-size: 11px;
-    color: #64748b;
-  }
-  .totals-value {
-    font-size: 12px;
-    color: #94a3b8;
-    font-family: 'Courier New', monospace;
-  }
+  .totals-label { font-size: 11px; color: #6b7280; }
+  .totals-value { font-size: 12px; color: #374151; font-family: 'Courier New', monospace; }
   .totals-row-total {
-    background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.05) 100%);
-    border-top: 1px solid rgba(16,185,129,0.2) !important;
-    padding: 14px 20px;
+    background: #eff6ff !important;
+    border-top: 2px solid #bfdbfe !important;
+    padding: 14px 18px;
   }
   .totals-label-total {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
-    color: #e2e8f0;
-    letter-spacing: 0.02em;
+    color: #111827;
   }
   .totals-value-total {
     font-size: 20px;
     font-weight: 800;
-    color: #10b981;
+    color: #1d4ed8;
     font-family: 'Courier New', monospace;
-    letter-spacing: -0.02em;
   }
 
   /* ── Transaction card ── */
   .txn-card {
-    background: rgba(15,23,42,0.5);
-    border: 1px solid rgba(51,65,85,0.5);
-    border-left: 3px solid #3b82f6;
-    border-radius: 10px;
-    padding: 18px 24px;
-    margin-bottom: 36px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #2563eb;
+    border-radius: 8px;
+    padding: 16px 22px;
+    margin-bottom: 40px;
     display: flex;
-    gap: 40px;
+    gap: 48px;
     align-items: flex-start;
   }
-  .txn-group {}
   .txn-label {
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #475569;
-    margin-bottom: 6px;
+    color: #9ca3af;
+    margin-bottom: 5px;
   }
   .txn-value {
     font-size: 12px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: #111827;
     font-family: 'Courier New', monospace;
-    letter-spacing: 0.02em;
   }
-  .txn-method {
-    font-size: 11px;
-    color: #64748b;
-    margin-top: 3px;
-  }
+  .txn-method { font-size: 10px; color: #9ca3af; margin-top: 2px; }
 
   /* ── Footer ── */
-  .footer-hr {
-    height: 1px;
-    border: none;
-    background: rgba(51,65,85,0.4);
-    margin-bottom: 18px;
+  .footer-bar {
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    padding: 16px 56px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
-  .footer-text {
-    font-size: 9px;
-    color: #334155;
-    line-height: 1.7;
-    letter-spacing: 0.02em;
-  }
-  .footer-link { color: #475569; }
+  .footer-left { font-size: 9px; color: #9ca3af; line-height: 1.7; }
+  .footer-right { font-size: 9px; color: #9ca3af; text-align: right; line-height: 1.7; }
+  .footer-blue { color: #2563eb; }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- Header -->
-  <div class="header">
-    <div class="brand-wrap">
-      <div class="brand">SignalSky</div>
-      <span class="brand-accent"></span>
-      <div class="brand-tagline">Signal Scanner · India &amp; US Markets</div>
-    </div>
-    <div class="invoice-label-wrap">
-      <div class="invoice-label">Tax Invoice</div>
-      <div class="gstin">GSTIN: 36BKTPG1266J1ZS</div>
-    </div>
-  </div>
+  <!-- Top accent bar -->
+  <div class="top-bar"></div>
 
-  <!-- Glow divider -->
-  <hr class="glow-hr">
+  <div class="content">
 
-  <!-- Meta row -->
-  <div class="meta-row">
-    <div class="meta-cell">
-      <div class="meta-label">Invoice No.</div>
-      <div class="meta-value">${d.invoiceNo}</div>
-    </div>
-    <div class="meta-cell">
-      <div class="meta-label">Date</div>
-      <div class="meta-value" style="font-size:13px">${d.date}</div>
-    </div>
-    <div class="meta-cell" style="flex:0.6">
-      <div class="meta-label">Status</div>
-      <span class="badge-paid">Paid</span>
-    </div>
-  </div>
-
-  <!-- Billing section -->
-  <div class="billing-row">
-    <div class="billing-card">
-      <div class="billing-title">Billed To</div>
-      <div class="billing-name">${d.userName}</div>
-      <div class="billing-detail">${d.userEmail}</div>
-    </div>
-    <div class="billing-card">
-      <div class="billing-title">From</div>
-      <div class="billing-name">YG IT Global Solutions</div>
-      <div class="billing-detail">
-        Sole Proprietorship<br>
-        Hyderabad, Telangana 500081, India<br>
-        <span class="billing-link">support@signalsky.app</span>
+    <!-- Header -->
+    <div class="header">
+      <div class="brand-row">
+        ${LOGO_SVG}
+        <div class="brand-text-wrap">
+          <div class="brand">SignalSky</div>
+          <div class="brand-tagline">Signal Scanner · India &amp; US Markets</div>
+        </div>
+      </div>
+      <div class="invoice-label-wrap">
+        <div class="invoice-label">Tax Invoice</div>
+        <div class="gstin">GSTIN: 36BKTPG1266J1ZS</div>
       </div>
     </div>
-  </div>
 
-  <!-- Line items -->
-  <div class="table-wrap">
-    <div class="table-head">
-      <span class="th th-desc">Description</span>
-      <span class="th th-period">Period</span>
-      <span class="th th-amount">Amount</span>
+    <div class="divider-accent"></div>
+
+    <!-- Meta row -->
+    <div class="meta-row">
+      <div class="meta-cell">
+        <div class="meta-label">Invoice No.</div>
+        <div class="meta-value">${d.invoiceNo}</div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">Invoice Date</div>
+        <div class="meta-value" style="font-size:13px;font-family:'Segoe UI',Arial,sans-serif;font-weight:700">${d.date}</div>
+      </div>
+      <div class="meta-cell" style="flex:0.7">
+        <div class="meta-label">Payment Status</div>
+        <span class="badge-paid"><span class="badge-dot"></span>Paid</span>
+      </div>
     </div>
-    <div class="table-body">
-      <div class="table-row">
-        <div class="td-desc">
-          <div class="item-name">${d.planName}</div>
-          <div class="item-sub">Signal Scanner · India (NSE) + US Markets · Telegram &amp; Email Alerts</div>
-        </div>
-        <div class="td-period">
-          <span class="period-text">${d.period}</span>
-        </div>
-        <div class="td-amount">
-          <span class="amount-text">${d.currency} ${d.total}</span>
+
+    <!-- Billing section -->
+    <div class="billing-row">
+      <div class="billing-card">
+        <div class="billing-title">Billed To</div>
+        <div class="billing-name">${d.userName}</div>
+        <div class="billing-detail">${d.userEmail}</div>
+      </div>
+      <div class="billing-card">
+        <div class="billing-title">From</div>
+        <div class="billing-name">YG IT Global Solutions</div>
+        <div class="billing-detail">
+          Sole Proprietorship<br>
+          Hyderabad, Telangana 502300, India<br>
+          <span class="billing-link">support@signalsky.app</span>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Totals -->
-  <div class="totals-wrap">
-    <div class="totals-card">
-      <div class="totals-row">
-        <span class="totals-label">Subtotal (excl. GST)</span>
-        <span class="totals-value">${d.currency} ${d.subtotal}</span>
+    <!-- Line items -->
+    <div class="table-wrap">
+      <div class="table-head">
+        <span class="th th-desc">Description</span>
+        <span class="th th-period">Billing Period</span>
+        <span class="th th-amount">Amount</span>
       </div>
-      <div class="totals-row">
-        <span class="totals-label">IGST @ 18%</span>
-        <span class="totals-value">${d.currency} ${d.gstAmount}</span>
-      </div>
-      <div class="totals-row totals-row-total">
-        <span class="totals-label-total">Total Paid</span>
-        <span class="totals-value-total">${d.currency} ${d.total}</span>
+      <div class="table-body">
+        <div class="table-row">
+          <div class="td-desc">
+            <div class="item-name">${d.planName}</div>
+            <div class="item-sub">Signal Scanner · India (NSE) + US Markets · Telegram &amp; Email Alerts</div>
+          </div>
+          <div class="td-period">
+            <span class="period-text">${d.period}</span>
+          </div>
+          <div class="td-amount">
+            <span class="amount-text">${d.currency} ${d.total}</span>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Transaction card -->
-  <div class="txn-card">
-    <div class="txn-group">
-      <div class="txn-label">Transaction ID</div>
-      <div class="txn-value">${d.transactionId}</div>
-      <div class="txn-method">${d.paymentMethod}</div>
+    <!-- Totals -->
+    <div class="totals-wrap">
+      <div class="totals-card">
+        <div class="totals-row">
+          <span class="totals-label">Subtotal (excl. GST)</span>
+          <span class="totals-value">${d.currency} ${d.subtotal}</span>
+        </div>
+        <div class="totals-row">
+          <span class="totals-label">IGST @ 18%</span>
+          <span class="totals-value">${d.currency} ${d.gstAmount}</span>
+        </div>
+        <div class="totals-row totals-row-total">
+          <span class="totals-label-total">Total Paid</span>
+          <span class="totals-value-total">${d.currency} ${d.total}</span>
+        </div>
+      </div>
     </div>
-    <div class="txn-group">
-      <div class="txn-label">Payment Date</div>
-      <div class="txn-value">${d.date}</div>
-    </div>
-    <div class="txn-group">
-      <div class="txn-label">Currency</div>
-      <div class="txn-value">${d.currency} (Indian Rupee)</div>
-    </div>
-  </div>
 
-  <!-- Footer -->
-  <hr class="footer-hr">
-  <div class="footer-text">
-    This is a computer-generated invoice and does not require a physical signature. &nbsp;&nbsp;·&nbsp;&nbsp;
-    Questions? <span class="footer-link">support@signalsky.app</span> &nbsp;&nbsp;·&nbsp;&nbsp;
-    YG IT Global Solutions, Hyderabad, Telangana 500081, India &nbsp;&nbsp;·&nbsp;&nbsp;
-    <span class="footer-link">signalsky.app</span>
+    <!-- Transaction card -->
+    <div class="txn-card">
+      <div class="txn-group">
+        <div class="txn-label">Transaction ID</div>
+        <div class="txn-value">${d.transactionId}</div>
+        <div class="txn-method">${d.paymentMethod}</div>
+      </div>
+      <div class="txn-group">
+        <div class="txn-label">Payment Date</div>
+        <div class="txn-value">${d.date}</div>
+      </div>
+      <div class="txn-group">
+        <div class="txn-label">Currency</div>
+        <div class="txn-value">${d.currency} (Indian Rupee)</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Footer bar -->
+  <div class="footer-bar">
+    <div class="footer-left">
+      This is a computer-generated invoice and does not require a physical signature.<br>
+      Questions? <span class="footer-blue">support@signalsky.app</span> &nbsp;·&nbsp; <span class="footer-blue">signalsky.app</span>
+    </div>
+    <div class="footer-right">
+      YG IT Global Solutions<br>
+      Hyderabad, Telangana 502300, India
+    </div>
   </div>
 
 </div>

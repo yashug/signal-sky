@@ -139,7 +139,7 @@ export default function SignalAlertEmail({
               <a href={`${unsubscribeUrl}&type=all`} style={{ color: "#475569" }}>Unsubscribe from all</a>
             </Text>
             <Text style={{ color: "#334155", fontSize: "10px", textAlign: "center", margin: 0 }}>
-              YG IT Global Solutions · Hyderabad, Telangana 500081, India
+              YG IT Global Solutions · Hyderabad, Telangana 502300, India
             </Text>
           </Section>
         </Container>
