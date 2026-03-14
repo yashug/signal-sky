@@ -3,6 +3,21 @@ import { prisma } from "@/lib/prisma"
 import { getOrderStatus } from "@/lib/phonepe"
 import { LIFETIME_DEAL, PRO_PLAN } from "@/lib/plans"
 
+async function applyReferralCredit(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { referredBy: true } })
+  if (!user?.referredBy) return
+  const referrer = await prisma.user.findFirst({
+    where: { referralCode: user.referredBy },
+    select: { id: true, subscription: { select: { id: true, currentPeriodEnd: true, billingInterval: true, status: true } } },
+  })
+  await prisma.user.update({ where: { id: userId }, data: { referredBy: null } })
+  if (!referrer?.subscription || referrer.subscription.status !== "active") return
+  if (referrer.subscription.billingInterval === "lifetime") return
+  const base = referrer.subscription.currentPeriodEnd ?? new Date()
+  const newEnd = new Date(Math.max(base.getTime(), Date.now()) + 30 * 24 * 60 * 60 * 1000)
+  await prisma.subscription.update({ where: { id: referrer.subscription.id }, data: { currentPeriodEnd: newEnd } })
+}
+
 /**
  * GET /api/payments/callback?orderId=...
  * PhonePe redirects the user here after payment (one-time or subscription setup).
@@ -69,6 +84,9 @@ export async function GET(req: NextRequest) {
       where: { id: subscription.userId },
       data: { tier: "PRO" },
     })
+
+    // Apply referral credit to referrer (non-blocking)
+    applyReferralCredit(subscription.userId).catch(() => {})
 
     if (isLifetime) {
       try {

@@ -5,6 +5,7 @@ import { getYahooDailyCandles } from "@/lib/market-data/yahoo"
 import { upsertDailyBars, getLastBarDate, updateMovingAverages } from "@/lib/market-data/store"
 import { runScanForMarket, US_UNIVERSES } from "@/lib/scan-pipeline"
 import { dispatchAlerts } from "@/lib/alerts/dispatch"
+import { checkWatchlistAlerts } from "@/lib/alerts/watchlist-alerts"
 
 /**
  * GET /api/cron/us-eod
@@ -86,6 +87,13 @@ export async function GET(req: NextRequest) {
           console.error(`[cron/us-eod] alert dispatch error:`, e.message)
         })
       }
+
+      // Check watchlist price alerts (non-blocking)
+      checkWatchlistAlerts("us").then((r) => {
+        console.log(`[cron/us-eod] watchlist alerts checked:`, r)
+      }).catch((e) => {
+        console.error(`[cron/us-eod] watchlist alert error:`, e.message)
+      })
     } catch (e: any) {
       results.errors.push(`scan failed: ${e.message?.slice(0, 80)}`)
       console.error(`[cron/us-eod] scan error:`, e.message)

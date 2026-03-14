@@ -22,6 +22,9 @@ export type WatchlistItemData = {
   exchange: string
   addedAt: string
   notes: string
+  alertPrice: number | null
+  alertDirection: "above" | "below" | null
+  alertTriggeredAt: string | null
   currentPrice: number
   ema200: number
   ath: number
@@ -39,8 +42,11 @@ export async function getWatchlistItems(): Promise<WatchlistItemData[]> {
       w.id,
       w.symbol,
       w.exchange,
-      w.added_at    AS "addedAt",
+      w.added_at           AS "addedAt",
       w.notes,
+      w.alert_price        AS "alertPrice",
+      w.alert_direction    AS "alertDirection",
+      w.alert_triggered_at AS "alertTriggeredAt",
       um.name,
       s.price,
       s.ema200,
@@ -77,6 +83,9 @@ export async function getWatchlistItems(): Promise<WatchlistItemData[]> {
     exchange: r.exchange,
     addedAt: String(r.addedAt),
     notes: r.notes ?? "",
+    alertPrice: r.alertPrice ? Number(r.alertPrice) : null,
+    alertDirection: (r.alertDirection ?? null) as "above" | "below" | null,
+    alertTriggeredAt: r.alertTriggeredAt ? String(r.alertTriggeredAt) : null,
     name: r.name ?? r.symbol.replace(".NS", ""),
     currentPrice: r.price ? Number(r.price) : 0,
     ema200: r.ema200 ? Number(r.ema200) : 0,

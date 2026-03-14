@@ -22,6 +22,8 @@ model User {
   emailDigest                String    @default("daily") @map("email_digest")
   emailMarketing             Boolean   @default(true) @map("email_marketing")
   emailUnsubscribeToken      String?   @map("email_unsubscribe_token")
+  referralCode               String?   @unique @map("referral_code") @db.VarChar(20)
+  referredBy                 String?   @map("referred_by") @db.VarChar(20)
   tier                       Tier      @default(FREE)
   isAdmin                    Boolean   @default(false) @map("is_admin")
   trialEndsAt                DateTime? @map("trial_ends_at")
@@ -194,8 +196,11 @@ model WatchlistItem {
   userId   String   @map("user_id") @db.Uuid
   symbol   String   @db.VarChar(20)
   exchange String   @db.VarChar(10)
-  notes    String?
-  addedAt  DateTime @default(now()) @map("added_at")
+  notes              String?
+  alertPrice         Decimal?  @map("alert_price") @db.Decimal(14, 4)
+  alertDirection     String?   @map("alert_direction") @db.VarChar(5)
+  alertTriggeredAt   DateTime? @map("alert_triggered_at")
+  addedAt            DateTime  @default(now()) @map("added_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

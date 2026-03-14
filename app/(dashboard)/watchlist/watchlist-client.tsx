@@ -29,12 +29,16 @@ import {
   RocketIcon,
   CheckIcon,
   XIcon,
+  BellIcon,
+  BellOffIcon,
+  BellRingIcon,
 } from "lucide-react"
 import type { WatchlistItemData } from "@/lib/data/watchlist"
 import {
   useWatchlist,
   useWatchlistMutations,
   useUpdateWatchlistNotes,
+  useUpdateWatchlistAlert,
   type WatchlistItem,
 } from "@/hooks/use-watchlist"
 
@@ -56,9 +60,29 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
   const { data: items = initialItems } = useWatchlist(initialItems as WatchlistItem[])
   const { remove } = useWatchlistMutations()
   const updateNotes = useUpdateWatchlistNotes()
+  const updateAlert = useUpdateWatchlistAlert()
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editNotes, setEditNotes] = useState("")
+  const [alertEditId, setAlertEditId] = useState<string | null>(null)
+  const [alertPriceInput, setAlertPriceInput] = useState("")
+
+  function startAlertEdit(item: WatchlistItem) {
+    setAlertEditId(item.id)
+    setAlertPriceInput(item.alertPrice ? String(item.alertPrice) : "")
+  }
+
+  function saveAlert(item: WatchlistItem) {
+    const price = parseFloat(alertPriceInput)
+    if (isNaN(price) || price <= 0) {
+      updateAlert.mutate({ id: item.id, alertPrice: null, alertDirection: null })
+    } else {
+      const direction = price >= item.currentPrice ? "above" : "below"
+      updateAlert.mutate({ id: item.id, alertPrice: price, alertDirection: direction as "above" | "below" })
+    }
+    setAlertEditId(null)
+    setAlertPriceInput("")
+  }
 
   function startEdit(item: WatchlistItem) {
     setEditingId(item.id)
@@ -109,6 +133,7 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Return</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">EMA 200</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Dist. to ATH</TableHead>
+                  <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Alert</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Notes</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Added</TableHead>
                   <TableHead className="h-9 w-16 px-3" />
@@ -194,6 +219,75 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
                           </span>
                         </div>
                       </TableCell>
+                      {/* Alert cell */}
+                      <TableCell className="px-3 py-2.5">
+                        {alertEditId === item.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              value={alertPriceInput}
+                              onChange={(e) => setAlertPriceInput(e.target.value)}
+                              placeholder="price"
+                              className="h-7 w-24 text-[16px] sm:text-xs bg-background font-mono"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveAlert(item)
+                                if (e.key === "Escape") setAlertEditId(null)
+                              }}
+                            />
+                            <Button variant="ghost" size="icon-xs" onClick={() => saveAlert(item)}>
+                              <CheckIcon className="size-3 text-bull" />
+                            </Button>
+                            <Button variant="ghost" size="icon-xs" onClick={() => setAlertEditId(null)}>
+                              <XIcon className="size-3" />
+                            </Button>
+                          </div>
+                        ) : item.alertPrice ? (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <button
+                                type="button"
+                                onClick={() => startAlertEdit(item)}
+                                className="flex items-center gap-1"
+                              >
+                                {item.alertTriggeredAt ? (
+                                  <BellRingIcon className="size-3 text-heat-boiling" />
+                                ) : (
+                                  <BellIcon className="size-3 text-primary" />
+                                )}
+                                <span className="font-mono text-[11px] text-primary">
+                                  {item.exchange === "NSE" ? "₹" : "$"}{item.alertPrice.toLocaleString()}
+                                </span>
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs font-semibold">
+                                Alert: notify when price goes {item.alertDirection} {item.exchange === "NSE" ? "₹" : "$"}{item.alertPrice}
+                              </p>
+                              {item.alertTriggeredAt && (
+                                <p className="text-xs text-muted-foreground">Triggered {new Date(item.alertTriggeredAt).toLocaleDateString()}</p>
+                              )}
+                              <p className="text-[10px] text-muted-foreground mt-0.5">Click to edit</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <button
+                                type="button"
+                                onClick={() => startAlertEdit(item)}
+                                className="text-muted-foreground/30 hover:text-muted-foreground transition-colors"
+                              >
+                                <BellOffIcon className="size-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">Click to set a price alert</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </TableCell>
+
                       <TableCell className="px-3 py-2.5 max-w-[200px]">
                         {editingId === item.id ? (
                           <div className="flex items-center gap-1">

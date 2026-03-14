@@ -32,6 +32,9 @@ import {
   MailIcon,
   ExternalLinkIcon,
   ZapIcon,
+  ShareIcon,
+  CopyIcon,
+  GiftIcon,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { toast } from "sonner"
@@ -975,11 +978,115 @@ function SubscriptionCard() {
   )
 }
 
+type ReferralInfo = {
+  referralCode: string
+  referralUrl: string
+  referralCount: number
+  conversions: number
+}
+
+function ReferralCard() {
+  const [info, setInfo] = useState<ReferralInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/referral")
+      .then((r) => r.json())
+      .then((d) => setInfo(d))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handleCopy() {
+    if (!info?.referralUrl) return
+    await navigator.clipboard.writeText(info.referralUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+    toast("Link copied to clipboard")
+  }
+
+  return (
+    <Card className="border-border/40 bg-surface">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <GiftIcon className="size-4 text-primary" />
+          <CardTitle className="text-sm">Refer a Friend</CardTitle>
+        </div>
+        <CardDescription className="text-xs">
+          Share your referral link. When someone subscribes using your link, you get <strong>30 days free</strong> added to your account.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2Icon className="size-3 animate-spin" />
+            Loading…
+          </div>
+        ) : info ? (
+          <>
+            {/* Referral link */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 block">Your referral link</label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 rounded-lg border border-border/40 bg-background px-3 py-2">
+                  <span className="font-mono text-[11px] text-foreground truncate block">
+                    {info.referralUrl}
+                  </span>
+                </div>
+                <Button size="sm" className="h-8 text-xs gap-1.5 shrink-0" onClick={handleCopy}>
+                  {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+                  {copied ? "Copied!" : "Copy"}
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1.5">
+                Your code: <span className="font-mono font-semibold text-foreground">{info.referralCode}</span>
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-border/30 bg-background p-3 text-center">
+                <p className="text-2xl font-bold text-foreground font-mono">{info.referralCount}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wider">Signups</p>
+              </div>
+              <div className="rounded-lg border border-border/30 bg-background p-3 text-center">
+                <p className="text-2xl font-bold text-primary font-mono">{info.conversions}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wider">Subscribed</p>
+              </div>
+            </div>
+
+            {/* How it works */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1.5">
+              <p className="text-[11px] font-semibold text-foreground">How it works</p>
+              {[
+                "Share your link with fellow traders",
+                "They sign up and start a free trial",
+                "When they subscribe to any plan, you get 30 days free",
+              ].map((s, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[9px] font-bold text-primary mt-0.5">{i + 1}</span>
+                  <p className="text-[11px] text-muted-foreground">{s}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">Failed to load referral info.</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 const SETTINGS_TABS = [
   { value: "account",  label: "Account",  icon: UserIcon },
   { value: "alerts",   label: "Alerts",   icon: BellIcon },
   { value: "billing",  label: "Billing",  icon: CreditCardIcon },
   { value: "trading",  label: "Trading",  icon: ScaleIcon },
+  { value: "referral", label: "Referral", icon: GiftIcon },
   { value: "feedback", label: "Feedback", icon: MessageSquareIcon },
 ]
 
@@ -1062,6 +1169,11 @@ export default function SettingsPage() {
         {/* Trading — Position Defaults */}
         <TabsContent value="trading" className="mt-6">
           <PositionDefaultsCard />
+        </TabsContent>
+
+        {/* Referral */}
+        <TabsContent value="referral" className="mt-6">
+          <ReferralCard />
         </TabsContent>
 
         {/* Feedback */}

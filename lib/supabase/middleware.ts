@@ -32,7 +32,8 @@ export async function updateSession(request: NextRequest) {
   const publicPaths = ["/", "/sign-in", "/pricing", "/guide", "/terms", "/privacy", "/refund"]
   const isPublic =
     publicPaths.includes(request.nextUrl.pathname) ||
-    request.nextUrl.pathname.startsWith("/api/")
+    request.nextUrl.pathname.startsWith("/api/") ||
+    request.nextUrl.pathname.startsWith("/r/")
 
   // Redirect unauthenticated users to sign-in, preserving the path they wanted so we can send them back after auth
   if (!isPublic && !user) {

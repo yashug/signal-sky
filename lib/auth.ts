@@ -1,3 +1,4 @@
+import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 
@@ -74,6 +75,17 @@ export async function getSessionForApi(): Promise<{ userId: string } | null> {
   }
 }
 
+function generateReferralCode(seed: string): string {
+  const letters = seed
+    .replace(/@.*/, "")
+    .replace(/[^a-zA-Z]/g, "")
+    .toUpperCase()
+    .slice(0, 6)
+    .padEnd(3, "X")
+  const digits = Math.floor(1000 + Math.random() * 9000).toString()
+  return `${letters}${digits}`.slice(0, 20)
+}
+
 export async function getSession(): Promise<{ user: SessionUser } | null> {
   const supabase = await createClient()
   const {
@@ -81,6 +93,14 @@ export async function getSession(): Promise<{ user: SessionUser } | null> {
   } = await supabase.auth.getUser()
 
   if (!user?.id || !user?.email) return null
+
+  // Read referral code from cookie (set by /r/[code] page)
+  const cookieStore = await cookies()
+  const referralCookie = cookieStore.get("referral_code")?.value ?? null
+
+  // Generate a referral code for this new user
+  const name = user.user_metadata?.full_name ?? user.email ?? user.id
+  const newReferralCode = generateReferralCode(name)
 
   // Upsert user — sets trialEndsAt on first creation
   let dbUser = await prisma.user.upsert({
@@ -92,6 +112,8 @@ export async function getSession(): Promise<{ user: SessionUser } | null> {
       name: user.user_metadata?.full_name ?? null,
       image: user.user_metadata?.avatar_url ?? null,
       trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      referralCode: newReferralCode,
+      referredBy: referralCookie ?? null,
     },
     select: { tier: true, name: true, image: true, trialEndsAt: true, isAdmin: true },
   })

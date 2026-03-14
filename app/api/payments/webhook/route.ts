@@ -229,6 +229,42 @@ async function activateSubscription(
     where: { id: userId },
     data: { tier: "PRO" },
   })
+
+  // Credit referrer on first subscription (non-blocking)
+  applyReferralCredit(userId).catch(() => {})
+}
+
+/**
+ * If the new subscriber was referred, extend the referrer's subscription by 30 days.
+ * Clears `referredBy` after crediting to prevent double-crediting.
+ */
+async function applyReferralCredit(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { referredBy: true },
+  })
+  if (!user?.referredBy) return
+
+  const referrer = await prisma.user.findFirst({
+    where: { referralCode: user.referredBy },
+    select: { id: true, subscription: { select: { id: true, currentPeriodEnd: true, billingInterval: true, status: true } } },
+  })
+
+  // Clear referredBy so credit is only applied once
+  await prisma.user.update({ where: { id: userId }, data: { referredBy: null } })
+
+  if (!referrer?.subscription || referrer.subscription.status !== "active") return
+  if (referrer.subscription.billingInterval === "lifetime") return // lifetime users don't need extension
+
+  const base = referrer.subscription.currentPeriodEnd ?? new Date()
+  const newEnd = new Date(Math.max(base.getTime(), Date.now()) + 30 * 24 * 60 * 60 * 1000)
+
+  await prisma.subscription.update({
+    where: { id: referrer.subscription.id },
+    data: { currentPeriodEnd: newEnd },
+  })
+
+  console.log(`[referral] credited 30 days to referrer ${referrer.id} → new end ${newEnd.toISOString()}`)
 }
 
 async function incrementLifetimeDeal() {

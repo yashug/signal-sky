@@ -12,6 +12,9 @@ export type WatchlistItem = {
   exchange: string
   addedAt: string
   notes: string
+  alertPrice: number | null
+  alertDirection: "above" | "below" | null
+  alertTriggeredAt: string | null
   currentPrice: number
   ema200: number
   ath: number
@@ -78,6 +81,9 @@ export function useWatchlistMutations() {
           name: symbol.replace(".NS", ""),
           addedAt: new Date().toISOString(),
           notes: "",
+          alertPrice: null,
+          alertDirection: null,
+          alertTriggeredAt: null,
           currentPrice: 0,
           ema200: 0,
           ath: 0,
@@ -130,6 +136,39 @@ export function useWatchlistMutations() {
   })
 
   return { add, remove }
+}
+
+/**
+ * Set or clear a price alert on a watchlist item.
+ */
+export function useUpdateWatchlistAlert() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, alertPrice, alertDirection }: { id: string; alertPrice: number | null; alertDirection: "above" | "below" | null }) => {
+      const res = await fetch(`/api/watchlist/${id}/alert`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ alertPrice, alertDirection }),
+      })
+      if (!res.ok) throw new Error()
+    },
+    onMutate: async ({ id, alertPrice, alertDirection }) => {
+      await queryClient.cancelQueries({ queryKey: WATCHLIST_QUERY_KEY })
+      const previous = queryClient.getQueryData<WatchlistItem[]>(WATCHLIST_QUERY_KEY)
+      queryClient.setQueryData<WatchlistItem[]>(WATCHLIST_QUERY_KEY, (old = []) =>
+        old.map((item) => item.id === id ? { ...item, alertPrice, alertDirection, alertTriggeredAt: null } : item)
+      )
+      return { previous }
+    },
+    onSuccess: (_, { alertPrice }) => {
+      toast(alertPrice ? `Alert set at price ${alertPrice}` : "Alert cleared")
+    },
+    onError: (_, __, ctx) => {
+      queryClient.setQueryData(WATCHLIST_QUERY_KEY, ctx?.previous)
+      toast.error("Failed to update alert")
+    },
+  })
 }
 
 /**
