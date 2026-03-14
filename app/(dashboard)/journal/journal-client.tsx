@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import { useJournalTrades, useDeleteTrade, useExitTrade } from "@/hooks/use-journal"
+import { useAuth } from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -29,6 +31,8 @@ import {
   ShieldCheckIcon,
   LayoutGridIcon,
   TableIcon,
+  SparklesIcon,
+  ArrowRightIcon,
 } from "lucide-react"
 import type { JournalTradeData } from "@/lib/data/journal"
 import { PortfolioHeatmap } from "@/components/signal-sky/portfolio-heatmap"
@@ -137,6 +141,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
   const { data: trades = initialTrades } = useJournalTrades(initialTrades)
   const deleteTrade = useDeleteTrade()
   const exitTrade = useExitTrade()
+  const { user } = useAuth()
 
   const [activeTab, setActiveTab] = useState<FilterTab>("all")
   const [marketFilter, setMarketFilter] = useState<"all" | "NSE" | "US">("all")
@@ -347,6 +352,42 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
           </div>
         )}
       </div>
+
+      {/* Upgrade nudge — show when trial active and overall P&L is positive */}
+      {(() => {
+        if (!user) return null
+        const isPro = user.tier === "PRO" || user.tier === "INSTITUTIONAL"
+        if (isPro || user.isAdmin) return null
+        const trialEndsAt = user.trialEndsAt ? new Date(user.trialEndsAt) : null
+        const isTrialActive = trialEndsAt ? trialEndsAt.getTime() > Date.now() : false
+        if (!isTrialActive) return null
+        const daysRemaining = trialEndsAt
+          ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / 86400000))
+          : 0
+        const totalPnl = marketStats.nse.totalPnl + marketStats.us.totalPnl + marketStats.nse.openPnl + marketStats.us.openPnl
+        if (totalPnl <= 0 && daysRemaining > 3) return null
+        return (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-bull/25 bg-bull/5 px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <SparklesIcon className="size-4 text-bull shrink-0" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-semibold text-foreground">
+                  {totalPnl > 0 ? "Your journal is tracking a positive P&L." : `${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} left in your trial.`}
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Subscribe to keep tracking your trades and performance.
+                </span>
+              </div>
+            </div>
+            <Link
+              href="/pricing"
+              className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors whitespace-nowrap shrink-0"
+            >
+              Subscribe <ArrowRightIcon className="size-3" />
+            </Link>
+          </div>
+        )
+      })()}
 
       {/* EMA200 Breach Alert Banner */}
       {alertTrades.length > 0 && (

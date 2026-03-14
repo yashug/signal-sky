@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -17,10 +17,20 @@ import {
   AlertCircleIcon,
   Loader2Icon,
   BellIcon,
+  StarIcon,
+  BookOpenIcon,
+  TrendingUpIcon,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import type { LifetimeDealInfo } from "@/lib/data/deals"
+
+type TrialSummary = {
+  watchlistCount: number
+  journalCount: number
+  openTrades: number
+  watchlistSymbols?: { symbol: string; exchange: string }[]
+}
 
 const PRO_FEATURES = [
   "All Nifty indices (50, 100, 200, Midcap, Smallcap)",
@@ -41,6 +51,36 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
   const isExpired = searchParams.get("expired") === "1"
   const paymentError = searchParams.get("error")
   const [checkingOut, setCheckingOut] = useState<string | null>(null)
+  const [trialSummary, setTrialSummary] = useState<TrialSummary | null>(null)
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!isExpired) return
+    fetch("/api/user/trial-summary")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setTrialSummary(data) })
+      .catch(() => {})
+  }, [isExpired])
+
+  useEffect(() => {
+    if (!isExpired) return
+    // 24 hours countdown from when the user lands on the page
+    const target = Date.now() + 24 * 60 * 60 * 1000
+    const tick = () => {
+      const diff = Math.max(0, Math.floor((target - Date.now()) / 1000))
+      setSecondsLeft(diff)
+    }
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [isExpired])
+
+  function formatCountdown(s: number) {
+    const h = Math.floor(s / 3600).toString().padStart(2, "0")
+    const m = Math.floor((s % 3600) / 60).toString().padStart(2, "0")
+    const sec = (s % 60).toString().padStart(2, "0")
+    return { h, m, sec }
+  }
 
   async function handleCheckout(interval: "monthly" | "yearly" | "lifetime") {
     setCheckingOut(interval)
@@ -108,11 +148,116 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
 
       <div className="flex-1 flex flex-col items-center px-4 py-16">
         {isExpired && (
-          <div className="flex items-center gap-2 rounded-lg border border-heat-simmering/30 bg-heat-simmering/5 px-4 py-2.5 mb-8 max-w-lg w-full">
-            <AlertCircleIcon className="size-4 text-heat-simmering shrink-0" />
-            <p className="text-xs text-heat-simmering">
-              Your 7-day free trial has ended. Subscribe to continue using SignalSky.
-            </p>
+          <div className="flex flex-col gap-3 mb-8 max-w-lg w-full">
+            <div className="flex items-center gap-2 rounded-lg border border-heat-simmering/30 bg-heat-simmering/5 px-4 py-2.5">
+              <AlertCircleIcon className="size-4 text-heat-simmering shrink-0" />
+              <p className="text-xs text-heat-simmering">
+                Your 7-day free trial has ended. Subscribe to continue using SignalSky.
+              </p>
+            </div>
+            {trialSummary && (trialSummary.watchlistCount > 0 || trialSummary.journalCount > 0) && (
+              <div className="rounded-xl border border-border/30 bg-card/60 px-5 py-4">
+                <p className="text-[11px] font-semibold text-foreground mb-3">
+                  Here&apos;s what you built during your trial:
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  {trialSummary.watchlistCount > 0 && (
+                    <div className="flex flex-col items-center gap-1 rounded-lg bg-primary/5 p-3">
+                      <StarIcon className="size-4 text-primary" />
+                      <span className="font-mono text-lg font-bold text-foreground">
+                        {trialSummary.watchlistCount}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground text-center">
+                        watchlist{trialSummary.watchlistCount !== 1 ? " stocks" : " stock"}
+                      </span>
+                    </div>
+                  )}
+                  {trialSummary.journalCount > 0 && (
+                    <div className="flex flex-col items-center gap-1 rounded-lg bg-bull/5 p-3">
+                      <BookOpenIcon className="size-4 text-bull" />
+                      <span className="font-mono text-lg font-bold text-foreground">
+                        {trialSummary.journalCount}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground text-center">
+                        trade{trialSummary.journalCount !== 1 ? "s" : ""} logged
+                      </span>
+                    </div>
+                  )}
+                  {trialSummary.openTrades > 0 && (
+                    <div className="flex flex-col items-center gap-1 rounded-lg bg-heat-simmering/5 p-3">
+                      <TrendingUpIcon className="size-4 text-heat-simmering" />
+                      <span className="font-mono text-lg font-bold text-foreground">
+                        {trialSummary.openTrades}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground text-center">
+                        open position{trialSummary.openTrades !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-3 text-center">
+                  Subscribe to keep your data and continue tracking.
+                </p>
+                {trialSummary.watchlistSymbols && trialSummary.watchlistSymbols.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-[11px] font-semibold text-foreground mb-2">Your watchlist — subscribe to access:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {trialSummary.watchlistSymbols.map((s) => (
+                        <div
+                          key={s.symbol}
+                          className="relative rounded-lg border border-border/30 bg-muted/40 px-3 py-2 overflow-hidden"
+                        >
+                          {/* Blurred content */}
+                          <div className="blur-[3px] select-none pointer-events-none">
+                            <span className="font-mono text-[12px] font-bold text-foreground">{s.symbol}</span>
+                            <span className="text-[10px] text-muted-foreground ml-1.5">{s.exchange}</span>
+                          </div>
+                          {/* Lock overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="size-3.5 text-muted-foreground/40">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {secondsLeft !== null && secondsLeft > 0 && (
+              <div className="rounded-xl border border-heat-boiling/20 bg-heat-boiling/5 px-5 py-4 max-w-lg w-full">
+                <p className="text-[11px] text-heat-boiling font-semibold mb-2 uppercase tracking-wider">
+                  Subscribe in the next
+                </p>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const { h, m, sec } = formatCountdown(secondsLeft)
+                    return (
+                      <>
+                        {[
+                          { val: h, label: "hr" },
+                          { val: m, label: "min" },
+                          { val: sec, label: "sec" },
+                        ].map(({ val, label }, i) => (
+                          <>
+                            {i > 0 && <span key={`sep-${label}`} className="text-heat-boiling/40 font-mono text-lg font-bold">:</span>}
+                            <div key={label} className="flex flex-col items-center">
+                              <span className="font-mono text-2xl font-bold text-heat-boiling leading-none">{val}</span>
+                              <span className="text-[9px] text-heat-boiling/60 uppercase tracking-wider mt-0.5">{label}</span>
+                            </div>
+                          </>
+                        ))}
+                        <span className="text-[11px] text-muted-foreground ml-2">to lock in current pricing</span>
+                      </>
+                    )
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -258,6 +403,9 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
               )}
               {checkingOut === "yearly" ? "Redirecting..." : "Upgrade to Pro"}
             </Button>
+            <p className="text-[10px] text-center text-muted-foreground mt-2">
+              Saves ₹{formatINR(monthlyPrice * 12 - yearlyPrice)} vs monthly over 12 months
+            </p>
           </div>
 
           {/* Lifetime Deal */}
@@ -350,6 +498,19 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
           </div>
         </div>
 
+        {/* Money-back guarantee */}
+        <div className="flex items-start gap-3 mt-8 rounded-xl border border-bull/20 bg-bull/5 px-5 py-4 max-w-2xl w-full">
+          <ShieldCheckIcon className="size-4 text-bull shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-semibold text-foreground">7-day money-back guarantee</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Not satisfied within 7 days of payment? Email{" "}
+              <a href="mailto:support@signalsky.app" className="underline">support@signalsky.app</a>{" "}
+              for a full refund. No questions asked.
+            </p>
+          </div>
+        </div>
+
         {/* Trust badges */}
         <div className="flex flex-wrap items-center justify-center gap-8 mt-14 text-muted-foreground">
           {[
@@ -369,6 +530,10 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
           <h2 className="text-lg font-semibold text-center mb-8">Frequently asked questions</h2>
           <div className="space-y-4">
             {[
+              {
+                q: "Do you offer a money-back guarantee?",
+                a: "Yes. If you're not happy within 7 days of your first payment, email support@signalsky.app and we'll refund you in full. No questions, no hassle.",
+              },
               {
                 q: "How does the free trial work?",
                 a: "You get 7 days of full Pro access when you sign up. No payment required. After the trial ends, subscribe to any plan to continue.",

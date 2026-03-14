@@ -8,6 +8,7 @@ export type UserSettings = {
   defaultCapitalINR?: number
   defaultCapitalUSD?: number
   defaultRiskPct?: number
+  hasSeenOnboarding?: boolean
 }
 
 export type AuthUser = {

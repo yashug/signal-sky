@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/lib/auth"
 import { getMarketHealth } from "@/lib/data/market-health"
-import { getLastScanTime } from "@/lib/data/signals"
+import { getLastScanTime, getActiveSignalCount } from "@/lib/data/signals"
 import { DashboardShell } from "./dashboard-shell"
 
 export default async function DashboardLayout({
@@ -23,9 +23,10 @@ export default async function DashboardLayout({
     }
   }
 
-  const [marketHealthResult, lastScanResult] = await Promise.allSettled([
+  const [marketHealthResult, lastScanResult, signalCountResult] = await Promise.allSettled([
     getMarketHealth(),
     getLastScanTime(),
+    getActiveSignalCount(),
   ])
 
   const markets = marketHealthResult.status === "fulfilled"
@@ -34,11 +35,15 @@ export default async function DashboardLayout({
   const lastScan = lastScanResult.status === "fulfilled"
     ? lastScanResult.value
     : null
+  const signalCount = signalCountResult.status === "fulfilled"
+    ? signalCountResult.value
+    : undefined
 
   return (
     <DashboardShell
       marketHealthData={markets}
       lastScanTime={lastScan}
+      signalCount={signalCount}
     >
       {children}
     </DashboardShell>

@@ -94,6 +94,20 @@ export const getSignals = unstable_cache(
   { tags: ["signals"], revalidate: 86400 }
 )
 
+export const getActiveSignalCount = unstable_cache(
+  async (): Promise<number> => {
+    const result = (await prisma.$queryRaw`
+      SELECT COUNT(*)::int as count
+      FROM signals
+      WHERE is_active = true
+        AND distance_pct BETWEEN -5 AND 15
+    `) as [{ count: number }]
+    return result[0]?.count ?? 0
+  },
+  ["signals-count"],
+  { tags: ["signals"], revalidate: 3600 }
+)
+
 export const getSignalBySymbol = unstable_cache(
   async (symbol: string): Promise<ApiSignal | null> => {
     const rows = (await prisma.$queryRawUnsafe(
@@ -146,6 +160,25 @@ export const getLastScanTime = unstable_cache(
   },
   ["last-scan-time"],
   { tags: ["signals"], revalidate: 86400 }
+)
+
+export const getLandingStats = unstable_cache(
+  async (): Promise<{ signalCount: number; stockCount: number }> => {
+    const [signalRow, stockRow] = await Promise.all([
+      prisma.$queryRawUnsafe(`
+        SELECT COUNT(*)::int as count FROM signals WHERE is_active = true AND distance_pct BETWEEN -5 AND 15
+      `) as Promise<[{ count: number }]>,
+      prisma.$queryRawUnsafe(`
+        SELECT COUNT(DISTINCT symbol)::int as count FROM universe_members
+      `) as Promise<[{ count: number }]>,
+    ])
+    return {
+      signalCount: signalRow[0]?.count ?? 0,
+      stockCount: stockRow[0]?.count ?? 0,
+    }
+  },
+  ["landing-stats"],
+  { tags: ["signals"], revalidate: 3600 }
 )
 
 export const getSignalChart = unstable_cache(

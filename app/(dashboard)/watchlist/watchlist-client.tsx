@@ -106,6 +106,7 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-4 w-10" />
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Symbol</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Price</TableHead>
+                  <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Return</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">EMA 200</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Dist. to ATH</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Notes</TableHead>
@@ -143,6 +144,34 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
                             {currency}{item.currentPrice.toLocaleString()}
                           </span>
                         </div>
+                      </TableCell>
+                      <TableCell className="px-3 py-2.5">
+                        {item.priceAtAdd && item.currentPrice > 0 ? (() => {
+                          const ret = ((item.currentPrice - item.priceAtAdd) / item.priceAtAdd) * 100
+                          const isPos = ret >= 0
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger className="text-left">
+                                <span className={cn(
+                                  "font-mono text-sm font-semibold tabular-nums",
+                                  isPos ? "text-bull" : "text-bear"
+                                )}>
+                                  {isPos ? "+" : ""}{ret.toFixed(1)}%
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs font-semibold">
+                                  {isPos ? "+" : ""}{ret.toFixed(2)}% since added
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Added at {currency}{item.priceAtAdd.toLocaleString(undefined, { maximumFractionDigits: 2 })} · Now {currency}{item.currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                        })() : (
+                          <span className="font-mono text-sm text-muted-foreground/40">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="px-3 py-2.5">
                         <span className="font-mono text-sm text-muted-foreground">

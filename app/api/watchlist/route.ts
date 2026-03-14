@@ -21,7 +21,8 @@ export async function GET() {
       s.ema200,
       s.ath,
       s.heat,
-      s.distance_pct AS "distancePct"
+      s.distance_pct AS "distancePct",
+      db.close       AS "priceAtAdd"
     FROM watchlist_items w
     LEFT JOIN LATERAL (
       SELECT name FROM universe_members WHERE symbol = w.symbol LIMIT 1
@@ -33,6 +34,14 @@ export async function GET() {
       ORDER BY signal_date DESC
       LIMIT 1
     ) s ON true
+    LEFT JOIN LATERAL (
+      SELECT close
+      FROM daily_bars
+      WHERE symbol = REPLACE(w.symbol, '.NS', '')
+        AND date <= DATE(w.added_at)
+      ORDER BY date DESC
+      LIMIT 1
+    ) db ON true
     WHERE w.user_id = $1
     ORDER BY w.added_at DESC
   `, session.userId) as any[]
@@ -49,6 +58,7 @@ export async function GET() {
     ath: r.ath ? Number(r.ath) : 0,
     heat: r.heat ?? "cooling",
     distanceToBreakout: r.distancePct ? Number(r.distancePct) : 0,
+    priceAtAdd: r.priceAtAdd ? Number(r.priceAtAdd) : null,
   }))
 
   return NextResponse.json({ items })

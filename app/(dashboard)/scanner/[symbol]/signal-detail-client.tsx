@@ -38,6 +38,8 @@ import {
   CalendarIcon,
   BookOpenIcon,
   Loader2Icon,
+  Share2Icon,
+  CheckIcon,
 } from "lucide-react"
 
 const chartConfig: ChartConfig = {
@@ -164,6 +166,27 @@ export function SignalDetailClient({
   const [shares, setShares] = useState("")
   const [lastEdited, setLastEdited] = useState<"capital" | "shares">("capital")
   const [loggingTrade, setLoggingTrade] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  async function handleShare() {
+    const url = `${window.location.origin}/scanner/${encodeURIComponent(signal.symbol)}`
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${signal.symbol.replace(".NS", "")} — Reset & Reclaim Signal`,
+          text: `${signal.symbol.replace(".NS", "")} is a ${signal.heat} Reset & Reclaim setup on SignalSky`,
+          url,
+        })
+      } catch {
+        // user cancelled share sheet — not an error
+      }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      toast("Link copied to clipboard")
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
 
   const chartData = useMemo(() => {
     if (serverChartData && serverChartData.priceHistory.length > 0) return serverChartData
@@ -311,6 +334,18 @@ export function SignalDetailClient({
               {signal.strategyName}
             </span>
           </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleShare}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {copied ? (
+              <CheckIcon className="size-3.5 text-bull" />
+            ) : (
+              <Share2Icon className="size-3.5" />
+            )}
+          </Button>
         </div>
       </div>
 

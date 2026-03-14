@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useWatchlistMap, useWatchlistMutations } from "@/hooks/use-watchlist"
 import {
@@ -54,8 +55,18 @@ import {
   ZapIcon,
   StarIcon,
   GlobeIcon,
+  SparklesIcon,
+  ArrowRightIcon,
+  TrophyIcon,
 } from "lucide-react"
 import { UNIVERSE_OPTIONS, resolveUniverseTags, type UniverseGroupKey } from "@/lib/universes"
+import { useAuth } from "@/hooks/use-auth"
+import type { BacktestStatEntry } from "@/lib/data/backtests"
+import { JournalStatsWidget } from "@/components/signal-sky/journal-stats-widget"
+
+type ScannerTableMeta = {
+  backtestStats?: Record<string, BacktestStatEntry>
+}
 
 const HEAT_CONFIG = {
   breakout: {
@@ -121,22 +132,46 @@ const columns: ColumnDef<ApiSignal>[] = [
   {
     accessorKey: "symbol",
     header: "Symbol",
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const signal = row.original
+      const meta = table.options.meta as ScannerTableMeta | undefined
+      const bt = meta?.backtestStats?.[signal.symbol]
       return (
         <div className="flex items-center gap-2.5">
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-0.5">
             <span className="font-mono text-sm font-semibold tracking-tight text-foreground">
               {signal.symbol.replace(".NS", "")}
             </span>
-            <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
-              {signal.name}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-muted-foreground truncate max-w-[90px]">
+                {signal.name}
+              </span>
+              {bt && bt.totalTrades >= 3 && (
+                <Tooltip>
+                  <TooltipTrigger className={cn(
+                    "font-mono text-[9px] font-bold tabular-nums px-1 py-0.5 rounded cursor-default",
+                    bt.winRate >= 55
+                      ? "bg-bull/10 text-bull"
+                      : bt.winRate < 45
+                      ? "bg-bear/10 text-bear"
+                      : "bg-muted/60 text-muted-foreground"
+                  )}>
+                    {bt.winRate.toFixed(0)}% WR
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[200px]">
+                    <p className="text-xs font-semibold">{bt.winRate.toFixed(1)}% win rate</p>
+                    <p className="text-xs text-muted-foreground">
+                      Based on {bt.totalTrades} backtested Reset &amp; Reclaim trades for this symbol
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </div>
       )
     },
-    size: 180,
+    size: 190,
   },
   {
     accessorKey: "exchange",
@@ -282,12 +317,28 @@ export function ScannerClient({
   data,
   initialUniverse,
   universeMemberships,
+  backtestStats,
 }: {
   data: ApiSignalsResponse
   initialUniverse: string
   universeMemberships: Record<string, string[]>
+  backtestStats?: Record<string, BacktestStatEntry>
 }) {
   const router = useRouter()
+  const { user } = useAuth()
+
+  const trialInfo = useMemo(() => {
+    if (!user) return { isTrialActive: false, isPro: false, daysRemaining: 0 }
+    const isPro = user.tier === "PRO" || user.tier === "INSTITUTIONAL"
+    const trialEndsAt = user.trialEndsAt ? new Date(user.trialEndsAt) : null
+    const isTrialActive = trialEndsAt ? trialEndsAt.getTime() > Date.now() : false
+    const daysRemaining = trialEndsAt
+      ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / 86400000))
+      : 0
+    return { isPro, isTrialActive, daysRemaining }
+  }, [user])
+
+  const showUpgradeNudge = trialInfo.isTrialActive && !trialInfo.isPro && trialInfo.daysRemaining <= 2
 
   const validHeats = ["all", "breakout", "boiling", "simmering", "cooling"]
 
@@ -339,6 +390,15 @@ export function ScannerClient({
     return universeSignals.filter((s) => s.heat === heatFilter)
   }, [universeSignals, heatFilter])
 
+  const spotlightSignal = useMemo(() => {
+    const priority = ["breakout", "boiling", "simmering", "cooling"]
+    for (const heat of priority) {
+      const match = universeSignals.find((s) => s.heat === heat)
+      if (match) return match
+    }
+    return null
+  }, [universeSignals])
+
   const table = useReactTable({
     data: filteredData,
     columns,
@@ -348,6 +408,7 @@ export function ScannerClient({
     onSortingChange: setSorting,
     state: { sorting, globalFilter },
     onGlobalFilterChange: setGlobalFilter,
+    meta: { backtestStats } as ScannerTableMeta,
     globalFilterFn: (row, _columnId, filterValue) => {
       const search = filterValue.toLowerCase()
       const s = row.original
@@ -427,6 +488,61 @@ export function ScannerClient({
           </div>
         </div>
       </div>
+
+      {/* Journal stats strip */}
+      <JournalStatsWidget />
+
+      {/* Signal Spotlight */}
+      {spotlightSignal && (
+        <div
+          className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-border/20 bg-surface/20 cursor-pointer hover:bg-surface/40 transition-colors"
+          onClick={() => router.push(`/scanner/${encodeURIComponent(spotlightSignal.symbol)}`)}
+        >
+          <div className="flex items-center gap-1.5 shrink-0">
+            <TrophyIcon className="size-3.5 text-heat-simmering" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Today&apos;s Top Signal
+            </span>
+          </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-mono text-sm font-bold text-foreground">
+              {spotlightSignal.symbol.replace(".NS", "")}
+            </span>
+            <HeatBadge heat={spotlightSignal.heat} />
+            <span className={cn(
+              "font-mono text-xs font-semibold",
+              spotlightSignal.distancePct < 0 ? "text-heat-breakout" : spotlightSignal.distancePct <= 2 ? "text-heat-boiling" : "text-heat-simmering"
+            )}>
+              {spotlightSignal.distancePct < 0
+                ? `+${Math.abs(spotlightSignal.distancePct).toFixed(1)}% above peak`
+                : `${spotlightSignal.distancePct.toFixed(1)}% from peak`}
+            </span>
+            <ExchangeBadge exchange={spotlightSignal.exchange} />
+          </div>
+          <div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            View <ArrowRightIcon className="size-3" />
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade nudge for expiring trial */}
+      {showUpgradeNudge && (
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 border-b border-heat-boiling/20 bg-heat-boiling/5">
+          <div className="flex items-center gap-2">
+            <SparklesIcon className="size-3.5 text-heat-boiling shrink-0" />
+            <span className="text-xs text-heat-boiling">
+              <span className="font-bold">{trialInfo.daysRemaining} day{trialInfo.daysRemaining !== 1 ? "s" : ""} left</span> in your trial — subscribe to keep full access to all markets
+            </span>
+          </div>
+          <Link
+            href="/pricing"
+            className="flex items-center gap-1 text-[10px] font-semibold text-heat-boiling hover:text-heat-boiling/80 transition-colors whitespace-nowrap"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Subscribe <ArrowRightIcon className="size-3" />
+          </Link>
+        </div>
+      )}
 
       {/* Heat filter tabs */}
       <div className="flex items-center gap-4 px-4 sm:px-6 py-3 border-b border-border/20 bg-surface/30 overflow-x-auto">

@@ -98,6 +98,32 @@ export const getBacktestAggregates = unstable_cache(
   { tags: ["backtests"], revalidate: 604800 }
 )
 
+export type BacktestStatEntry = {
+  winRate: number
+  totalTrades: number
+}
+
+export const getBacktestStatsMap = unstable_cache(
+  async (): Promise<Record<string, BacktestStatEntry>> => {
+    const rows = (await prisma.$queryRaw`
+      SELECT DISTINCT ON (symbol) symbol, win_rate::double precision as win_rate, total_trades::int as total_trades
+      FROM backtests
+      ORDER BY symbol, computed_at DESC
+    `) as { symbol: string; win_rate: number; total_trades: number }[]
+
+    const map: Record<string, BacktestStatEntry> = {}
+    for (const r of rows) {
+      map[r.symbol] = {
+        winRate: Number(r.win_rate),
+        totalTrades: Number(r.total_trades),
+      }
+    }
+    return map
+  },
+  ["backtest-stats-map"],
+  { tags: ["backtests"], revalidate: 604800 }
+)
+
 export const getBacktestDetail = unstable_cache(
   async (symbol: string): Promise<ApiBacktestDetail | null> => {
     const backtest = await prisma.backtest.findFirst({

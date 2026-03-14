@@ -17,6 +17,7 @@ export type WatchlistItem = {
   ath: number
   heat: "breakout" | "boiling" | "simmering" | "cooling"
   distanceToBreakout: number
+  priceAtAdd: number | null
 }
 
 async function fetchWatchlist(): Promise<WatchlistItem[]> {
@@ -82,6 +83,7 @@ export function useWatchlistMutations() {
           ath: 0,
           heat: "cooling",
           distanceToBreakout: 0,
+          priceAtAdd: null,
         },
         ...old,
       ])

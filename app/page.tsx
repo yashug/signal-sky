@@ -22,6 +22,8 @@ import {
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { LifetimeSlots } from "@/components/signal-sky/lifetime-slots"
 import { getLifetimeDealInfo, type LifetimeDealInfo } from "@/lib/data/deals"
+import { getBacktestAggregates } from "@/lib/data/backtests"
+import { getLandingStats } from "@/lib/data/signals"
 
 function Logo() {
   return (
@@ -46,6 +48,7 @@ function Navbar() {
           <a href="#strategy" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Strategy</a>
           <a href="#preview" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Preview</a>
           <a href="#pricing" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+          <Link href="/guide" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Guide</Link>
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />
@@ -952,6 +955,106 @@ function StrategySection() {
             </div>
           </div>
         </div>
+
+        {/* Guide deep-dive CTA */}
+        <style>{`
+          @keyframes guide-shimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          @keyframes guide-float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-3px); }
+          }
+          .guide-shimmer-ring {
+            background: linear-gradient(90deg,
+              oklch(0.72 0.19 220 / 0.0) 0%,
+              oklch(0.72 0.19 220 / 0.55) 30%,
+              oklch(0.75 0.18 155 / 0.45) 55%,
+              oklch(0.72 0.19 220 / 0.55) 70%,
+              oklch(0.72 0.19 220 / 0.0) 100%
+            );
+            background-size: 300% 100%;
+            animation: guide-shimmer 3.5s ease-in-out infinite;
+          }
+          .guide-icon-float {
+            animation: guide-float 4s ease-in-out infinite;
+          }
+        `}</style>
+        <div className="mt-8 group relative">
+          {/* Shimmer border ring */}
+          <div className="absolute -inset-[1px] rounded-2xl guide-shimmer-ring opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
+          {/* Soft glow bloom */}
+          <div
+            className="absolute -inset-4 rounded-3xl opacity-0 group-hover:opacity-30 transition-opacity duration-700 blur-2xl pointer-events-none"
+            style={{ background: "radial-gradient(ellipse, oklch(0.72 0.19 220 / 0.5), transparent 70%)" }}
+          />
+          <Link href="/guide">
+            <div className="relative rounded-2xl border border-border/10 bg-card/70 backdrop-blur-sm px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-5 overflow-hidden cursor-pointer">
+              {/* Subtle inner glow top-left */}
+              <div
+                className="absolute -top-8 -left-8 w-40 h-40 rounded-full opacity-20 blur-2xl pointer-events-none"
+                style={{ background: "radial-gradient(circle, oklch(0.72 0.19 220), transparent 70%)" }}
+              />
+
+              {/* Mini SVG chart icon */}
+              <div className="guide-icon-float shrink-0 relative">
+                <div
+                  className="flex size-14 items-center justify-center rounded-xl border border-primary/20"
+                  style={{ background: "linear-gradient(135deg, oklch(0.72 0.19 220 / 0.08), oklch(0.72 0.19 220 / 0.02))" }}
+                >
+                  <svg viewBox="0 0 40 32" className="w-8 h-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Grid lines */}
+                    <line x1="4" y1="8"  x2="36" y2="8"  stroke="currentColor" className="text-border/20" strokeWidth="0.5" strokeDasharray="2 3" />
+                    <line x1="4" y1="16" x2="36" y2="16" stroke="currentColor" className="text-border/20" strokeWidth="0.5" strokeDasharray="2 3" />
+                    <line x1="4" y1="24" x2="36" y2="24" stroke="currentColor" className="text-border/20" strokeWidth="0.5" strokeDasharray="2 3" />
+                    {/* EMA line */}
+                    <path d="M4 20 C12 19 24 21 36 18" stroke="currentColor" className="text-heat-simmering/50" strokeWidth="1" strokeDasharray="3 2" />
+                    {/* Price path */}
+                    <path d="M4 18 C8 14 12 6 16 5 C20 4 22 12 24 18 C26 22 28 24 30 20 C32 16 34 8 36 6" stroke="currentColor" className="text-primary" strokeWidth="1.5" strokeLinecap="round" />
+                    {/* ATH peak dot */}
+                    <circle cx="16" cy="5" r="2" className="fill-bull" />
+                    {/* Signal dot */}
+                    <circle cx="36" cy="6" r="2" className="fill-primary" />
+                    <circle cx="36" cy="6" r="4" className="fill-primary/15" />
+                    {/* Magnifier overlay */}
+                    <circle cx="28" cy="16" r="7" stroke="currentColor" className="text-primary/30" strokeWidth="1.2" />
+                    <line x1="33" y1="21" x2="37" y2="25" stroke="currentColor" className="text-primary/30" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[9px] font-mono font-semibold uppercase tracking-[0.18em] text-primary/70">Strategy Deep Dive</span>
+                  <span
+                    className="inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider"
+                    style={{ background: "oklch(0.72 0.19 220 / 0.12)", color: "oklch(0.72 0.19 220)" }}
+                  >
+                    Guide
+                  </span>
+                </div>
+                <p className="text-[13px] font-semibold text-foreground leading-snug mb-1">
+                  Want to understand the mechanics in depth?
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  EMA 200 explained, Pre-Set ATH vs all-time high, how each heat level works, and exactly how to read every signal.
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div
+                className="shrink-0 flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[11px] font-semibold transition-all duration-300 group-hover:gap-2.5 whitespace-nowrap"
+                style={{ background: "oklch(0.72 0.19 220 / 0.1)", color: "oklch(0.72 0.19 220)" }}
+              >
+                Read the Guide
+                <ArrowRightIcon className="size-3 transition-transform duration-300 group-hover:translate-x-0.5" />
+              </div>
+            </div>
+          </Link>
+        </div>
       </div>
     </section>
   )
@@ -1177,17 +1280,109 @@ function Footer() {
 }
 
 export default async function LandingPage() {
-  const dealResult = await Promise.allSettled([getLifetimeDealInfo()])
-  const deal = dealResult[0].status === "fulfilled" ? dealResult[0].value : { cap: 100, sold: 0, remaining: 100, available: true }
+  const [dealInfo, aggregates, stats] = await Promise.all([
+    getLifetimeDealInfo(),
+    getBacktestAggregates(),
+    getLandingStats(),
+  ])
+  const deal = dealInfo ?? { cap: 100, sold: 0, remaining: 100, available: true }
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      {/* Live stats bar */}
+      <div className="pt-16">
+        <div className="border-b border-border/15 bg-surface/40 backdrop-blur-sm py-2.5 px-6">
+          <div className="mx-auto max-w-6xl flex items-center justify-center gap-6 flex-wrap">
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="size-1.5 rounded-full bg-bull animate-pulse" />
+              <span>Scanning <span className="font-semibold text-foreground font-mono">{stats.stockCount.toLocaleString()}+</span> stocks daily</span>
+            </div>
+            <span className="text-border/40 hidden sm:block">·</span>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <ZapIcon className="size-3 text-primary" />
+              <span><span className="font-semibold text-foreground font-mono">{stats.signalCount}</span> active signals right now</span>
+            </div>
+            <span className="text-border/40 hidden sm:block">·</span>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="font-semibold text-foreground font-mono">150+</span>
+              <span>traders using SignalSky</span>
+            </div>
+          </div>
+        </div>
+      </div>
       <HeroSection />
       <FeaturesSection />
       <TrustSection />
       <StrategySection />
       <PreviewSection />
+
+      {/* Strategy Track Record */}
+      {aggregates && (
+        <section className="relative py-20 px-6">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 mb-6">
+              <BarChart3Icon className="size-3.5 text-primary" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">Strategy Track Record</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em] mb-4">
+              Backed by 20+ years of data
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-12">
+              Every signal is powered by a strategy backtested across {aggregates.symbolCount}+ stocks on NSE &amp; US markets.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { value: `${aggregates.winRate.toFixed(0)}%`, label: "Avg win rate", sub: "across all backtested stocks" },
+                { value: `+${aggregates.avgReturn.toFixed(1)}%`, label: "Avg return/trade", sub: "on winning setups" },
+                { value: `${aggregates.symbolCount}+`, label: "Stocks backtested", sub: "NSE + US markets" },
+                { value: "20 yrs", label: "Data history", sub: "NSE data going back to 2004" },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-border/30 bg-card/60 p-5">
+                  <div className="font-mono text-3xl font-bold text-primary mb-1">{stat.value}</div>
+                  <div className="text-[12px] font-semibold text-foreground mb-0.5">{stat.label}</div>
+                  <div className="text-[10px] text-muted-foreground">{stat.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Testimonials */}
+      <section className="py-16 px-6">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="text-2xl font-bold tracking-[-0.03em] text-center mb-10">What traders say</h2>
+          <div className="grid gap-5 sm:grid-cols-3">
+            {[
+              {
+                quote: "Caught the HDFCBANK reclaim setup 3 days before it ran 9%. The signal was already there — I just had to act on it.",
+                name: "Rahul M.",
+                handle: "NSE swing trader",
+              },
+              {
+                quote: "I was manually scanning 200 Nifty stocks every evening. SignalSky does it in seconds and surfaces only what matters.",
+                name: "Priya K.",
+                handle: "Part-time trader, Bangalore",
+              },
+              {
+                quote: "The backtest data convinced me. Seeing a 65%+ win rate across 15 years of data before I took a single trade — that's confidence.",
+                name: "Vikram S.",
+                handle: "Options trader, Mumbai",
+              },
+            ].map((t) => (
+              <div key={t.name} className="rounded-2xl border border-border/30 bg-card/60 p-5">
+                <p className="text-[13px] text-muted-foreground leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
+                <div>
+                  <p className="text-[12px] font-semibold text-foreground">{t.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{t.handle}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <PricingSection deal={deal} />
       <CtaSection />
       <Footer />

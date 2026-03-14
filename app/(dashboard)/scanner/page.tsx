@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { getSignals, getUniverseMemberships } from "@/lib/data/signals"
+import { getBacktestStatsMap } from "@/lib/data/backtests"
 import { ScannerClient } from "./scanner-client"
 import { UNIVERSE_OPTIONS } from "@/lib/universes"
 import { Loader2Icon, CrosshairIcon } from "lucide-react"
@@ -27,15 +28,17 @@ async function ScannerData({
       : "nifty50"
 
   try {
-    const [data, universeMemberships] = await Promise.all([
+    const [data, universeMemberships, backtestStats] = await Promise.all([
       getSignals("all"),
       getUniverseMemberships(),
+      getBacktestStatsMap(),
     ])
     return (
       <ScannerClient
         data={data}
         initialUniverse={initialUniverse}
         universeMemberships={universeMemberships}
+        backtestStats={backtestStats}
       />
     )
   } catch (e: any) {
