@@ -43,3 +43,8 @@ next-env.d.ts
 # prisma generated
 lib/generated/
 .env*.local
+
+# remotion
+remotion/.env
+remotion/public/audio/*.mp3
+.remotion-dist/

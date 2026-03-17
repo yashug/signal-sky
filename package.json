@@ -8,7 +8,21 @@
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
-    "postinstall": "prisma generate --schema=prisma/schema.prisma"
+    "postinstall": "prisma generate --schema=prisma/schema.prisma",
+    "remotion:studio": "npx remotion studio remotion/index.ts",
+    "remotion:voiceover": "npx tsx remotion/scripts/generate-voiceover.ts",
+    "remotion:voiceover:30s": "npx tsx remotion/scripts/generate-voiceover.ts 30s",
+    "remotion:voiceover:60s": "npx tsx remotion/scripts/generate-voiceover.ts 60s",
+    "remotion:voiceover:90s": "npx tsx remotion/scripts/generate-voiceover.ts 90s",
+    "remotion:render:30s-h": "npx remotion render remotion/index.ts Promo30H out/promo-30s-horizontal.mp4",
+    "remotion:render:60s-h": "npx remotion render remotion/index.ts Promo60H out/promo-60s-horizontal.mp4",
+    "remotion:render:90s-h": "npx remotion render remotion/index.ts Promo90H out/promo-90s-horizontal.mp4",
+    "remotion:render:30s-v": "npx remotion render remotion/index.ts Promo30V out/promo-30s-vertical.mp4",
+    "remotion:render:60s-v": "npx remotion render remotion/index.ts Promo60V out/promo-60s-vertical.mp4",
+    "remotion:render:90s-v": "npx remotion render remotion/index.ts Promo90V out/promo-90s-vertical.mp4",
+    "remotion:render:all": "npm run remotion:render:30s-h && npm run remotion:render:60s-h && npm run remotion:render:90s-h && npm run remotion:render:30s-v && npm run remotion:render:60s-v && npm run remotion:render:90s-v",
+    "remotion:voiceover:explainer": "npx tsx remotion/scripts/generate-voiceover.ts explainer",
+    "remotion:render:explainer": "npx remotion render remotion/index.ts Explainer90H out/explainer-90s.mp4"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
@@ -45,6 +59,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@remotion/cli": "^4.0.436",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
@@ -56,7 +71,12 @@
     "pdf-lib": "^1.17.1",
     "prisma": "^7.3.0",
     "puppeteer": "^24.39.0",
+    "remotion": "^4.0.436",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "remotion": {
+    "entryPoint": "remotion/index.ts"
   }
 }

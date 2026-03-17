@@ -20,18 +20,31 @@ export async function GET() {
   })
   const memberMap = new Map(members.map((m: any) => [m.symbol, m]))
 
-  // Get latest signals for current price
-  const latestSignals = await prisma.signal.findMany({
-    where: { symbol: { in: symbols }, isActive: true },
-    distinct: ["symbol"],
-  })
-  const signalMap = new Map(latestSignals.map((s: any) => [s.symbol, s]))
+  // Get latest price from daily_bars (most reliable — always populated for all symbols)
+  // NSE symbols in journal are stored WITH .NS suffix; daily_bars stores WITHOUT .NS
+  const dbSymbols = symbols.map((s: string) => s.replace(/\.NS$/, ""))
+  const latestBars = await prisma.$queryRawUnsafe(`
+    SELECT DISTINCT ON (symbol) symbol, exchange, close, ema200
+    FROM daily_bars
+    WHERE symbol = ANY($1::text[])
+    ORDER BY symbol, date DESC
+  `, dbSymbols) as Array<{ symbol: string; exchange: string; close: any; ema200: any }>
+
+  // Build map keyed by both raw symbol (US) and symbol+.NS (NSE)
+  const priceMap = new Map<string, { price: number; ema200: number | null }>()
+  for (const bar of latestBars) {
+    const price = Number(bar.close)
+    const ema = bar.ema200 ? Number(bar.ema200) : null
+    priceMap.set(bar.symbol, { price, ema200: ema })
+    priceMap.set(`${bar.symbol}.NS`, { price, ema200: ema })
+  }
 
   const enriched = trades.map((t: any) => {
     const member = memberMap.get(t.symbol) as any
-    const sig = signalMap.get(t.symbol) as any
-    const currentPrice = sig ? Number(sig.price) : Number(t.entryPrice)
-    const ema200 = sig ? Number(sig.ema200) : null
+    const barKey = (t.symbol as string).replace(/\.NS$/, "")
+    const bar = priceMap.get(barKey) ?? priceMap.get(t.symbol as string)
+    const currentPrice = bar?.price ?? Number(t.entryPrice)
+    const ema200 = bar?.ema200 ?? null
 
     return {
       id: t.id,

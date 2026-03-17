@@ -36,21 +36,31 @@ export async function getJournalTrades(): Promise<JournalTradeData[]> {
   if (trades.length === 0) return []
 
   const symbols = [...new Set(trades.map((t: any) => t.symbol as string))]
-  const [members, latestSignals] = await Promise.all([
+  const dbSymbols = symbols.map((s: string) => s.replace(/\.NS$/, ""))
+
+  const [members, latestBars] = await Promise.all([
     prisma.universeMember.findMany({ where: { symbol: { in: symbols } } }),
-    prisma.signal.findMany({
-      where: { symbol: { in: symbols }, isActive: true },
-      distinct: ["symbol"],
-    }),
+    prisma.$queryRawUnsafe(`
+      SELECT DISTINCT ON (symbol) symbol, close, ema200
+      FROM daily_bars
+      WHERE symbol = ANY($1::text[])
+      ORDER BY symbol, date DESC
+    `, dbSymbols) as Promise<Array<{ symbol: string; close: any; ema200: any }>>,
   ])
   const memberMap = new Map(members.map((m: any) => [m.symbol, m]))
-  const signalMap = new Map(latestSignals.map((s: any) => [s.symbol, s]))
+  const priceMap = new Map<string, { price: number; ema200: number | null }>()
+  for (const bar of latestBars) {
+    const entry = { price: Number(bar.close), ema200: bar.ema200 ? Number(bar.ema200) : null }
+    priceMap.set(bar.symbol, entry)
+    priceMap.set(`${bar.symbol}.NS`, entry)
+  }
 
   return trades.map((t: any) => {
     const member = memberMap.get(t.symbol) as any
-    const sig = signalMap.get(t.symbol) as any
-    const currentPrice = sig ? Number(sig.price) : Number(t.entryPrice)
-    const ema200 = sig ? Number(sig.ema200) : null
+    const barKey = (t.symbol as string).replace(/\.NS$/, "")
+    const bar = priceMap.get(barKey) ?? priceMap.get(t.symbol as string)
+    const currentPrice = bar?.price ?? Number(t.entryPrice)
+    const ema200 = bar?.ema200 ?? null
 
     return {
       id: t.id,

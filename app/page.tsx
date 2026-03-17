@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { LifetimeSlots } from "@/components/signal-sky/lifetime-slots"
+import { ExplainerPlayer } from "@/components/signal-sky/explainer-player"
 import { getLifetimeDealInfo, type LifetimeDealInfo } from "@/lib/data/deals"
 import { getBacktestAggregates } from "@/lib/data/backtests"
 import { getLandingStats } from "@/lib/data/signals"
@@ -413,6 +414,84 @@ function FeaturesSection() {
             </div>
           ))}
         </div>
+      </div>
+    </section>
+  )
+}
+
+function AppHighlightsSection() {
+  return (
+    <section id="highlights" className="relative py-24 overflow-hidden">
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full opacity-10 blur-[120px]"
+        style={{ background: "radial-gradient(circle, oklch(0.72 0.19 220), transparent 70%)" }}
+      />
+      <div className="relative mx-auto max-w-6xl px-6">
+        <div className="text-center mb-12">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary mb-3 block">
+            Product tour
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em] text-foreground">
+            See SignalSky in action
+          </h2>
+          <p className="text-sm text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed">
+            Scanner, market health, alerts, and journal — everything in one terminal.
+          </p>
+        </div>
+        <div className="relative">
+          <div
+            className="absolute -inset-3 rounded-3xl opacity-15 blur-xl"
+            style={{ background: "linear-gradient(135deg, oklch(0.72 0.19 220 / 0.3), oklch(0.72 0.19 155 / 0.2))" }}
+          />
+          <div className="relative rounded-2xl border border-border/30 bg-card/80 backdrop-blur-sm overflow-hidden shadow-2xl shadow-black/30">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-background/60">
+              <div className="flex gap-1.5">
+                <div className="size-3 rounded-full bg-bear/60" />
+                <div className="size-3 rounded-full bg-heat-simmering/60" />
+                <div className="size-3 rounded-full bg-bull/60" />
+              </div>
+              <div className="flex-1 mx-4">
+                <div className="mx-auto max-w-xs rounded-md border border-border/40 bg-background/60 px-3 py-1 text-center">
+                  <span className="text-[11px] font-mono text-muted-foreground">signalsky.app/scanner</span>
+                </div>
+              </div>
+            </div>
+            <video
+              src="/videos/promo-60s.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full block"
+              style={{ aspectRatio: "16/9" }}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ExplainerVideoSection() {
+  return (
+    <section id="explainer" className="relative py-24 overflow-hidden">
+      <div
+        className="absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full opacity-10 blur-[120px]"
+        style={{ background: "radial-gradient(circle, oklch(0.72 0.19 155), transparent 70%)" }}
+      />
+      <div className="relative mx-auto max-w-5xl px-6">
+        <div className="text-center mb-12">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary mb-3 block">
+            Strategy explained
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em] text-foreground">
+            Reset &amp; Reclaim in 90 seconds
+          </h2>
+          <p className="text-sm text-muted-foreground mt-3 max-w-sm mx-auto leading-relaxed">
+            No jargon. No prior trading experience needed.
+          </p>
+        </div>
+        <ExplainerPlayer />
       </div>
     </section>
   )
@@ -1313,8 +1392,10 @@ export default async function LandingPage() {
       </div>
       <HeroSection />
       <FeaturesSection />
+      <AppHighlightsSection />
       <TrustSection />
       <StrategySection />
+      <ExplainerVideoSection />
       <PreviewSection />
 
       {/* Strategy Track Record */}
