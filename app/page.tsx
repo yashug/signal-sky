@@ -457,7 +457,7 @@ function AppHighlightsSection() {
               </div>
             </div>
             <video
-              src="/videos/promo-60s.mp4"
+              src="https://wdqcbbelmds6ipi3.public.blob.vercel-storage.com/promo-60s.mp4"
               autoPlay
               muted
               loop

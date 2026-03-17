@@ -15,7 +15,7 @@ export function ExplainerPlayer() {
     <div className="relative rounded-xl overflow-hidden border border-border/30 shadow-2xl shadow-black/30 bg-background">
       <video
         ref={videoRef}
-        src="/videos/explainer-90s.mp4"
+        src="https://wdqcbbelmds6ipi3.public.blob.vercel-storage.com/explainer-90s.mp4"
         controls={playing}
         onEnded={() => setPlaying(false)}
         className="w-full block"
