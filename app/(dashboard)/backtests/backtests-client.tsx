@@ -447,7 +447,7 @@ export function BacktestsClient({
           </p>
         </div>
       ) : (
-        <div className="flex-1 overflow-auto">
+        <div className="overflow-x-scroll" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}>
           <div className="min-w-[700px]">
             <Table>
               <TableHeader>

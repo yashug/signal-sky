@@ -495,31 +495,31 @@ export function ScannerClient({
       {/* Signal Spotlight */}
       {spotlightSignal && (
         <div
-          className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-border/20 bg-surface/20 cursor-pointer hover:bg-surface/40 transition-colors"
+          className="flex items-center gap-2 px-4 sm:px-6 py-3 border-b border-border/20 bg-surface/20 cursor-pointer hover:bg-surface/40 transition-colors"
           onClick={() => router.push(`/scanner/${encodeURIComponent(spotlightSignal.symbol)}`)}
         >
           <div className="flex items-center gap-1.5 shrink-0">
             <TrophyIcon className="size-3.5 text-heat-simmering" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="hidden sm:block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Today&apos;s Top Signal
             </span>
           </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-mono text-sm font-bold text-foreground">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <span className="font-mono text-sm font-bold text-foreground shrink-0">
               {spotlightSignal.symbol.replace(".NS", "")}
             </span>
             <HeatBadge heat={spotlightSignal.heat} />
             <span className={cn(
-              "font-mono text-xs font-semibold",
+              "font-mono text-xs font-semibold truncate",
               spotlightSignal.distancePct < 0 ? "text-heat-breakout" : spotlightSignal.distancePct <= 2 ? "text-heat-boiling" : "text-heat-simmering"
             )}>
               {spotlightSignal.distancePct < 0
                 ? `+${Math.abs(spotlightSignal.distancePct).toFixed(1)}% above peak`
                 : `${spotlightSignal.distancePct.toFixed(1)}% from peak`}
             </span>
-            <ExchangeBadge exchange={spotlightSignal.exchange} />
+            <span className="hidden sm:block shrink-0"><ExchangeBadge exchange={spotlightSignal.exchange} /></span>
           </div>
-          <div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0">
             View <ArrowRightIcon className="size-3" />
           </div>
         </div>
@@ -595,7 +595,7 @@ export function ScannerClient({
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="overflow-x-scroll" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}>
         <div className="min-w-[700px]">
           <Table>
             <TableHeader>

@@ -551,7 +551,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-border/40 bg-surface overflow-x-auto">
+        <Card className="border-border/40 bg-surface overflow-x-scroll" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}>
           <CardContent className="p-0">
             <div className="min-w-[700px]">
             <Table>

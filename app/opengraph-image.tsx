@@ -161,7 +161,8 @@ export default function OGImage() {
           {/* Live scanning badge */}
           <div
             style={{
-              display: "inline-flex",
+              display: "flex",
+              alignSelf: "flex-start",
               alignItems: "center",
               gap: 7,
               padding: "5px 14px",
