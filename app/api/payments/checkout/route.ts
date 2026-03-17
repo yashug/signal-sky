@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { createPayment, createSubscription, cancelSubscription } from "@/lib/phonepe"
+import { createOrder, createSubscription } from "@/lib/razorpay"
 import { PRO_PLAN, type BillingInterval } from "@/lib/plans"
+
+const PLAN_IDS = {
+  monthly: process.env.RAZORPAY_PLAN_ID_MONTHLY!,
+  yearly: process.env.RAZORPAY_PLAN_ID_YEARLY!,
+}
+
+const TOTAL_COUNT = { monthly: 120, yearly: 50 }
 
 /**
  * POST /api/payments/checkout
- * - monthly / yearly  → PhonePe UPI Autopay subscription setup
- * - lifetime          → one-time PhonePe checkout
+ * - monthly / yearly  → Razorpay recurring subscription
+ * - lifetime          → one-time Razorpay order
  * Body: { interval: "monthly" | "yearly" | "lifetime" }
+ * Returns: { keyId, subscriptionId } or { keyId, orderId, amount }
  */
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -25,100 +33,79 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid interval" }, { status: 400 })
   }
 
-  const amountPaisa = price * 100
   const ts = Date.now()
   const userShort = userId.slice(0, 8)
-  const orderId = `SS_${userShort}_${interval}_${ts}`
-
-  const origin = req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
-  const redirectUrl = `${origin}/api/payments/callback?orderId=${encodeURIComponent(orderId)}`
+  const receipt = `SS_${userShort}_${interval}_${ts}`
 
   try {
-    // If user already has an active subscription with a different interval,
-    // cancel the old PhonePe mandate before creating a new one
-    const existing = await prisma.subscription.findUnique({
-      where: { userId: userId },
-    })
-    if (existing?.paymentSubscriptionId && existing.status === "active" && existing.billingInterval !== "lifetime") {
-      try {
-        await cancelSubscription(existing.paymentSubscriptionId)
-      } catch (e: any) {
-        console.warn("[checkout] Could not cancel old subscription:", e.message)
-      }
-    }
-
-    let redirectResult: { orderId: string; redirectUrl: string }
-
     if (interval === "lifetime") {
-      // One-time payment — no autopay
-      redirectResult = await createPayment({
-        orderId,
-        amountPaisa,
-        redirectUrl,
-        metaInfo: {
-          udf1: userId,
-          udf2: interval,
-        },
+      const order = await createOrder(price, receipt, {
+        user_id: userId,
+        plan_type: "lifetime",
       })
 
       await prisma.subscription.upsert({
-        where: { userId: userId },
+        where: { userId },
         update: {
-          paymentOrderId: orderId,
+          paymentOrderId: order.id,
           paymentSubscriptionId: null,
           billingInterval: interval,
           status: "pending",
-          paymentProvider: "phonepe",
+          paymentProvider: "razorpay",
           cancelAtPeriodEnd: false,
         },
         create: {
-          userId: userId,
-          paymentOrderId: orderId,
+          userId,
+          paymentOrderId: order.id,
           paymentSubscriptionId: null,
           billingInterval: interval,
           status: "pending",
-          paymentProvider: "phonepe",
+          paymentProvider: "razorpay",
         },
+      })
+
+      return NextResponse.json({
+        keyId: process.env.RAZORPAY_KEY_ID,
+        orderId: order.id,
+        amount: order.amount,
       })
     } else {
-      // Recurring autopay — UPI mandate setup
-      const merchantSubscriptionId = `SS_SUB_${userShort}_${ts}`
-      const frequency = interval === "monthly" ? "MONTHLY" : "YEARLY"
+      // Recurring autopay
+      const planId = PLAN_IDS[interval]
+      if (!planId) {
+        return NextResponse.json({ error: "Plan not configured" }, { status: 500 })
+      }
 
-      redirectResult = await createSubscription({
-        merchantOrderId: orderId,
-        merchantSubscriptionId,
-        amountPaisa,
-        frequency,
-        redirectUrl,
-        metaInfo: {
-          udf1: userId,
-          udf2: interval,
-        },
+      const sub = await createSubscription(planId, TOTAL_COUNT[interval], {
+        user_id: userId,
+        plan_type: interval,
       })
 
       await prisma.subscription.upsert({
-        where: { userId: userId },
+        where: { userId },
         update: {
-          paymentOrderId: orderId,
-          paymentSubscriptionId: merchantSubscriptionId,
+          paymentOrderId: receipt,
+          paymentSubscriptionId: sub.id,
           billingInterval: interval,
           status: "pending",
-          paymentProvider: "phonepe",
+          paymentProvider: "razorpay",
           cancelAtPeriodEnd: false,
         },
         create: {
-          userId: userId,
-          paymentOrderId: orderId,
-          paymentSubscriptionId: merchantSubscriptionId,
+          userId,
+          paymentOrderId: receipt,
+          paymentSubscriptionId: sub.id,
           billingInterval: interval,
           status: "pending",
-          paymentProvider: "phonepe",
+          paymentProvider: "razorpay",
         },
       })
-    }
 
-    return NextResponse.json({ redirectUrl: redirectResult.redirectUrl })
+      return NextResponse.json({
+        keyId: process.env.RAZORPAY_KEY_ID,
+        subscriptionId: sub.id,
+      })
+    }
   } catch (e: any) {
     console.error("[payments/checkout] Error:", e.message)
     return NextResponse.json({ error: e.message }, { status: 500 })

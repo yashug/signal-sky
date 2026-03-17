@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionForApi } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { cancelSubscription } from "@/lib/phonepe"
+import { cancelSubscription } from "@/lib/razorpay"
 
 /**
  * POST /api/payments/subscription/cancel
@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Subscription is already set to cancel" }, { status: 400 })
     }
 
-    // Cancel the PhonePe mandate so no future charges occur
+    // Cancel the Razorpay subscription so no future charges occur
     if (subscription.paymentSubscriptionId) {
       try {
         await cancelSubscription(subscription.paymentSubscriptionId)
       } catch (e: any) {
         // Log but continue — still mark as cancelled in our DB
-        console.warn("[subscription/cancel] PhonePe cancel failed:", e.message)
+        console.warn("[subscription/cancel] Razorpay cancel failed:", e.message)
       }
     }
 

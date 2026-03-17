@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getOrderStatus } from "@/lib/phonepe"
+import { verifySignature } from "@/lib/razorpay"
 import { LIFETIME_DEAL, PRO_PLAN } from "@/lib/plans"
 
 async function applyReferralCredit(userId: string) {
@@ -19,56 +19,74 @@ async function applyReferralCredit(userId: string) {
 }
 
 /**
- * GET /api/payments/callback?orderId=...
- * PhonePe redirects the user here after payment (one-time or subscription setup).
- * Verifies payment status and activates the subscription.
+ * POST /api/payments/callback
+ * Called by the frontend after Razorpay modal succeeds.
+ * Verifies HMAC signature and activates the subscription.
+ *
+ * Body (subscription):  { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, interval }
+ * Body (order/lifetime): { razorpay_payment_id, razorpay_order_id, razorpay_signature, interval }
  */
-export async function GET(req: NextRequest) {
-  const orderId = req.nextUrl.searchParams.get("orderId")
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}))
 
-  if (!orderId) {
-    return NextResponse.redirect(`${appUrl}/pricing?error=missing_order`)
+  const {
+    razorpay_payment_id,
+    razorpay_subscription_id,
+    razorpay_order_id,
+    razorpay_signature,
+    interval,
+  } = body
+
+  if (!razorpay_payment_id || !razorpay_signature) {
+    return NextResponse.json({ error: "Missing payment details" }, { status: 400 })
+  }
+
+  // Verify HMAC signature
+  let signaturePayload: string
+  if (razorpay_subscription_id) {
+    signaturePayload = `${razorpay_payment_id}|${razorpay_subscription_id}`
+  } else if (razorpay_order_id) {
+    signaturePayload = `${razorpay_order_id}|${razorpay_payment_id}`
+  } else {
+    return NextResponse.json({ error: "Missing subscription or order id" }, { status: 400 })
+  }
+
+  if (!verifySignature(signaturePayload, razorpay_signature)) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
 
   try {
-    // Verify the setup/payment order with PhonePe
-    const status = await getOrderStatus(orderId)
-
-    if (status.state !== "COMPLETED") {
-      console.log(`[payments/callback] Order ${orderId} state: ${status.state}`)
-      return NextResponse.redirect(`${appUrl}/pricing?error=payment_failed`)
-    }
-
     // Find the subscription record
     const subscription = await prisma.subscription.findFirst({
-      where: { paymentOrderId: orderId },
+      where: razorpay_subscription_id
+        ? { paymentSubscriptionId: razorpay_subscription_id }
+        : { paymentOrderId: razorpay_order_id },
       include: { user: true },
     })
 
     if (!subscription) {
-      console.error(`[payments/callback] No subscription found for order ${orderId}`)
-      return NextResponse.redirect(`${appUrl}/pricing?error=order_not_found`)
+      return NextResponse.json({ error: "Subscription not found" }, { status: 404 })
     }
 
     // Already activated (e.g., by webhook arriving first)
     if (subscription.status === "active") {
-      return NextResponse.redirect(`${appUrl}/scanner?payment=success`)
+      return NextResponse.json({ success: true, alreadyActive: true })
     }
 
     const isLifetime = subscription.billingInterval === "lifetime"
     const now = new Date()
 
-    // If user had a future period end (cancelled and resubscribed), extend from there
-    const base = !isLifetime && subscription.currentPeriodEnd && subscription.currentPeriodEnd > now
-      ? subscription.currentPeriodEnd
-      : now
+    // If user still has time from a previous period, extend from there
+    const base =
+      !isLifetime && subscription.currentPeriodEnd && subscription.currentPeriodEnd > now
+        ? subscription.currentPeriodEnd
+        : now
 
     const periodEnd = isLifetime
       ? new Date("2099-12-31")
       : subscription.billingInterval === "yearly"
-        ? new Date(base.getTime() + 365 * 24 * 60 * 60 * 1000)
-        : new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000)
+      ? new Date(base.getTime() + 365 * 24 * 60 * 60 * 1000)
+      : new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000)
 
     await prisma.subscription.update({
       where: { id: subscription.id },
@@ -85,7 +103,7 @@ export async function GET(req: NextRequest) {
       data: { tier: "PRO" },
     })
 
-    // Apply referral credit to referrer (non-blocking)
+    // Apply referral credit (non-blocking)
     applyReferralCredit(subscription.userId).catch(() => {})
 
     if (isLifetime) {
@@ -103,33 +121,32 @@ export async function GET(req: NextRequest) {
 
     // Send invoice email (non-blocking)
     if (subscription.user.email) {
-      const planName = isLifetime ? "Lifetime Plan" : subscription.billingInterval === "yearly" ? "Pro — Yearly" : "Pro — Monthly"
-      const amount = isLifetime ? PRO_PLAN.price.lifetime : subscription.billingInterval === "yearly" ? PRO_PLAN.price.yearly : PRO_PLAN.price.monthly
-      import("@/lib/email/send").then(({ sendInvoice }) =>
-        sendInvoice({
-          to: subscription.user.email!,
-          userName: subscription.user.name ?? undefined,
-          planName,
-          amount,
-          transactionId: orderId,
-        })
-      ).catch((e) => console.error("[payments/callback] Invoice email error:", e.message))
+      const planName = isLifetime
+        ? "Lifetime Plan"
+        : subscription.billingInterval === "yearly"
+        ? "Pro — Yearly"
+        : "Pro — Monthly"
+      const amount = isLifetime
+        ? PRO_PLAN.price.lifetime
+        : subscription.billingInterval === "yearly"
+        ? PRO_PLAN.price.yearly
+        : PRO_PLAN.price.monthly
+      import("@/lib/email/send")
+        .then(({ sendInvoice }) =>
+          sendInvoice({
+            to: subscription.user.email!,
+            userName: subscription.user.name ?? undefined,
+            planName,
+            amount,
+            transactionId: razorpay_payment_id,
+          })
+        )
+        .catch((e) => console.error("[payments/callback] Invoice email error:", e.message))
     }
 
-    // For autopay subscriptions, verify mandate was registered with PhonePe
-    if (!isLifetime && subscription.paymentSubscriptionId) {
-      try {
-        const { getSubscriptionStatus } = await import("@/lib/phonepe")
-        const subStatus = await getSubscriptionStatus(subscription.paymentSubscriptionId)
-        console.log(`[payments/callback] PhonePe mandate status for ${subscription.paymentSubscriptionId}:`, JSON.stringify(subStatus))
-      } catch (e: any) {
-        console.warn(`[payments/callback] Could not fetch mandate status: ${e.message}`)
-      }
-    }
-
-    return NextResponse.redirect(`${appUrl}/scanner?payment=success`)
+    return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error("[payments/callback] Error:", e.message)
-    return NextResponse.redirect(`${appUrl}/pricing?error=verification_failed`)
+    return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }

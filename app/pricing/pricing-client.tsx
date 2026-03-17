@@ -54,6 +54,16 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
   const [trialSummary, setTrialSummary] = useState<TrialSummary | null>(null)
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
 
+  // Load Razorpay checkout.js once
+  useEffect(() => {
+    const script = document.createElement("script")
+    script.src = "https://checkout.razorpay.com/v1/checkout.js"
+    document.body.appendChild(script)
+    return () => {
+      document.body.removeChild(script)
+    }
+  }, [])
+
   useEffect(() => {
     if (!isExpired) return
     fetch("/api/user/trial-summary")
@@ -91,14 +101,61 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
         body: JSON.stringify({ interval }),
       })
       const data = await res.json()
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl
-      } else {
-        const msg = data.error ?? "Failed to initiate payment. Please try again."
-        toast.error(msg)
+      if (data.error) {
+        toast.error(data.error)
         setCheckingOut(null)
+        return
       }
-    } catch (e: any) {
+
+      const options: Record<string, unknown> = {
+        key: data.keyId,
+        name: "SignalSky",
+        description:
+          interval === "monthly"
+            ? "Pro Monthly"
+            : interval === "yearly"
+            ? "Pro Yearly"
+            : "Lifetime Access",
+        theme: { color: "#4fa0e2" },
+        modal: { ondismiss: () => setCheckingOut(null) },
+        handler: async (response: {
+          razorpay_payment_id: string
+          razorpay_subscription_id?: string
+          razorpay_order_id?: string
+          razorpay_signature: string
+        }) => {
+          const callbackRes = await fetch("/api/payments/callback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_subscription_id: response.razorpay_subscription_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              interval,
+            }),
+          })
+          const result = await callbackRes.json()
+          if (result.success) {
+            router.push("/scanner?payment=success")
+          } else {
+            toast.error("Payment verification failed. Please contact support.")
+            setCheckingOut(null)
+          }
+        },
+      }
+
+      if (data.subscriptionId) {
+        options.subscription_id = data.subscriptionId
+      } else {
+        options.order_id = data.orderId
+        options.amount = data.amount
+        options.currency = "INR"
+      }
+
+      const rzp = new (window as unknown as { Razorpay: new (opts: Record<string, unknown>) => { open(): void } }).Razorpay(options)
+      rzp.open()
+    } catch {
       toast.error("Something went wrong. Please try again.")
       setCheckingOut(null)
     }
@@ -335,7 +392,7 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
               ) : (
                 <SparklesIcon className="size-3 mr-1" />
               )}
-              {checkingOut === "monthly" ? "Redirecting..." : "Go Monthly"}
+              {checkingOut === "monthly" ? "Opening..." : "Go Monthly"}
             </Button>
           </div>
 
@@ -401,7 +458,7 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
               ) : (
                 <SparklesIcon className="size-3 mr-1" />
               )}
-              {checkingOut === "yearly" ? "Redirecting..." : "Upgrade to Pro"}
+              {checkingOut === "yearly" ? "Opening..." : "Upgrade to Pro"}
             </Button>
             <p className="text-[10px] text-center text-muted-foreground mt-2">
               Saves ₹{formatINR(monthlyPrice * 12 - yearlyPrice)} vs monthly over 12 months
@@ -493,7 +550,7 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
               ) : (
                 <CrownIcon className="size-3 mr-1" />
               )}
-              {checkingOut === "lifetime" ? "Redirecting..." : deal.available ? "Claim Lifetime Access" : "Sold Out"}
+              {checkingOut === "lifetime" ? "Opening..." : deal.available ? "Claim Lifetime Access" : "Sold Out"}
             </Button>
           </div>
         </div>
@@ -514,7 +571,7 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
         {/* Trust badges */}
         <div className="flex flex-wrap items-center justify-center gap-8 mt-14 text-muted-foreground">
           {[
-            { icon: ShieldCheckIcon, text: "Secure payments via PhonePe" },
+            { icon: ShieldCheckIcon, text: "Secure payments via Razorpay" },
             { icon: ZapIcon, text: "7-day free trial, no card required" },
             { icon: SparklesIcon, text: "Instant access after payment" },
           ].map((badge) => (
@@ -548,7 +605,7 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
               },
               {
                 q: "What payment methods do you accept?",
-                a: "We accept UPI, credit/debit cards, net banking, and wallets via PhonePe. Payments are processed securely.",
+                a: "We accept UPI, credit/debit cards, net banking, and wallets via Razorpay. Payments are processed securely.",
               },
             ].map((faq) => (
               <div key={faq.q} className="rounded-xl border border-border/25 bg-card/60 p-5">
