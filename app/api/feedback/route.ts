@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getSessionForApi, getInitialUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-const VALID_CATEGORIES = ["bug", "feature", "general"] as const
+const VALID_CATEGORIES = ["bug", "feature", "general", "cancellation"] as const
 
 /**
  * POST /api/feedback — Submit feedback
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!VALID_CATEGORIES.includes(category)) {
     return NextResponse.json({ error: "Invalid category" }, { status: 400 })
   }
-  if (!message || message.length < 5) {
+  if (!message || (category !== "cancellation" && message.length < 5)) {
     return NextResponse.json({ error: "Message too short" }, { status: 400 })
   }
   if (message.length > 2000) {

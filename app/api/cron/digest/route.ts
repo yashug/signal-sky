@@ -19,9 +19,13 @@ export async function GET(req: NextRequest) {
   const today = new Date()
   const isWeekend = today.getDay() === 0 // Sunday
 
-  // Get active signals from today (or last available)
+  // Get active signals with same range filter as scanner dashboard:
+  // distancePct BETWEEN -5 (up to 5% above ATH) AND 15 (max 15% below ATH)
   const signals = await prisma.signal.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      distancePct: { gte: -5, lte: 15 },
+    },
     select: {
       symbol: true,
       exchange: true,

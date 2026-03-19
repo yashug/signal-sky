@@ -174,7 +174,12 @@ export async function runScanForMarket(market: "india" | "us") {
     await prisma.signal.createMany({ data: signalsToCreate })
     // Fetch newly created signals so callers can dispatch alerts with IDs
     const freshSignals = await prisma.signal.findMany({
-      where: { exchange, isActive: true, signalDate },
+      where: {
+        exchange,
+        isActive: true,
+        signalDate,
+        distancePct: { gte: -5, lte: 15 },
+      },
       select: { id: true, symbol: true, exchange: true, heat: true, price: true, ath: true, ema200: true, distancePct: true },
     })
     createdSignals = freshSignals.map((s) => ({

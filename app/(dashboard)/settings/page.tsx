@@ -27,6 +27,7 @@ import {
   CalendarIcon,
   RefreshCwIcon,
   XCircleIcon,
+  AlertTriangleIcon,
   BellIcon,
   BotIcon,
   MailIcon,
@@ -39,6 +40,13 @@ import {
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { toast } from "sonner"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 function ProfileCard() {
   const { user, refresh } = useAuth()
@@ -754,6 +762,193 @@ function AlertsCard() {
   )
 }
 
+const CANCEL_REASONS = [
+  "Too expensive",
+  "Not using it enough",
+  "Missing features I need",
+  "Found a better alternative",
+  "Technical issues or bugs",
+  "Just taking a break",
+  "Other",
+]
+
+function CancelSubscriptionDialog({
+  open,
+  accessUntil,
+  onClose,
+  onCancelled,
+}: {
+  open: boolean
+  accessUntil: string | null
+  onClose: () => void
+  onCancelled: () => void
+}) {
+  const [step, setStep] = useState<"reasons" | "confirm">("reasons")
+  const [selected, setSelected] = useState<string[]>([])
+  const [comment, setComment] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+
+  function formatDate(iso: string | null) {
+    if (!iso) return "your billing period end"
+    return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+  }
+
+  function toggleReason(r: string) {
+    setSelected((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])
+  }
+
+  async function handleConfirm() {
+    setSubmitting(true)
+    try {
+      // Build feedback message from selected reasons + optional comment
+      const reasons = selected.join(", ")
+      const message = comment.trim()
+        ? `Reasons: ${reasons}\n\nAdditional comment: ${comment.trim()}`
+        : `Reasons: ${reasons}`
+
+      // Submit feedback (non-blocking if it fails)
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "cancellation", message }),
+      }).catch(() => {})
+
+      // Cancel the subscription
+      const res = await fetch("/api/payments/subscription/cancel", { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to cancel subscription")
+        return
+      }
+
+      toast("Subscription cancelled — you'll retain access until " + formatDate(accessUntil))
+      onCancelled()
+    } catch {
+      toast.error("Something went wrong. Please try again.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Reset state when dialog closes
+  function handleClose() {
+    setStep("reasons")
+    setSelected([])
+    setComment("")
+    onClose()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
+      <DialogContent className="gap-0 p-0 overflow-hidden" showCloseButton={false}>
+        {step === "reasons" ? (
+          <>
+            <DialogHeader className="px-6 pt-6 pb-4">
+              <DialogTitle className="text-base">Before you go...</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Help us improve by telling us why you&apos;re cancelling.
+                You&apos;ll keep full access until <span className="text-foreground font-medium">{formatDate(accessUntil)}</span>.
+              </p>
+            </DialogHeader>
+
+            <div className="px-6 pb-2 space-y-1">
+              {CANCEL_REASONS.map((reason) => (
+                <label
+                  key={reason}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors group"
+                >
+                  <div className={`size-4 shrink-0 rounded border flex items-center justify-center transition-colors ${selected.includes(reason) ? "bg-primary border-primary" : "border-border/60 group-hover:border-border"}`}>
+                    {selected.includes(reason) && <CheckIcon className="size-2.5 text-primary-foreground" />}
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={selected.includes(reason)}
+                    onChange={() => toggleReason(reason)}
+                  />
+                  <span className="text-xs">{reason}</span>
+                </label>
+              ))}
+            </div>
+
+            {selected.includes("Other") && (
+              <div className="px-6 pb-4 pt-1">
+                <textarea
+                  className="w-full rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-xs placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  placeholder="Tell us more..."
+                  rows={3}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="px-6 py-4 border-t border-border/40 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button size="sm" variant="outline" className="text-xs h-8" onClick={handleClose}>
+                Keep my plan
+              </Button>
+              <Button
+                size="sm"
+                className="text-xs h-8 bg-bear hover:bg-bear/90 text-white"
+                disabled={selected.length === 0}
+                onClick={() => setStep("confirm")}
+              >
+                Continue
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <DialogHeader className="px-6 pt-6 pb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangleIcon className="size-4 text-heat-simmering shrink-0" />
+                <DialogTitle className="text-base">Confirm cancellation</DialogTitle>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Are you sure? Here&apos;s what you&apos;ll lose after <span className="text-foreground font-medium">{formatDate(accessUntil)}</span>:
+              </p>
+            </DialogHeader>
+
+            <div className="px-6 pb-4 space-y-2">
+              {[
+                "Signal scanner (NSE + US markets)",
+                "Telegram & email alerts",
+                "Unlimited backtests & trade journal",
+                "Market health dashboard",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-2.5 text-xs text-muted-foreground">
+                  <XCircleIcon className="size-3.5 text-bear shrink-0" />
+                  {item}
+                </div>
+              ))}
+              <div className="mt-3 rounded-lg border border-heat-simmering/25 bg-heat-simmering/5 px-3 py-2.5">
+                <p className="text-[11px] text-heat-simmering">
+                  Your data (watchlist, journal, backtests) will be saved if you come back.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-border/40 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => setStep("reasons")}>
+                Go back
+              </Button>
+              <Button
+                size="sm"
+                className="text-xs h-8 bg-bear hover:bg-bear/90 text-white gap-1.5"
+                disabled={submitting}
+                onClick={handleConfirm}
+              >
+                {submitting ? <Loader2Icon className="size-3 animate-spin" /> : <XCircleIcon className="size-3" />}
+                {submitting ? "Cancelling..." : "Cancel my subscription"}
+              </Button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 type SubInfo = {
   billingInterval: string
   status: string
@@ -776,8 +971,7 @@ function SubscriptionCard() {
 
   const [sub, setSub] = useState<SubInfo>(null)
   const [loadingSub, setLoadingSub] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
-  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
 
   useEffect(() => {
     if (!isPro || isInstitutional) return
@@ -788,30 +982,6 @@ function SubscriptionCard() {
       .catch(() => {})
       .finally(() => setLoadingSub(false))
   }, [isPro, isInstitutional])
-
-  async function handleCancel() {
-    if (!cancelConfirm) {
-      setCancelConfirm(true)
-      setTimeout(() => setCancelConfirm(false), 5000)
-      return
-    }
-    setCancelling(true)
-    try {
-      const res = await fetch("/api/payments/subscription/cancel", { method: "POST" })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error ?? "Failed to cancel")
-        return
-      }
-      toast("Subscription cancelled — you'll keep access until the end of your billing period")
-      setSub((prev) => prev ? { ...prev, cancelAtPeriodEnd: true } : prev)
-      setCancelConfirm(false)
-    } catch {
-      toast.error("Failed to cancel subscription")
-    } finally {
-      setCancelling(false)
-    }
-  }
 
   function formatDate(iso: string | null) {
     if (!iso) return "—"
@@ -932,16 +1102,20 @@ function SubscriptionCard() {
                   size="sm"
                   variant="ghost"
                   className="h-7 text-xs text-muted-foreground hover:text-bear gap-1.5"
-                  onClick={handleCancel}
-                  disabled={cancelling}
+                  onClick={() => setShowCancelDialog(true)}
                 >
-                  {cancelling ? (
-                    <Loader2Icon className="size-3 animate-spin" />
-                  ) : (
-                    <XCircleIcon className="size-3" />
-                  )}
-                  {cancelConfirm ? "Tap again to confirm cancellation" : "Cancel subscription"}
+                  <XCircleIcon className="size-3" />
+                  Cancel subscription
                 </Button>
+                <CancelSubscriptionDialog
+                  open={showCancelDialog}
+                  accessUntil={sub.currentPeriodEnd}
+                  onClose={() => setShowCancelDialog(false)}
+                  onCancelled={() => {
+                    setSub((prev) => prev ? { ...prev, cancelAtPeriodEnd: true } : prev)
+                    setShowCancelDialog(false)
+                  }}
+                />
               </div>
             )}
 
