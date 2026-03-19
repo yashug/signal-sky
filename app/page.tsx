@@ -39,9 +39,30 @@ function Logo() {
   )
 }
 
+function UgadiBanner() {
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center gap-2 px-4 py-2 text-center text-[12px] font-medium text-white sm:gap-3 sm:text-[13px]"
+      style={{ background: "linear-gradient(90deg, oklch(0.55 0.22 280), oklch(0.60 0.22 220), oklch(0.55 0.18 155))" }}>
+      <span className="shrink-0">🎊</span>
+      <span className="leading-snug">
+        <span className="font-semibold">Ugadi Special</span> — Start FY27 with a trading edge. 7-day free trial + Lifetime deal at{" "}
+        <span className="font-mono font-bold">₹4,999</span>{" "}
+        <span className="opacity-80">(100 seats only).</span>
+      </span>
+      <Link
+        href="/sign-in"
+        className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/30 whitespace-nowrap"
+      >
+        Start Free Trial
+        <ArrowRightIcon className="size-3" />
+      </Link>
+    </div>
+  )
+}
+
 function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-xl">
+    <nav className="fixed top-8 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto max-w-6xl flex items-center justify-between px-6 h-16">
         <Logo />
         <div className="hidden md:flex items-center gap-8">
@@ -1366,11 +1387,103 @@ export default async function LandingPage() {
   ])
   const deal = dealInfo ?? { cap: 100, sold: 0, remaining: 100, available: true }
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is SignalSky?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SignalSky is a stock signal scanner for India (NSE) and US (NASDAQ/S&P) markets that detects \"Reset & Reclaim\" breakout setups using EMA200 and all-time high proximity analysis, with 20 years of backtested data across 426+ stocks."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the Reset & Reclaim trading strategy?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Reset & Reclaim is a breakout strategy where a stock that previously hit an all-time high pulls back below its 200-day exponential moving average (the \"reset\"), then reclaims above it (the \"reclaim\"), positioning it for a potential run back toward the prior all-time high."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Which Indian stock exchanges does SignalSky cover?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SignalSky covers the National Stock Exchange (NSE) of India, including Nifty 50, Nifty 100, Nifty 200, Nifty Midcap 150, and Nifty Smallcap 250 indices, scanning over 1,000 stocks daily."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does SignalSky cover US markets?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, SignalSky scans S&P 100 and NASDAQ 100 stocks for Reset & Reclaim breakout setups alongside Indian NSE stocks."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How much does SignalSky cost?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SignalSky offers a 7-day free trial with no card required, then Pro Monthly at ₹299/month, Pro Yearly at ₹2,999/year, and a Lifetime plan at ₹4,999 one-time (limited to 100 seats). Payment is via PhonePe/UPI."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is SignalSky's backtest win rate?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SignalSky's Reset & Reclaim strategy has been backtested across 426+ stocks over 20 years of market data, showing a 50% win rate with an average return of +29.6% on winning trades."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does SignalSky send trading alerts?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, SignalSky sends real-time signal alerts via Telegram push notifications and email when Reset & Reclaim setups fire on NSE and US stocks."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How is SignalSky different from Chartink or TradingView?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Unlike generic screeners with dozens of filters, SignalSky is purpose-built around a single backtested strategy (Reset & Reclaim) and includes market health dashboards, a built-in trade journal, and 20-year backtest transparency — all in one integrated platform."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the market health dashboard in SignalSky?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SignalSky's market health dashboard shows the percentage of stocks trading above their 200-day EMA across each index (Nifty 50, Nifty 200, etc.), helping traders assess overall market breadth and time their entries."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is SignalSky a stock tips service?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. SignalSky is a signal scanner, not a tip service. It identifies stocks matching the Reset & Reclaim breakout pattern and presents the data. Traders make their own decisions on whether and how to trade the signals."
+        }
+      }
+    ]
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <UgadiBanner />
       <Navbar />
       {/* Live stats bar */}
-      <div className="pt-16">
+      <div className="pt-24">
         <div className="border-b border-border/15 bg-surface/40 backdrop-blur-sm py-2.5 px-6">
           <div className="mx-auto max-w-6xl flex items-center justify-center gap-6 flex-wrap">
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
