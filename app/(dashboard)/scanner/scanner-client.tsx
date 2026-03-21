@@ -391,12 +391,10 @@ export function ScannerClient({
     let signals = heatFilter === "all" ? universeSignals : universeSignals.filter((s) => s.heat === heatFilter)
     if (slingshotDays !== null) {
       signals = signals.filter((s) => {
-        if (!s.breakDate || !s.reclaimDate) return false
-        // Pullback duration = break_start_date → reclaim_date (same metric as backtest engine)
-        const pullbackDays = Math.floor(
-          (new Date(s.reclaimDate).getTime() - new Date(s.breakDate).getTime()) / 86400000
-        )
-        return pullbackDays <= slingshotDays
+        if (!s.reclaimDate) return false
+        // Days since reclaim — stock is still inside the slingshot breakout window
+        const daysSinceReclaim = Math.floor((Date.now() - new Date(s.reclaimDate).getTime()) / 86400000)
+        return daysSinceReclaim <= slingshotDays
       })
     }
     return signals
@@ -641,11 +639,11 @@ export function ScannerClient({
             <TooltipContent side="bottom" className="max-w-[280px]">
               <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
               <p className="text-xs text-background/70 leading-relaxed mb-2">
-                Filters by how many days the stock stayed below EMA before reclaiming it.
-                Shorter pullbacks signal stronger momentum.
+                Only shows stocks that reclaimed EMA220 within the last X days and are approaching their ATH.
+                If the stock already broke its ATH, the breakout fired within the window.
               </p>
               <p className="text-xs text-background/70 leading-relaxed border-t border-background/20 pt-2">
-                <span className="font-semibold text-background">Eg:</span> EMA = ₹500. Price drops to ₹480 on Jan 1, stays below ₹500, recovers to ₹510 on Jan 18 → <span className="font-semibold text-background">17 days below EMA</span>. Passes ≤30d & ≤60d. If it took 64 days to recover, only passes ≤90d.
+                <span className="font-semibold text-background">Eg:</span> EMA = ₹500. Price recovers above ₹500 on Jan 18. If today is Feb 5 (18 days later) → passes ≤30d. If today is Mar 5 (45 days later), only passes ≤60d.
               </p>
             </TooltipContent>
           </Tooltip>
@@ -662,7 +660,7 @@ export function ScannerClient({
           <ZapIcon className="size-3.5 text-primary/60 shrink-0" />
           <p className="text-[11px] text-foreground/60 leading-none">
             <span className="font-semibold text-primary/80">Slingshot ≤{slingshotDays}d:</span>{" "}
-            Showing stocks where the pullback below EMA lasted ≤{slingshotDays} days before reclaiming — faster bounces signal stronger momentum.
+            Stocks that reclaimed EMA220 within the last {slingshotDays} days — still inside the breakout window.
           </p>
           <button
             onClick={() => setSlingshotDays(null)}

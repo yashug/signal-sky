@@ -351,24 +351,23 @@ Do NOT pass `{ expire: 0 }` — that is PPR-only syntax.
 ## Slingshot Filter System
 
 ### What "Slingshot" Means
-A **slingshot** setup is one where the pullback below EMA was short — the stock bounced back quickly, like a slingshot releasing. The metric is:
+Per Shashank (originator of the strategy): "add a time period for 220 to slingshot breakout within X days" — meaning **time from EMA220 reclaim → ATH breakout ≤ X days**.
 
-```
-pullback duration = reclaimDate − breakDate   (calendar days)
-```
+- **Scanner metric**: `today − reclaimDate` (calendar days since the stock reclaimed EMA220). If the stock already broke ATH, the breakout fired inside the window. If it hasn't broken ATH yet, the stock is still inside the breakout window.
+- **Backtest engine metric**: `reclaimBar → entryDate` calendar days (entry fires exactly when ATH is broken — so this is the same concept measured at the moment of the trade).
+- Slingshot ≤30d means the ATH break happened (or will happen) within 30 days of reclaiming EMA220.
 
-- **`breakDate`** — first day price crossed FROM above → below EMA220 (start of pullback). SQL: `break_start_date` from the LAG()-based `break_start` CTE.
-- **`reclaimDate`** — first day price crossed FROM below → above EMA220 after the break. SQL: `reclaim_date` from `reclaim_start` CTE.
-- Slingshot ≤30d means `reclaimDate − breakDate ≤ 30 days`.
+**`breakDate`** — first day price crossed FROM above → below EMA220 (stored in `signal.details.breakDate`, used for charts but NOT for slingshot filtering). SQL: `break_start_date` from the LAG()-based `break_start` CTE.
+**`reclaimDate`** — first day price crossed FROM below → above EMA220 after the break. SQL: `reclaim_date` from `reclaim_start` CTE.
 
-**NEVER measure `today − reclaimDate`** (that's recency, not pullback speed). **NEVER measure `reclaimBar − entryBar`** (that's nearly 0, filters nothing).
+**NEVER measure `reclaimDate − breakDate`** (that's pullback duration — how long below EMA — not the slingshot). **NEVER measure `reclaimBar − entryBar`** (that's nearly 0, filters nothing).
 
 ### Where the Filter Is Applied
 
 | Layer | File | How |
 |---|---|---|
-| Scanner (client) | `app/(dashboard)/scanner/scanner-client.tsx` | `(reclaimDate - breakDate) <= slingshotDays` in `filteredData` memo |
-| Backtest engine | `lib/backtest-engine.ts` | `tradingDaysBetween(pullbackStartDate, reclaimBar) > slingshotDays → skip entry` |
+| Scanner (client) | `app/(dashboard)/scanner/scanner-client.tsx` | `(today - reclaimDate) <= slingshotDays` in `filteredData` memo |
+| Backtest engine | `lib/backtest-engine.ts` | `tradingDaysBetween(reclaimBar, bar.date) > slingshotDays → skip entry` |
 | Performance page | `app/(dashboard)/performance/page.tsx` | Reads pre-computed `parametersHash = "v2-ath-ema220-s{N}"` from DB |
 | Backtest detail | `app/(dashboard)/backtests/[symbol]/backtest-detail-client.tsx` | Switches between pre-loaded `initialVariants` (s30/s60/s90) instantly |
 
@@ -378,7 +377,7 @@ pullback duration = reclaimDate − breakDate   (calendar days)
 1. Scan pipeline SQL computes `break_start_date` and `reclaim_date` via LAG() window functions
 2. Stored in `signal.details.breakDate` and `signal.details.reclaimDate`
 3. Serialized to `ApiSignal.breakDate` and `ApiSignal.reclaimDate` in `lib/data/signals.ts`
-4. Scanner client computes pullback duration client-side and filters
+4. Scanner client computes days since reclaim (`today − reclaimDate`) client-side and filters
 
 **Backtests (Performance/Detail):**
 1. Admin bulk run (`POST /api/admin/backtest/run`) calls `runBacktest(bars)` 4 times per symbol:
@@ -393,21 +392,18 @@ pullback duration = reclaimDate − breakDate   (calendar days)
 
 ### Backtest Engine Internals (`lib/backtest-engine.ts`)
 ```typescript
-let pullbackStartDate: string | null = null  // first day below EMA in current pullback phase
+let reclaimBar: string | null = null  // first day back above EMA in current reclaim attempt
 
-// seeking_break → seeking_entry (first cross below EMA):
-pullbackStartDate = bar.date
-
-// seeking_entry, bar re-breaks (reclaimBar was set, now below again):
-if (reclaimBar !== null) pullbackStartDate = bar.date  // new pullback phase starts
-// seeking_entry, continuing below EMA: do NOT update pullbackStartDate
+// seeking_entry, bar crosses above EMA:
+if (reclaimBar === null) reclaimBar = bar.date
 
 // At entry (bar.close > preSetATH && bar.close > ema):
-const pullbackDays = tradingDaysBetween(pullbackStartDate, reclaimBar)
-if (pullbackDays > options.slingshotDays) continue  // skip this entry
+// bar.date IS the ATH breakout day — measure reclaim → breakout duration
+const daysToBreakout = tradingDaysBetween(reclaimBar, bar.date)
+if (daysToBreakout > options.slingshotDays) continue  // skip this entry
 ```
 
-`reclaimBar` = first day back above EMA in the current reclaim attempt. Duration is `pullbackStartDate → reclaimBar`.
+`reclaimBar` = first day back above EMA220. Duration is `reclaimBar → bar.date` (the ATH breakout bar). `pullbackStartDate` is still tracked and stored on trade records for transparency but is NOT used for the slingshot filter decision.
 
 ### `getBacktestDetail` Signature
 ```typescript
@@ -419,10 +415,11 @@ Always pass the `parametersHash` explicitly when fetching slingshot variants. Ca
 If a slingshot variant is missing for a symbol (not yet bulk-run), the backtest detail page shows a "Generate slingshot data" CTA. This calls `POST /api/backtest/run-single` with `{ symbol, slingshotDays }`, stores the result to DB, and updates the detail view. The new record is also included in performance page aggregates after cache revalidation.
 
 ### Known Gotchas
-- **Don't revert scanner filter to `today - reclaimDate`** — that was the old (wrong) implementation measuring recency, not pullback speed.
+- **Don't revert scanner filter to `reclaimDate − breakDate`** — that's pullback duration (time below EMA), NOT the slingshot metric. The correct scanner filter is `today − reclaimDate` (days since reclaim).
+- **Don't revert backtest engine filter to `pullbackStartDate → reclaimBar`** — that's also pullback duration, not the slingshot metric. The correct engine filter is `tradingDaysBetween(reclaimBar, bar.date)` (reclaim → ATH breakout).
 - **Each slingshot variant has its own win rate** — it is NOT a post-hoc filter on baseline trades. Always run the engine separately per variant.
-- **`breakDate` on `ApiSignal` vs `getSignalChart`**: `ApiSignal.breakDate` comes from the scan SQL's `break_start_date` (LAG-detected most-recent above→below crossing). `ApiSignalChart.breakDate` in `lib/data/signals.ts → getSignalChart` is computed by a forward scan from `preSetATHDate` — same concept, different code path used for the chart view only.
-- **Signals need re-scanning to populate `breakDate`** — signals created before `breakDate` was added to `signal.details` will have `breakDate: null` and be excluded from slingshot filtering in the scanner. Re-running the scan fixes this.
+- **`breakDate` on `ApiSignal` vs `getSignalChart`**: `ApiSignal.breakDate` comes from the scan SQL's `break_start_date` (LAG-detected most-recent above→below crossing). `ApiSignalChart.breakDate` in `lib/data/signals.ts → getSignalChart` is computed by a forward scan from `preSetATHDate` — same concept, different code path used for the chart view only. `breakDate` is kept on `ApiSignal` for charts but NOT used for slingshot filtering.
+- **Signals need re-scanning to populate `reclaimDate`** — signals without `reclaimDate` are excluded from slingshot filtering. Re-running the scan fixes this.
 
 ## Known Gotchas
 

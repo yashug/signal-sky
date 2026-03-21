@@ -532,9 +532,8 @@ export function BacktestDetailClient({
               <TooltipContent side="bottom" className="max-w-[260px]">
                 <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Filter by how long the pullback below EMA lasted before the stock reclaimed.
-                  A shorter pullback duration — like a slingshot releasing — signals stronger underlying momentum.
-                  Tighter window = quicker bounces, more energetic setups.
+                  Filter trades where the stock broke its pre-set ATH within X days of reclaiming EMA220.
+                  Faster breakouts = stronger momentum.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -560,7 +559,7 @@ export function BacktestDetailClient({
                   Slingshot ≤{slingshotDays}d filter active
                 </p>
                 <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-                  Only trades where the pullback below EMA lasted ≤{slingshotDays} days before the stock reclaimed — faster bounces signal stronger momentum.
+                  Only trades where the ATH break happened within {slingshotDays} days of reclaiming EMA220 — a faster breakout signals stronger underlying momentum.
                   Compare with{" "}
                   <button
                     onClick={() => { setSlingshotDays(null); triggerBacktest(null) }}

@@ -46,8 +46,8 @@ export function SlingshotChips({ active }: { active: string | null }) {
       <TooltipContent side="bottom" className="max-w-[260px]">
         <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Filter by pullback duration — how long the stock stayed below EMA before reclaiming.
-          Shorter pullbacks signal stronger momentum. Each window is a fully independent backtest,
+          Filter by how quickly the stock broke its pre-set ATH after reclaiming EMA220.
+          Faster breakouts = stronger momentum. Each window is a fully independent backtest,
           not a post-hoc filter on the baseline.
         </p>
       </TooltipContent>

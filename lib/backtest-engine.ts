@@ -12,7 +12,7 @@ export type BacktestTradeResult = {
   daysHeld: number
   preSetATHAtEntry: number
   reclaimDate?: string
-  pullbackStartDate?: string  // start of the below-EMA pullback; duration = pullbackStartDate→reclaimDate
+  pullbackStartDate?: string  // start of the below-EMA pullback (stored for transparency, not used for slingshot filter)
 }
 
 export type BacktestSummary = {
@@ -112,10 +112,10 @@ export function runBacktest(bars: Bar[], options?: { slingshotDays?: number }): 
       } else {
         if (reclaimBar === null) reclaimBar = bar.date
         if (bar.close > preSetATH && bar.close > ema) {
-          // Slingshot check: break-to-reclaim duration (how long the pullback lasted)
-          if (options?.slingshotDays && pullbackStartDate && reclaimBar) {
-            const pullbackDays = tradingDaysBetween(pullbackStartDate, reclaimBar)
-            if (pullbackDays > options.slingshotDays) continue
+          // Slingshot check: reclaim → ATH breakout duration (bar.date IS the ATH breakout day)
+          if (options?.slingshotDays && reclaimBar) {
+            const daysToBreakout = tradingDaysBetween(reclaimBar, bar.date)
+            if (daysToBreakout > options.slingshotDays) continue
           }
           entryDate = bar.date
           entryPrice = bar.close
