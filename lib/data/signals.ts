@@ -66,6 +66,7 @@ export const getSignals = unstable_cache(
       price: Number(s.price),
       ath: Number(s.ath),
       ema200: Number(s.ema200),
+      ema220: s.ema220 ? Number(s.ema220) : Number(s.ema200),
       distancePct: Number(s.distance_pct),
       volumeSurge: s.volume_surge ? Number(s.volume_surge) : null,
       volumeToday: s.volume_today ? Number(s.volume_today) : null,
@@ -135,6 +136,7 @@ export const getSignalBySymbol = unstable_cache(
       price: Number(s.price),
       ath: Number(s.ath),
       ema200: Number(s.ema200),
+      ema220: s.ema220 ? Number(s.ema220) : Number(s.ema200),
       distancePct: Number(s.distance_pct),
       volumeSurge: s.volume_surge ? Number(s.volume_surge) : null,
       volumeToday: s.volume_today ? Number(s.volume_today) : null,
@@ -184,7 +186,7 @@ export const getLandingStats = unstable_cache(
 export const getSignalChart = unstable_cache(
   async (signalId: string): Promise<ApiSignalChart> => {
     const signal = await prisma.signal.findUnique({ where: { id: signalId } })
-    if (!signal) return { priceHistory: [], ema200History: [], dates: [], ath: null, breakDate: null, breakEma200: null, reclaimDate: null }
+    if (!signal) return { priceHistory: [], ema200History: [], ema220History: [], dates: [], ath: null, breakDate: null, breakEma200: null, breakEma220: null, reclaimDate: null }
 
     const barSymbol =
       signal.exchange === "NSE"
@@ -204,28 +206,38 @@ export const getSignalChart = unstable_cache(
       orderBy: { date: "asc" },
     })
 
-    // breakDate = FIRST day after the pre-set ATH that close dropped below EMA200
-    // breakEma200 = the EMA200 value on that specific break date
-    // reclaimDate = most recent day price crossed from below to above EMA200
+    // breakDate = FIRST day after the pre-set ATH that close dropped below EMA220 (fallback to EMA200)
+    // breakEma220 = the EMA220 value on that specific break date
+    // reclaimDate = most recent day price crossed from below to above EMA220 (fallback to EMA200)
     let breakDate: string | null = null
     let breakEma200: number | null = null
+    let breakEma220: number | null = null
     let reclaimDate: string | null = null
 
+    // Determine whether to use EMA220 or EMA200 for break/reclaim detection
+    // Use EMA220 if available, fall back to EMA200 for older bars
     // Scan FORWARD from bar[0] (starts at preSetATHDate) to find the first break
     for (let i = 0; i < bars.length; i++) {
-      const ema = bars[i].ema200 ? Number(bars[i].ema200) : null
+      const ema220 = bars[i].ema220 ? Number(bars[i].ema220) : null
+      const ema200 = bars[i].ema200 ? Number(bars[i].ema200) : null
+      const ema = ema220 ?? ema200
       if (!ema) continue
       if (Number(bars[i].close) < ema) {
         breakDate = bars[i].date.toISOString().split("T")[0]
-        breakEma200 = ema
+        breakEma200 = ema200
+        breakEma220 = ema220
         break
       }
     }
 
-    // Scan BACKWARD from end to find the most recent cross from below → above EMA200
+    // Scan BACKWARD from end to find the most recent cross from below → above EMA220 (fallback EMA200)
     for (let i = bars.length - 1; i >= 1; i--) {
-      const ema = bars[i].ema200 ? Number(bars[i].ema200) : null
-      const prevEma = bars[i - 1].ema200 ? Number(bars[i - 1].ema200) : null
+      const ema220 = bars[i].ema220 ? Number(bars[i].ema220) : null
+      const ema200 = bars[i].ema200 ? Number(bars[i].ema200) : null
+      const ema = ema220 ?? ema200
+      const prevEma220 = bars[i - 1].ema220 ? Number(bars[i - 1].ema220) : null
+      const prevEma200 = bars[i - 1].ema200 ? Number(bars[i - 1].ema200) : null
+      const prevEma = prevEma220 ?? prevEma200
       if (!ema || !prevEma) continue
       if (Number(bars[i].close) >= ema && Number(bars[i - 1].close) < prevEma) {
         reclaimDate = bars[i].date.toISOString().split("T")[0]
@@ -236,10 +248,12 @@ export const getSignalChart = unstable_cache(
     return {
       priceHistory: bars.map((b) => Number(b.close)),
       ema200History: bars.map((b) => (b.ema200 ? Number(b.ema200) : null)),
+      ema220History: bars.map((b) => (b.ema220 ? Number(b.ema220) : null)),
       dates: bars.map((b) => b.date.toISOString().split("T")[0]),
       ath: details?.preSetATH ? Number(details.preSetATH) : null,
       breakDate,
       breakEma200,
+      breakEma220,
       reclaimDate,
     }
   },

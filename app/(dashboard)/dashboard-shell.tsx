@@ -57,7 +57,7 @@ const secondaryItems = [
 ]
 
 const GUIDE_SECTIONS = [
-  { label: "EMA 200", id: "guide-s1" },
+  { label: "EMA 220", id: "guide-s1" },
   { label: "Pre-Set ATH", id: "guide-s2" },
   { label: "The Setup", id: "guide-s3" },
   { label: "Heat Levels", id: "guide-s4" },

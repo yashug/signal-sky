@@ -224,7 +224,7 @@ const columns: ColumnDef<ApiSignal>[] = [
           Prior Peak
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[220px]">
-          <span className="text-xs">Highest price reached before the stock broke below its EMA 200</span>
+          <span className="text-xs">Highest price reached before the stock broke below its EMA 220</span>
         </TooltipContent>
       </Tooltip>
     ),
@@ -293,10 +293,10 @@ const columns: ColumnDef<ApiSignal>[] = [
     header: () => (
       <Tooltip>
         <TooltipTrigger className="text-[10px] font-semibold uppercase tracking-wider">
-          EMA 200
+          EMA 220
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[200px]">
-          <span className="text-xs">200-day exponential moving average — acts as the key support level and stop-loss trigger</span>
+          <span className="text-xs">220-day exponential moving average — acts as the key support level and stop-loss trigger</span>
         </TooltipContent>
       </Tooltip>
     ),

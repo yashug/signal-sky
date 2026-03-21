@@ -397,7 +397,7 @@ function HeatmapTooltip({
 
         {emaDistPct !== null && (
           <TooltipRow
-            label="vs EMA200"
+            label="vs EMA 220"
             value={`${emaDistPct}%`}
             valueColor={emaBreach ? "#f87171" : "#86efac"}
           />

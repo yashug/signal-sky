@@ -6,7 +6,7 @@ import { getInitialUser } from "@/lib/auth"
 
 export const metadata = {
   title: "Strategy Guide — SignalSky",
-  description: "Learn the Reset & Reclaim breakout strategy: how EMA 200, Pre-Set ATH, and heat levels work to surface high-probability setups.",
+  description: "Learn the Reset & Reclaim breakout strategy: how EMA 220, Pre-Set ATH, and heat levels work to surface high-probability setups.",
 }
 
 export default async function GuidePage() {

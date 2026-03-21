@@ -57,7 +57,7 @@ export default function TrialDay3Email({
           <Section style={{ backgroundColor: "#172554", borderRadius: "8px", padding: "16px 20px", marginBottom: "24px" }}>
             <Text style={{ color: "#93c5fd", fontSize: "12px", fontWeight: "600", margin: "0 0 6px" }}>How is this backtested?</Text>
             <Text style={{ color: "#64748b", fontSize: "11px", margin: "0 0 4px", lineHeight: "1.6" }}>
-              Every NSE and US stock is run through the Reset &amp; Reclaim strategy on 20 years of daily data. Entry: reclaim above EMA 200. Exit: close below EMA 200.
+              Every NSE and US stock is run through the Reset &amp; Reclaim strategy on 20 years of daily data. Entry: reclaim above EMA 220. Exit: close below EMA 220.
             </Text>
             <Text style={{ color: "#64748b", fontSize: "11px", margin: 0, lineHeight: "1.6" }}>
               Win rate, average return, max drawdown, and profit factor are computed per symbol. You can see this for every signal on the scanner.

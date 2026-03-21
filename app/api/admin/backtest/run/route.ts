@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
             orderBy: { date: "asc" },
           })
 
-          if (dbBars.length < 200) {
+          if (dbBars.length < 220) {
             skipped++
             continue
           }
@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
             close: Number(b.close),
             volume: Number(b.volume),
             ema200: b.ema200 != null ? Number(b.ema200) : null,
+            ema220: b.ema220 != null ? Number(b.ema220) : null,
           }))
 
           const result = runBacktest(bars)
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
               symbol: memberSymbol,
               exchange,
               strategyName: "Reset & Reclaim",
-              parametersHash: "v2-ath-ema200",
+              parametersHash: "v2-ath-ema220",
               fromDate: new Date(result.fromDate),
               toDate: new Date(result.toDate),
               totalTrades: result.summary.totalTrades,
@@ -157,7 +158,7 @@ export async function POST(req: NextRequest) {
       })
 
       try {
-        revalidateTag("backtests", { expire: 0 })
+        revalidateTag("backtests", {})
       } catch (e: any) {
         console.error("[backtest/run] revalidation failed:", e.message)
       }

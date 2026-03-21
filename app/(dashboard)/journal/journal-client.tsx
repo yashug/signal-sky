@@ -133,7 +133,7 @@ const EMPTY_MESSAGES: Record<FilterTab, { title: string; description: string }> 
   },
   stopped_out: {
     title: "No stopped trades",
-    description: "Trades that were exited because the price broke below the EMA200 exit trigger will appear here.",
+    description: "Trades that were exited because the price broke below the EMA 220 exit trigger will appear here.",
   },
 }
 
@@ -155,7 +155,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
 
   const alertTrades = useMemo(() => {
     return trades.filter(
-      (t) => t.status === "open" && t.ema200 != null && t.currentPrice < t.ema200!
+      (t) => t.status === "open" && t.ema220 != null && t.currentPrice < t.ema220!
     )
   }, [trades])
 
@@ -167,7 +167,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
   const filteredTrades = useMemo(() => {
     const list = activeTab === "all" ? marketTrades : marketTrades.filter((t) => t.status === activeTab)
     const isBreach = (t: JournalTradeData) =>
-      t.status === "open" && t.ema200 != null && t.currentPrice < t.ema200!
+      t.status === "open" && t.ema220 != null && t.currentPrice < t.ema220!
     if (activeTab === "all" || activeTab === "open") {
       const order: Record<string, number> = { open: 1, closed: 2, stopped_out: 3 }
       return [...list].sort((a, b) => {
@@ -389,7 +389,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
         )
       })()}
 
-      {/* EMA200 Breach Alert Banner */}
+      {/* EMA220 Breach Alert Banner */}
       {alertTrades.length > 0 && (
         <div className="relative overflow-hidden rounded-lg border border-bear/30 bg-bear/[0.06]">
           <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-bear to-transparent opacity-80" />
@@ -410,7 +410,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
                 </span>
               </div>
               <p className="text-[11px] leading-relaxed text-bear/70">
-                Price has closed below EMA200 — strategy says exit.{" "}
+                Price has closed below EMA220 — strategy says exit.{" "}
                 {alertTrades.map((t, i) => (
                   <span key={t.id}>
                     {i > 0 && ", "}
@@ -418,7 +418,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
                       {t.symbol.replace(".NS", "")}
                     </span>
                     <span className="text-bear/50">
-                      {" "}({((t.currentPrice - t.ema200!) / t.ema200! * 100).toFixed(1)}%)
+                      {" "}({((t.currentPrice - t.ema220!) / t.ema220! * 100).toFixed(1)}%)
                     </span>
                   </span>
                 ))}
@@ -602,10 +602,10 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
                   const isProfitable = (displayPnl ?? 0) > 0
                   const isExiting = exitingTradeId === trade.id
 
-                  const hasEma = isOpen && trade.ema200 != null
-                  const emaBreach = hasEma && trade.currentPrice < trade.ema200!
+                  const hasEma = isOpen && trade.ema220 != null
+                  const emaBreach = hasEma && trade.currentPrice < trade.ema220!
                   const emaDistance = hasEma
-                    ? ((trade.currentPrice - trade.ema200!) / trade.ema200!) * 100
+                    ? ((trade.currentPrice - trade.ema220!) / trade.ema220!) * 100
                     : null
 
                   return (
@@ -666,7 +666,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1">
                               <span className="font-mono text-[11px] text-muted-foreground">
-                                EMA {currency}{trade.ema200!.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                EMA220 {currency}{trade.ema220!.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                               </span>
                             </div>
                             {emaBreach ? (
@@ -724,7 +724,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
                                 })}
                                 {trade.exitReason && (
                                   <span className="ml-1 text-muted-foreground/50">
-                                    ({trade.exitReason === "stop" ? "EMA200" : trade.exitReason})
+                                    ({trade.exitReason === "stop" ? "EMA220" : trade.exitReason})
                                   </span>
                                 )}
                               </span>
@@ -829,7 +829,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
                                         : "text-muted-foreground/40 hover:text-muted-foreground"
                                     )}
                                   >
-                                    {r === "stop" ? "EMA200" : r === "target" ? "Target" : "Manual"}
+                                    {r === "stop" ? "EMA220" : r === "target" ? "Target" : "Manual"}
                                   </button>
                                 ))}
                                 <div className="flex gap-0.5 ml-auto">

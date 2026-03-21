@@ -44,7 +44,7 @@ import {
 
 const chartConfig: ChartConfig = {
   price: { label: "Price", color: "oklch(0.72 0.19 220)" },
-  ema200: { label: "EMA 200", color: "oklch(0.78 0.16 80)" },
+  ema220: { label: "EMA 220", color: "oklch(0.78 0.16 80)" },
 }
 
 function HeatBadge({ heat }: { heat: HeatStatus }) {
@@ -88,21 +88,21 @@ function MetricBlock({ label, value, sub, icon: Icon, accent }: {
 }
 
 // Generate synthetic chart data as fallback when real data is unavailable
-function generateSyntheticChart(price: number, ema200: number): { priceHistory: number[]; ema200History: number[] } {
+function generateSyntheticChart(price: number, ema220: number): { priceHistory: number[]; ema220History: number[] } {
   const prices: number[] = []
   const emaArr: number[] = []
   const startPrice = price * (0.92 + Math.random() * 0.06)
-  const startEma = ema200 * (0.98 + Math.random() * 0.03)
+  const startEma = ema220 * (0.98 + Math.random() * 0.03)
   let p = startPrice
   let e = startEma
 
   for (let i = 0; i < 30; i++) {
     p += (price - startPrice) / 30 + (Math.random() - 0.48) * price * 0.015
-    e += (ema200 - startEma) / 30 + (Math.random() - 0.5) * ema200 * 0.002
+    e += (ema220 - startEma) / 30 + (Math.random() - 0.5) * ema220 * 0.002
     prices.push(Math.round(p * 100) / 100)
     emaArr.push(Math.round(e * 100) / 100)
   }
-  return { priceHistory: prices, ema200History: emaArr }
+  return { priceHistory: prices, ema220History: emaArr }
 }
 
 export function SignalDetailDrawer({
@@ -116,7 +116,7 @@ export function SignalDetailDrawer({
 }) {
   const [capital, setCapital] = useState("500000")
   const [riskPercent, setRiskPercent] = useState("2")
-  const [chartData, setChartData] = useState<{ priceHistory: number[]; ema200History: (number | null)[]; dates?: string[]; ath?: number | null } | null>(null)
+  const [chartData, setChartData] = useState<{ priceHistory: number[]; ema220History: (number | null)[]; dates?: string[]; ath?: number | null } | null>(null)
   const [chartLoading, setChartLoading] = useState(false)
 
   // Lazy-load chart data when drawer opens
@@ -131,14 +131,18 @@ export function SignalDetailDrawer({
       .then((data) => {
         // Use real data if available, else fall back to synthetic
         if (data.priceHistory.length > 0) {
-          setChartData(data)
+          // Map ema220History (preferred) or ema200History as fallback
+          setChartData({
+            ...data,
+            ema220History: data.ema220History ?? data.ema200History,
+          })
         } else {
-          setChartData(generateSyntheticChart(signal.price, signal.ema200))
+          setChartData(generateSyntheticChart(signal.price, signal.ema220))
         }
       })
       .catch(() => {
         // Fallback to synthetic chart data
-        setChartData(generateSyntheticChart(signal.price, signal.ema200))
+        setChartData(generateSyntheticChart(signal.price, signal.ema220))
       })
       .finally(() => setChartLoading(false))
   }, [open, signal?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -147,7 +151,7 @@ export function SignalDetailDrawer({
     if (!signal) return null
     const cap = parseFloat(capital) || 0
     const risk = parseFloat(riskPercent) || 0
-    const stop = signal.ema200
+    const stop = signal.ema220
     const riskPerShare = signal.price - stop
     if (riskPerShare <= 0) return null
     const riskAmount = cap * (risk / 100)
@@ -171,11 +175,11 @@ export function SignalDetailDrawer({
           ? new Date(chartData.dates[i]).toLocaleDateString("en-US", { month: "short", year: "2-digit" })
           : String(i + 1),
         price,
-        ema200: chartData.ema200History[i] ?? undefined,
+        ema220: chartData.ema220History[i] ?? undefined,
       }))
     : []
 
-  const isAboveEma = signal.price > signal.ema200
+  const isAboveEma = signal.price > signal.ema220
   const currency = signal.exchange === "NSE" ? "₹" : "$"
 
   return (
@@ -227,8 +231,8 @@ export function SignalDetailDrawer({
             icon={TargetIcon}
           />
           <MetricBlock
-            label="EMA 200"
-            value={`${currency}${signal.ema200.toLocaleString()}`}
+            label="EMA 220"
+            value={`${currency}${signal.ema220.toLocaleString()}`}
             sub={isAboveEma ? "Price above" : "Price below"}
             icon={ActivityIcon}
             accent={isAboveEma ? "text-bull" : "text-bear"}
@@ -248,7 +252,7 @@ export function SignalDetailDrawer({
         <div className="px-5 py-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Price vs EMA 200 — Since Pre-set ATH
+              Price vs EMA 220 — Since Pre-set ATH
             </span>
           </div>
           {chartLoading ? (
@@ -296,12 +300,12 @@ export function SignalDetailDrawer({
                 />
                 <Line
                   type="monotone"
-                  dataKey="ema200"
+                  dataKey="ema220"
                   stroke="oklch(0.78 0.16 80)"
                   strokeWidth={1.5}
                   strokeDasharray="4 2"
                   dot={false}
-                  name="ema200"
+                  name="ema220"
                 />
               </ComposedChart>
             </ChartContainer>
@@ -326,11 +330,11 @@ export function SignalDetailDrawer({
             <p>
               <span className="font-mono font-medium text-foreground">{signal.symbol}</span> hit an
               all-time high of <span className="font-mono text-foreground">{currency}{signal.ath.toLocaleString()}</span>,
-              then pulled back below its 200-day EMA (<span className="font-mono text-foreground">{currency}{signal.ema200.toLocaleString()}</span>)
+              then pulled back below its 220-day EMA (<span className="font-mono text-foreground">{currency}{signal.ema220.toLocaleString()}</span>)
               — a classic &ldquo;reset.&rdquo;
             </p>
             <p>
-              The stock has since reclaimed the EMA 200 and is now trading at{" "}
+              The stock has since reclaimed the EMA 220 and is now trading at{" "}
               <span className="font-mono text-foreground">{currency}{signal.price.toLocaleString()}</span>,
               just <span className={cn("font-mono font-medium", signal.distancePct <= 5 ? "text-bull" : "text-foreground")}>
                 {signal.distancePct.toFixed(1)}%
@@ -389,7 +393,7 @@ export function SignalDetailDrawer({
                   <div className="grid grid-cols-2 gap-y-2 pt-2">
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Stop Loss (EMA 200)
+                        Stop Loss (EMA 220)
                       </span>
                       <span className="font-mono text-sm font-semibold text-bear">
                         {currency}{positionCalc.stop.toLocaleString()}

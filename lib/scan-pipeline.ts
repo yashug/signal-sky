@@ -27,6 +27,7 @@ type BarRow = {
   symbol: string
   close: string
   ema200: string | null
+  ema220: string | null
   volume: string
   ath: string
   ath_date: string | null
@@ -57,20 +58,20 @@ export async function runScanForMarket(market: "india" | "us") {
     WITH
     latest AS (
       SELECT DISTINCT ON (symbol)
-        symbol, close, ema200, volume
+        symbol, close, ema200, ema220, volume
       FROM daily_bars
       WHERE exchange = $1 AND symbol = ANY($2::text[])
       ORDER BY symbol, date DESC
     ),
-    -- Detect the day price first crossed FROM above EMA200 TO below EMA200
+    -- Detect the day price first crossed FROM above EMA220 TO below EMA220
     -- (the start of the most recent "reset" period)
     bar_states AS (
       SELECT
         symbol, date,
-        (close::numeric >= ema200::numeric) AS above_ema,
-        LAG(close::numeric >= ema200::numeric) OVER (PARTITION BY symbol ORDER BY date) AS prev_above_ema
+        (close::numeric >= ema220::numeric) AS above_ema,
+        LAG(close::numeric >= ema220::numeric) OVER (PARTITION BY symbol ORDER BY date) AS prev_above_ema
       FROM daily_bars
-      WHERE exchange = $1 AND symbol = ANY($2::text[]) AND ema200 IS NOT NULL
+      WHERE exchange = $1 AND symbol = ANY($2::text[]) AND ema220 IS NOT NULL
     ),
     break_start AS (
       SELECT DISTINCT ON (symbol)
@@ -110,6 +111,7 @@ export async function runScanForMarket(market: "india" | "us") {
       l.symbol,
       l.close::float AS close,
       l.ema200::float AS ema200,
+      l.ema220::float AS ema220,
       l.volume::bigint AS volume,
       a.ath::float AS ath,
       a.ath_date::text AS ath_date,
@@ -117,7 +119,7 @@ export async function runScanForMarket(market: "india" | "us") {
     FROM latest l
     JOIN ath_data a ON a.symbol = l.symbol
     LEFT JOIN vol20 v ON v.symbol = l.symbol
-    WHERE l.ema200 IS NOT NULL
+    WHERE l.ema220 IS NOT NULL
     `,
     exchange,
     uniqueDbSymbols
@@ -139,11 +141,12 @@ export async function runScanForMarket(market: "india" | "us") {
   for (const row of rows) {
     const close = Number(row.close)
     const ema200 = Number(row.ema200)
+    const ema220 = Number(row.ema220)
     const ath = Number(row.ath)
     const volume = Number(row.volume)
     const avgVol = row.avg_vol != null ? Number(row.avg_vol) : null
 
-    if (close <= ema200 || ath <= 0) continue
+    if (close <= ema220 || ath <= 0) continue
 
     const distancePct = ((ath - close) / ath) * 100
 
@@ -159,6 +162,7 @@ export async function runScanForMarket(market: "india" | "us") {
       price: close,
       ath,
       ema200,
+      ema220,
       distancePct,
       volumeSurge: volSurge,
       volumeToday: BigInt(Math.round(volume)),
@@ -169,7 +173,7 @@ export async function runScanForMarket(market: "india" | "us") {
     })
   }
 
-  let createdSignals: Array<{ id: string; symbol: string; exchange: string; heat: string; price: number; ath: number; ema200: number; distancePct: number }> = []
+  let createdSignals: Array<{ id: string; symbol: string; exchange: string; heat: string; price: number; ath: number; ema200: number; ema220: number; distancePct: number }> = []
   if (signalsToCreate.length > 0) {
     await prisma.signal.createMany({ data: signalsToCreate })
     // Fetch newly created signals so callers can dispatch alerts with IDs
@@ -180,7 +184,7 @@ export async function runScanForMarket(market: "india" | "us") {
         signalDate,
         distancePct: { gte: -5, lte: 15 },
       },
-      select: { id: true, symbol: true, exchange: true, heat: true, price: true, ath: true, ema200: true, distancePct: true },
+      select: { id: true, symbol: true, exchange: true, heat: true, price: true, ath: true, ema200: true, ema220: true, distancePct: true },
     })
     createdSignals = freshSignals.map((s) => ({
       id: s.id,
@@ -190,6 +194,7 @@ export async function runScanForMarket(market: "india" | "us") {
       price: Number(s.price),
       ath: Number(s.ath),
       ema200: Number(s.ema200),
+      ema220: s.ema220 ? Number(s.ema220) : 0,
       distancePct: Number(s.distancePct),
     }))
   }
@@ -210,7 +215,7 @@ export async function runScanForMarket(market: "india" | "us") {
     let aboveEma200 = 0
     for (const db of dbSyms) {
       const r = rowMap.get(db)
-      if (r && Number(r.close) > Number(r.ema200)) aboveEma200++
+      if (r && Number(r.close) > Number(r.ema220 ?? r.ema200)) aboveEma200++
     }
     const pctAbove = total > 0 ? (aboveEma200 / total) * 100 : 0
 

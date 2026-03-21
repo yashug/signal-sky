@@ -39,30 +39,9 @@ function Logo() {
   )
 }
 
-function UgadiBanner() {
-  return (
-    <div className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center gap-2 px-4 py-2 text-center text-[12px] font-medium text-white sm:gap-3 sm:text-[13px]"
-      style={{ background: "linear-gradient(90deg, oklch(0.55 0.22 280), oklch(0.60 0.22 220), oklch(0.55 0.18 155))" }}>
-      <span className="shrink-0">🎊</span>
-      <span className="leading-snug">
-        <span className="font-semibold">Ugadi Special</span> — Start FY27 with a trading edge. 7-day free trial + Lifetime deal at{" "}
-        <span className="font-mono font-bold">₹4,999</span>{" "}
-        <span className="opacity-80">(100 seats only).</span>
-      </span>
-      <Link
-        href="/sign-in"
-        className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/30 whitespace-nowrap"
-      >
-        Start Free Trial
-        <ArrowRightIcon className="size-3" />
-      </Link>
-    </div>
-  )
-}
-
 function Navbar() {
   return (
-    <nav className="fixed top-8 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-xl">
+    <nav className="fixed top-2 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto max-w-6xl flex items-center justify-between px-6 h-16">
         <Logo />
         <div className="hidden md:flex items-center gap-8">
@@ -338,7 +317,7 @@ function FeaturesSection() {
     {
       icon: HeartPulseIcon,
       title: "Market Health",
-      description: "Track market breadth with % of stocks above EMA 200. Sector-level breakdown with traffic light system for regime detection.",
+      description: "Track market breadth with % of stocks above EMA 220. Sector-level breakdown with traffic light system for regime detection.",
       accent: "from-bull to-[oklch(0.78_0.16_80)]",
       isNew: false,
     },
@@ -638,7 +617,7 @@ function PreviewSection() {
                       <span className="font-mono text-sm font-bold text-foreground">{m.value}%</span>
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-2">
-                      Stocks above EMA 200
+                      Stocks above EMA 220
                     </p>
                   </div>
                 ))}
@@ -798,7 +777,7 @@ function StrategySection() {
                   ATH
                 </text>
 
-                {/* EMA200 reference line */}
+                {/* EMA220 reference line */}
                 <path
                   d="M 50 175 C 200 172, 420 180, 650 168"
                   className="stroke-heat-simmering/40"
@@ -812,7 +791,7 @@ function StrategySection() {
                   style={{ color: "var(--heat-simmering)" }}
                   textAnchor="start"
                 >
-                  EMA200
+                  EMA220
                 </text>
 
                 {/* Fill under price curve — gradient from transparent to subtle */}
@@ -964,7 +943,7 @@ function StrategySection() {
               </div>
             </div>
             <p className="text-[12px] leading-relaxed text-muted-foreground">
-              Price reclaims above EMA 200 and approaches the prior peak. Our scanner classifies stocks by distance and fires breakout signals when they cross above.
+              Price reclaims above EMA 220 and approaches the prior peak. Our scanner classifies stocks by distance and fires breakout signals when they cross above.
             </p>
           </div>
         </div>
@@ -974,7 +953,7 @@ function StrategySection() {
           <div className="rounded-2xl border border-border/25 bg-card/60 p-6 md:p-8">
             <h3 className="text-[15px] font-semibold text-foreground mb-1">Signal Heat Classification</h3>
             <p className="text-[12px] text-muted-foreground mb-5">
-              Every signal is ranked by distance to the prior peak — the all-time high reached before the stock broke below EMA 200.
+              Every signal is ranked by distance to the prior peak — the all-time high reached before the stock broke below EMA 220.
             </p>
             <div className="space-y-3">
               {/* Breakout */}
@@ -1038,7 +1017,7 @@ function StrategySection() {
                   <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                     <div className="h-full rounded-full bg-heat-cooling" style={{ width: "40%" }} />
                   </div>
-                  <span className="text-[10px] text-muted-foreground mt-1 block">Above EMA 200, on the radar — early positioning</span>
+                  <span className="text-[10px] text-muted-foreground mt-1 block">Above EMA 220, on the radar — early positioning</span>
                 </div>
               </div>
             </div>
@@ -1050,7 +1029,7 @@ function StrategySection() {
                 <span className="text-[12px] font-semibold text-foreground">Exit Rule</span>
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Close position when price drops below EMA 200 — a built-in stop loss that protects capital and removes emotion from the exit.
+                Close position when price drops below EMA 220 — a built-in stop loss that protects capital and removes emotion from the exit.
               </p>
             </div>
           </div>
@@ -1140,7 +1119,7 @@ function StrategySection() {
                   Want to understand the mechanics in depth?
                 </p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  EMA 200 explained, Pre-Set ATH vs all-time high, how each heat level works, and exactly how to read every signal.
+                  EMA 220 explained, Pre-Set ATH vs all-time high, how each heat level works, and exactly how to read every signal.
                 </p>
               </div>
 
@@ -1396,7 +1375,7 @@ export default async function LandingPage() {
         "name": "What is SignalSky?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "SignalSky is a stock signal scanner for India (NSE) and US (NASDAQ/S&P) markets that detects \"Reset & Reclaim\" breakout setups using EMA200 and all-time high proximity analysis, with 20 years of backtested data across 426+ stocks."
+          "text": "SignalSky is a stock signal scanner for India (NSE) and US (NASDAQ/S&P) markets that detects \"Reset & Reclaim\" breakout setups using EMA220 and all-time high proximity analysis, with 20 years of backtested data across 426+ stocks."
         }
       },
       {
@@ -1480,7 +1459,6 @@ export default async function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <UgadiBanner />
       <Navbar />
       {/* Live stats bar */}
       <div className="pt-24">

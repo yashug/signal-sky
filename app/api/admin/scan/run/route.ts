@@ -47,7 +47,6 @@ export async function POST(req: NextRequest) {
       market,
       signals: totalSignals,
       symbolsScanned: totalSymbols,
-      results,
     })
   } catch (e: any) {
     console.error("[scan/run] Error:", e.message)

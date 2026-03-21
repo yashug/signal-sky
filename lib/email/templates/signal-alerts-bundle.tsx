@@ -14,6 +14,7 @@ type BundleSignal = {
   price: number
   ath: number
   ema200: number
+  ema220: number
   distancePct: number
   signalUrl: string
 }
@@ -142,9 +143,9 @@ export default function SignalAlertsBundleEmail({ userName, signals, market, dat
                       </Text>
                     </Column>
                     <Column style={{ width: "34%", textAlign: "right" }}>
-                      <Text style={{ color: "#64748b", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 3px" }}>EMA200</Text>
+                      <Text style={{ color: "#64748b", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 3px" }}>EMA220</Text>
                       <Text style={{ color: "#94a3b8", fontSize: "13px", fontFamily: "monospace", margin: 0 }}>
-                        {currency}{sig.ema200.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                        {currency}{sig.ema220.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                       </Text>
                     </Column>
                   </Row>

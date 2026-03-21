@@ -44,7 +44,7 @@ function MarketSummaryCard({ market }: { market: ApiMarketHealth }) {
           <span className={cn("font-mono text-3xl font-bold tabular-nums", color)}>
             {market.percentAbove.toFixed(1)}%
           </span>
-          <span className="text-[10px] text-muted-foreground">above EMA 200</span>
+          <span className="text-[10px] text-muted-foreground">above EMA 220</span>
         </div>
 
         <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">

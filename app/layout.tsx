@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     "S&P 100",
     "NASDAQ 100",
     "Reset and Reclaim",
-    "EMA 200",
+    "EMA 220",
     "market health",
     "India stocks",
     "US stocks",

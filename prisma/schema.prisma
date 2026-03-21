@@ -92,8 +92,8 @@ model DailyBar {
   close     Decimal  @db.Decimal(14, 4)
   volume    BigInt   @default(0)
   adjFactor Decimal  @default(1.0) @map("adj_factor") @db.Decimal(10, 6)
-  sma200    Decimal? @db.Decimal(14, 4)
   ema200    Decimal? @db.Decimal(14, 4)
+  ema220    Decimal? @map("ema220") @db.Decimal(14, 4)
   source    String   @default("yahoo") @db.VarChar(20)
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -109,6 +109,7 @@ model Indicator {
   exchange    String    @db.VarChar(10)
   date        DateTime  @db.Date
   ema200      Decimal?  @db.Decimal(14, 4)
+  ema220      Decimal?  @map("ema220") @db.Decimal(14, 4)
   ath         Decimal?  @db.Decimal(14, 4)
   athDate     DateTime? @map("ath_date") @db.Date
   avgVol20    BigInt?   @map("avg_vol_20")
@@ -131,6 +132,7 @@ model Signal {
   price        Decimal  @db.Decimal(14, 4)
   ath          Decimal  @db.Decimal(14, 4)
   ema200       Decimal  @db.Decimal(14, 4)
+  ema220       Decimal? @map("ema220") @db.Decimal(14, 4)
   distancePct  Decimal  @map("distance_pct") @db.Decimal(8, 4)
   volumeSurge  Decimal? @map("volume_surge") @db.Decimal(6, 2)
   volumeToday  BigInt?  @map("volume_today")

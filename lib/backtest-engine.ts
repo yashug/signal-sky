@@ -44,6 +44,7 @@ type Bar = {
   close: number
   volume: number
   ema200: number | null
+  ema220: number | null
 }
 
 function tradingDaysBetween(a: string, b: string): number {
@@ -53,7 +54,8 @@ function tradingDaysBetween(a: string, b: string): number {
 
 export function runBacktest(bars: Bar[]): BacktestResult {
   const trades: BacktestTradeResult[] = []
-  const validBars = bars.filter((b) => b.ema200 != null)
+  // Prefer EMA220 if available, fall back to EMA200
+  const validBars = bars.filter((b) => b.ema220 != null || b.ema200 != null)
   if (validBars.length === 0) {
     return { trades: [], summary: emptySummary(), fromDate: "", toDate: "" }
   }
@@ -74,14 +76,14 @@ export function runBacktest(bars: Bar[]): BacktestResult {
 
   const validBarOrigIdx: number[] = []
   for (let i = 0; i < bars.length; i++) {
-    if (bars[i].ema200 != null) {
+    if (bars[i].ema220 != null || bars[i].ema200 != null) {
       validBarOrigIdx.push(i)
     }
   }
 
   for (let i = 0; i < validBars.length; i++) {
     const bar = validBars[i]
-    const ema = bar.ema200!
+    const ema = (bar.ema220 ?? bar.ema200)!
     const origIdx = validBarOrigIdx[i]
 
     if (state === "seeking_break") {

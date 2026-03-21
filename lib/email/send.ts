@@ -31,6 +31,7 @@ export async function sendSignalAlert(opts: {
   price: number
   ath: number
   ema200: number
+  ema220: number
   distancePct: number
   unsubscribeToken: string
 }) {
@@ -45,6 +46,7 @@ export async function sendSignalAlert(opts: {
       price: opts.price,
       ath: opts.ath,
       ema200: opts.ema200,
+      ema220: opts.ema220,
       distancePct: opts.distancePct,
       signalUrl,
       unsubscribeUrl: unsubscribeUrl(opts.unsubscribeToken),
@@ -75,6 +77,7 @@ export async function sendBundledAlerts(opts: {
     price: number
     ath: number
     ema200: number
+    ema220: number
     distancePct: number
   }>
   unsubscribeToken: string

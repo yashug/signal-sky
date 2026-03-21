@@ -44,7 +44,7 @@ import {
 
 const chartConfig: ChartConfig = {
   price: { label: "Price", color: "oklch(0.72 0.19 220)" },
-  ema200: { label: "EMA 200", color: "oklch(0.78 0.16 80)" },
+  ema220: { label: "EMA 220", color: "oklch(0.78 0.16 80)" },
 }
 
 const HEAT_CONFIG = {
@@ -136,20 +136,20 @@ function MetricCard({
 
 function generateSyntheticChart(
   price: number,
-  ema200: number
-): { priceHistory: number[]; ema200History: number[] } {
+  ema220: number
+): { priceHistory: number[]; ema220History: number[] } {
   const prices: number[] = []
   const emaArr: number[] = []
   let p = price * (0.92 + Math.random() * 0.06)
-  let e = ema200 * (0.98 + Math.random() * 0.03)
+  let e = ema220 * (0.98 + Math.random() * 0.03)
 
   for (let i = 0; i < 30; i++) {
     p += ((price - p) / 30) * 2 + (Math.random() - 0.48) * price * 0.015
-    e += ((ema200 - e) / 30) * 2 + (Math.random() - 0.5) * ema200 * 0.002
+    e += ((ema220 - e) / 30) * 2 + (Math.random() - 0.5) * ema220 * 0.002
     prices.push(Math.round(p * 100) / 100)
     emaArr.push(Math.round(e * 100) / 100)
   }
-  return { priceHistory: prices, ema200History: emaArr }
+  return { priceHistory: prices, ema220History: emaArr }
 }
 
 export function SignalDetailClient({
@@ -190,8 +190,8 @@ export function SignalDetailClient({
 
   const chartData = useMemo(() => {
     if (serverChartData && serverChartData.priceHistory.length > 0) return serverChartData
-    return generateSyntheticChart(signal.price, signal.ema200)
-  }, [serverChartData, signal.price, signal.ema200])
+    return generateSyntheticChart(signal.price, signal.ema220)
+  }, [serverChartData, signal.price, signal.ema220])
 
   useEffect(() => {
     const settings = user?.settings
@@ -222,7 +222,7 @@ export function SignalDetailClient({
   const tradeCalc = useMemo(() => {
     const qty = parseInt(shares) || 0
     if (qty <= 0) return null
-    const riskPerShare = signal.price - signal.ema200
+    const riskPerShare = signal.price - signal.ema220
     const isValid = riskPerShare > 0
     const totalRisk = riskPerShare * qty
     const positionValue = qty * signal.price
@@ -253,8 +253,8 @@ export function SignalDetailClient({
           entryDate: new Date().toISOString(),
           entryPrice: signal.price,
           quantity: tradeCalc.qty,
-          stopLoss: signal.ema200,
-          notes: `${signal.strategyName} signal — entry at ${currency}${signal.price.toLocaleString()}, exit trigger: EMA200 at ${currency}${signal.ema200.toLocaleString()}`,
+          stopLoss: signal.ema220,
+          notes: `${signal.strategyName} signal — entry at ${currency}${signal.price.toLocaleString()}, exit trigger: EMA220 at ${currency}${signal.ema220.toLocaleString()}`,
           linkedSignalId: signal.id,
         }),
       })
@@ -284,15 +284,15 @@ export function SignalDetailClient({
           })
         : String(i + 1),
       price,
-      ema200: chartData.ema200History[i] ?? undefined,
+      ema220: (chartData as any).ema220History?.[i] ?? (chartData as any).ema200History?.[i] ?? undefined,
     }))
   }, [chartData])
 
-  const isAboveEma = signal.price > signal.ema200
+  const isAboveEma = signal.price > signal.ema220
   const currency = signal.exchange === "NSE" ? "\u20B9" : "$"
   const athDateStr = signal.details?.preSetATHDate as string | undefined
   const breakDateStr = serverChartData?.breakDate
-  const breakEma200 = serverChartData?.breakEma200
+  const breakEma220 = serverChartData?.breakEma220 ?? serverChartData?.breakEma200
   const reclaimDateStr = serverChartData?.reclaimDate
 
   function fmtDate(dateStr: string) {
@@ -356,7 +356,7 @@ export function SignalDetailClient({
           <div className="flex items-center gap-2 mb-3 shrink-0">
             <ActivityIcon className="size-3.5 text-primary/70" />
             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/70">
-              Price vs EMA 200 — Since Pre-set ATH
+              Price vs EMA 220 — Since Pre-set ATH
             </span>
             {athDateStr && (
               <span className="ml-auto text-[10px] font-mono text-muted-foreground/40 tabular-nums">
@@ -419,12 +419,12 @@ export function SignalDetailClient({
                 />
                 <Line
                   type="monotone"
-                  dataKey="ema200"
+                  dataKey="ema220"
                   stroke="oklch(0.78 0.16 80)"
                   strokeWidth={1.5}
                   strokeDasharray="4 2"
                   dot={false}
-                  name="ema200"
+                  name="ema220"
                 />
               </ComposedChart>
             </ChartContainer>
@@ -458,8 +458,8 @@ export function SignalDetailClient({
                 icon={TargetIcon}
               />
               <MetricCard
-                label="EMA 200"
-                value={`${currency}${signal.ema200.toLocaleString()}`}
+                label="EMA 220"
+                value={`${currency}${signal.ema220.toLocaleString()}`}
                 sub={isAboveEma ? "Price above" : "Price below"}
                 icon={ActivityIcon}
                 accent={isAboveEma ? "text-bull" : "text-bear"}
@@ -519,16 +519,16 @@ export function SignalDetailClient({
                   {athDateStr && (
                     <> on <span className="font-mono text-foreground/70">{fmtDate(athDateStr)}</span></>
                   )}
-                  , then pulled back below its 200-day EMA (
+                  , then pulled back below its 220-day EMA (
                   <span className="font-mono text-foreground">
-                    {currency}{(breakEma200 ?? signal.ema200).toLocaleString()}
+                    {currency}{(breakEma220 ?? signal.ema220).toLocaleString()}
                   </span>
                   ){breakDateStr ? (
                     <> on <span className="font-mono text-foreground/70">{fmtDate(breakDateStr)}</span></>
                   ) : null}{" "}— a classic &ldquo;reset.&rdquo;
                 </p>
                 <p>
-                  The stock reclaimed the EMA 200 on{" "}
+                  The stock reclaimed the EMA 220 on{" "}
                   <span className="font-mono text-foreground/70">
                     {reclaimDateStr ? fmtDate(reclaimDateStr) : fmtDate(signal.signalDate)}
                   </span>{" "}
@@ -596,24 +596,24 @@ export function SignalDetailClient({
                 </div>
                 <div className="flex-1 rounded-r-md border border-bear/15 bg-bear/5 px-3 py-2.5">
                   <span className="block text-[8px] font-semibold uppercase tracking-wider text-bear/50 mb-0.5">
-                    Exit below EMA200
+                    Exit below EMA220
                   </span>
                   <span className="block font-mono text-base font-black tabular-nums text-bear">
-                    {currency}{signal.ema200.toLocaleString()}
+                    {currency}{signal.ema220.toLocaleString()}
                   </span>
                 </div>
               </div>
 
-              {signal.price > signal.ema200 && (
+              {signal.price > signal.ema220 && (
                 <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-md bg-muted/20 border border-border/10">
                   <ShieldAlertIcon className="size-3 text-muted-foreground/40 shrink-0" />
                   <span className="text-[10px] text-muted-foreground/60">
                     Risk per share:{" "}
                     <span className="font-mono font-bold text-foreground/80">
-                      {currency}{(signal.price - signal.ema200).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {currency}{(signal.price - signal.ema220).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </span>
                     <span className="text-muted-foreground/40">
-                      {" "}({((signal.price - signal.ema200) / signal.price * 100).toFixed(1)}% from entry)
+                      {" "}({((signal.price - signal.ema220) / signal.price * 100).toFixed(1)}% from entry)
                     </span>
                   </span>
                 </div>

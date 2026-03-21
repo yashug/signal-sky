@@ -16,14 +16,14 @@ export function GuideContent({ isAuthenticated = false, sectionIds }: GuideConte
       <section id={sid(0)}>
         <div className="flex items-center gap-2 mb-3">
           <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">1</span>
-          <h2 className="text-base font-semibold">What is EMA 200?</h2>
+          <h2 className="text-base font-semibold">What is EMA 220?</h2>
         </div>
         <div className="rounded-xl border border-border/30 bg-card/60 p-5 text-[13px] text-muted-foreground leading-relaxed space-y-3">
           <p>
-            The <strong className="text-foreground">200-day Exponential Moving Average (EMA 200)</strong> is one of the most widely watched indicators by institutional traders. It represents the average price of a stock over the past 200 trading sessions, with more weight given to recent prices.
+            The <strong className="text-foreground">220-day Exponential Moving Average (EMA 220)</strong> is one of the most widely watched indicators by institutional traders. It represents the average price of a stock over the past 220 trading sessions, with more weight given to recent prices.
           </p>
           <p>
-            When a stock trades <strong className="text-bull">above its EMA 200</strong>, it is in a long-term uptrend. When it falls <strong className="text-bear">below</strong>, it signals weakness. The EMA 200 acts as a major support and resistance level that large funds respect.
+            When a stock trades <strong className="text-bull">above its EMA 220</strong>, it is in a long-term uptrend. When it falls <strong className="text-bear">below</strong>, it signals weakness. The EMA 220 acts as a major support and resistance level that large funds respect.
           </p>
         </div>
       </section>
@@ -36,13 +36,13 @@ export function GuideContent({ isAuthenticated = false, sectionIds }: GuideConte
         </div>
         <div className="rounded-xl border border-border/30 bg-card/60 p-5 text-[13px] text-muted-foreground leading-relaxed space-y-3">
           <p>
-            The <strong className="text-foreground">Pre-Set ATH</strong> is the highest price a stock reached <em>before its most recent pullback below EMA 200</em>. This is NOT the stock&apos;s absolute all-time high.
+            The <strong className="text-foreground">Pre-Set ATH</strong> is the highest price a stock reached <em>before its most recent pullback below EMA 220</em>. This is NOT the stock&apos;s absolute all-time high.
           </p>
           <p>
-            Why does this matter? Because the pre-set ATH is a specific resistance level — the exact price where buyers ran out of momentum before the reset. When the stock reclaims EMA 200 and approaches this level again, it&apos;s often a breakout setup.
+            Why does this matter? Because the pre-set ATH is a specific resistance level — the exact price where buyers ran out of momentum before the reset. When the stock reclaims EMA 220 and approaches this level again, it&apos;s often a breakout setup.
           </p>
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-[12px]">
-            <strong className="text-primary">Example:</strong> Stock hits ₹500 (pre-set ATH), pulls back to ₹380 (below EMA 200), then reclaims EMA 200 at ₹420. Now trading at ₹470 — 6% from its pre-set ATH. That&apos;s a simmering signal.
+            <strong className="text-primary">Example:</strong> Stock hits ₹500 (pre-set ATH), pulls back to ₹380 (below EMA 220), then reclaims EMA 220 at ₹420. Now trading at ₹470 — 6% from its pre-set ATH. That&apos;s a simmering signal.
           </div>
         </div>
       </section>
@@ -60,13 +60,13 @@ export function GuideContent({ isAuthenticated = false, sectionIds }: GuideConte
                 step: "Reset",
                 icon: "↓",
                 color: "text-bear",
-                desc: "Stock hits its Pre-Set ATH, then pulls back and closes below the EMA 200. The reset is confirmed when price crosses from above to below EMA 200.",
+                desc: "Stock hits its Pre-Set ATH, then pulls back and closes below the EMA 220. The reset is confirmed when price crosses from above to below EMA 220.",
               },
               {
                 step: "Reclaim",
                 icon: "↑",
                 color: "text-bull",
-                desc: "Stock crosses back above the EMA 200 on a closing basis. The most recent such crossover is used — this is the 'reclaim date' in the signal detail.",
+                desc: "Stock crosses back above the EMA 220 on a closing basis. The most recent such crossover is used — this is the 'reclaim date' in the signal detail.",
               },
               {
                 step: "Range",

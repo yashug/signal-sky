@@ -24,19 +24,20 @@ export async function GET() {
   // NSE symbols in journal are stored WITH .NS suffix; daily_bars stores WITHOUT .NS
   const dbSymbols = symbols.map((s: string) => s.replace(/\.NS$/, ""))
   const latestBars = await prisma.$queryRawUnsafe(`
-    SELECT DISTINCT ON (symbol) symbol, exchange, close, ema200
+    SELECT DISTINCT ON (symbol) symbol, exchange, close, ema200, ema220
     FROM daily_bars
     WHERE symbol = ANY($1::text[])
     ORDER BY symbol, date DESC
-  `, dbSymbols) as Array<{ symbol: string; exchange: string; close: any; ema200: any }>
+  `, dbSymbols) as Array<{ symbol: string; exchange: string; close: any; ema200: any; ema220: any }>
 
   // Build map keyed by both raw symbol (US) and symbol+.NS (NSE)
-  const priceMap = new Map<string, { price: number; ema200: number | null }>()
+  const priceMap = new Map<string, { price: number; ema200: number | null; ema220: number | null }>()
   for (const bar of latestBars) {
     const price = Number(bar.close)
-    const ema = bar.ema200 ? Number(bar.ema200) : null
-    priceMap.set(bar.symbol, { price, ema200: ema })
-    priceMap.set(`${bar.symbol}.NS`, { price, ema200: ema })
+    const ema200 = bar.ema200 ? Number(bar.ema200) : null
+    const ema220 = bar.ema220 ? Number(bar.ema220) : null
+    priceMap.set(bar.symbol, { price, ema200, ema220 })
+    priceMap.set(`${bar.symbol}.NS`, { price, ema200, ema220 })
   }
 
   const enriched = trades.map((t: any) => {
@@ -45,6 +46,8 @@ export async function GET() {
     const bar = priceMap.get(barKey) ?? priceMap.get(t.symbol as string)
     const currentPrice = bar?.price ?? Number(t.entryPrice)
     const ema200 = bar?.ema200 ?? null
+    // Prefer EMA220 for breach detection; fall back to EMA200
+    const ema220 = bar?.ema220 ?? ema200
 
     return {
       id: t.id,
@@ -67,6 +70,7 @@ export async function GET() {
       status: (t.status as string).toLowerCase(),
       currentPrice,
       ema200,
+      ema220,
     }
   })
 

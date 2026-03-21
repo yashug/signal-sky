@@ -18,6 +18,7 @@ type SignalData = {
   price: number
   ath: number
   ema200: number
+  ema220: number
   distancePct: number
 }
 
@@ -103,6 +104,7 @@ export async function dispatchAlerts(
               price: signal.price,
               ath: signal.ath,
               ema200: signal.ema200,
+              ema220: signal.ema220,
               distancePct: signal.distancePct,
               appUrl: APP_URL,
             })
@@ -171,6 +173,7 @@ export async function dispatchAlerts(
               price: s.price,
               ath: s.ath,
               ema200: s.ema200,
+              ema220: s.ema220,
               distancePct: s.distancePct,
             })),
             unsubscribeToken: unsubToken,

@@ -12,6 +12,7 @@ export type ApiSignal = {
   price: number
   ath: number
   ema200: number
+  ema220: number
   distancePct: number
   volumeSurge: number | null
   volumeToday: number | null
@@ -68,10 +69,12 @@ export type ApiMarketHealthHistoryResponse = {
 export type ApiSignalChart = {
   priceHistory: number[]
   ema200History: (number | null)[]
+  ema220History: (number | null)[]
   dates: string[]
   ath: number | null
   breakDate: string | null
   breakEma200: number | null
+  breakEma220: number | null
   reclaimDate: string | null
 }
 

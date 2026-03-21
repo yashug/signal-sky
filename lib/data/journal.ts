@@ -22,6 +22,7 @@ export type JournalTradeData = {
   status: string
   currentPrice: number
   ema200: number | null
+  ema220: number | null
 }
 
 export async function getJournalTrades(): Promise<JournalTradeData[]> {
@@ -41,16 +42,18 @@ export async function getJournalTrades(): Promise<JournalTradeData[]> {
   const [members, latestBars] = await Promise.all([
     prisma.universeMember.findMany({ where: { symbol: { in: symbols } } }),
     prisma.$queryRawUnsafe(`
-      SELECT DISTINCT ON (symbol) symbol, close, ema200
+      SELECT DISTINCT ON (symbol) symbol, close, ema200, ema220
       FROM daily_bars
       WHERE symbol = ANY($1::text[])
       ORDER BY symbol, date DESC
-    `, dbSymbols) as Promise<Array<{ symbol: string; close: any; ema200: any }>>,
+    `, dbSymbols) as Promise<Array<{ symbol: string; close: any; ema200: any; ema220: any }>>,
   ])
   const memberMap = new Map(members.map((m: any) => [m.symbol, m]))
-  const priceMap = new Map<string, { price: number; ema200: number | null }>()
+  const priceMap = new Map<string, { price: number; ema200: number | null; ema220: number | null }>()
   for (const bar of latestBars) {
-    const entry = { price: Number(bar.close), ema200: bar.ema200 ? Number(bar.ema200) : null }
+    const ema200 = bar.ema200 ? Number(bar.ema200) : null
+    const ema220 = bar.ema220 ? Number(bar.ema220) : null
+    const entry = { price: Number(bar.close), ema200, ema220 }
     priceMap.set(bar.symbol, entry)
     priceMap.set(`${bar.symbol}.NS`, entry)
   }
@@ -61,6 +64,8 @@ export async function getJournalTrades(): Promise<JournalTradeData[]> {
     const bar = priceMap.get(barKey) ?? priceMap.get(t.symbol as string)
     const currentPrice = bar?.price ?? Number(t.entryPrice)
     const ema200 = bar?.ema200 ?? null
+    // Prefer EMA220 for breach detection; fall back to EMA200
+    const ema220 = bar?.ema220 ?? ema200
 
     return {
       id: t.id,
@@ -83,6 +88,7 @@ export async function getJournalTrades(): Promise<JournalTradeData[]> {
       status: (t.status as string).toLowerCase(),
       currentPrice,
       ema200,
+      ema220,
     }
   })
 }

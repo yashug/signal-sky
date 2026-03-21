@@ -45,10 +45,11 @@ export function formatSignalMessage(opts: {
   price: number
   ath: number
   ema200: number
+  ema220: number
   distancePct: number
   appUrl?: string
 }): string {
-  const { symbol, exchange, heat, price, ath, ema200, distancePct, appUrl } = opts
+  const { symbol, exchange, heat, price, ath, ema200, ema220, distancePct, appUrl } = opts
   const currency = exchange === "NSE" ? "₹" : "$"
   const url = `${appUrl ?? "https://signalsky.app"}/scanner/${symbol}`
 
@@ -75,7 +76,7 @@ export function formatSignalMessage(opts: {
     `🚨 <b>New Signal: ${symbol} (${exchange})</b>`,
     `Heat: ${emoji} ${label} — ${distLabel}`,
     `Price: <code>${currency}${price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</code>`,
-    `EMA200: <code>${currency}${ema200.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</code>`,
+    `EMA220: <code>${currency}${ema220.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</code>`,
     `Pre-set ATH: <code>${currency}${ath.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</code>`,
     ``,
     `<a href="${url}">View on SignalSky →</a>`,

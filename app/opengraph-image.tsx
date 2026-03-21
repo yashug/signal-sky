@@ -212,7 +212,7 @@ export default function OGImage() {
               display: "flex",
             }}
           >
-            Reset &amp; Reclaim scanner for India &amp; US markets. EMA200 signals, Telegram alerts, backtests &amp; trade journal.
+            Reset &amp; Reclaim scanner for India &amp; US markets. EMA220 signals, Telegram alerts, backtests &amp; trade journal.
           </div>
 
           {/* Stats row */}

@@ -11,6 +11,7 @@ type SignalAlertProps = {
   price: number
   ath: number
   ema200: number
+  ema220: number
   distancePct: number
   signalUrl: string
   unsubscribeUrl: string
@@ -38,6 +39,7 @@ export default function SignalAlertEmail({
   price,
   ath,
   ema200,
+  ema220,
   distancePct,
   signalUrl,
   unsubscribeUrl,
@@ -96,8 +98,8 @@ export default function SignalAlertEmail({
                   <td style={{ color: "#f1f5f9", fontSize: "13px", fontFamily: "monospace", textAlign: "right", paddingBottom: "8px" }}>{currency}{ath.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr>
-                  <td style={{ color: "#94a3b8", fontSize: "11px", paddingBottom: "8px" }}>EMA200</td>
-                  <td style={{ color: "#f1f5f9", fontSize: "13px", fontFamily: "monospace", textAlign: "right", paddingBottom: "8px" }}>{currency}{ema200.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
+                  <td style={{ color: "#94a3b8", fontSize: "11px", paddingBottom: "8px" }}>EMA220</td>
+                  <td style={{ color: "#f1f5f9", fontSize: "13px", fontFamily: "monospace", textAlign: "right", paddingBottom: "8px" }}>{currency}{ema220.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr>
                   <td style={{ color: "#94a3b8", fontSize: "11px" }}>Distance from ATH</td>

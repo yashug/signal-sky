@@ -67,7 +67,7 @@ export default function TrialDay1Email({
           <Section style={{ backgroundColor: "#172554", borderRadius: "8px", padding: "16px 20px", marginBottom: "24px" }}>
             <Text style={{ color: "#93c5fd", fontSize: "12px", margin: "0 0 4px", fontWeight: "600" }}>What is Reset &amp; Reclaim?</Text>
             <Text style={{ color: "#64748b", fontSize: "11px", margin: 0, lineHeight: "1.6" }}>
-              A stock hits an ATH → pulls back below EMA 200 (the &ldquo;reset&rdquo;) → reclaims above EMA 200 (the &ldquo;reclaim&rdquo;) → trades near its ATH. That&apos;s the setup.
+              A stock hits an ATH → pulls back below EMA 220 (the &ldquo;reset&rdquo;) → reclaims above EMA 220 (the &ldquo;reclaim&rdquo;) → trades near its ATH. That&apos;s the setup.
             </Text>
           </Section>
 
