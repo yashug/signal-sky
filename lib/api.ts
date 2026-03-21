@@ -19,6 +19,8 @@ export type ApiSignal = {
   volumeAvg20: number | null
   signalDate: string
   isActive: boolean
+  breakDate: string | null    // first day of the pullback below EMA (break_start_date from scan SQL)
+  reclaimDate: string | null  // first day back above EMA after the pullback
   details: Record<string, any>
   createdAt: string
 }

@@ -6,6 +6,8 @@ import { UNIVERSE_OPTIONS } from "@/lib/universes"
 import { Loader2Icon, BarChart3Icon } from "lucide-react"
 
 const validUniverses = UNIVERSE_OPTIONS.map((o) => o.value)
+const validSlingshotWindows = ["30", "60", "90"] as const
+type SlingshotWindow = (typeof validSlingshotWindows)[number] | null
 
 function BacktestsSkeleton() {
   return (
@@ -21,7 +23,7 @@ function BacktestsSkeleton() {
 async function BacktestsData({
   searchParams,
 }: {
-  searchParams: Promise<{ universe?: string }>
+  searchParams: Promise<{ universe?: string; slingshot?: string }>
 }) {
   const params = await searchParams
   const initialUniverse =
@@ -29,15 +31,26 @@ async function BacktestsData({
       ? params.universe
       : "nifty50"
 
+  const slingshotParam = params.slingshot
+  const initialSlingshot: SlingshotWindow =
+    slingshotParam && validSlingshotWindows.includes(slingshotParam as any)
+      ? (slingshotParam as SlingshotWindow)
+      : null
+
+  const parametersHash = initialSlingshot
+    ? `v2-ath-ema220-s${initialSlingshot}`
+    : "v2-ath-ema220"
+
   try {
     const [data, universeMemberships] = await Promise.all([
-      getBacktests("all"),
+      getBacktests("all", parametersHash),
       getUniverseMemberships(),
     ])
     return (
       <BacktestsClient
         data={data}
         initialUniverse={initialUniverse}
+        initialSlingshot={initialSlingshot}
         universeMemberships={universeMemberships}
       />
     )
@@ -63,7 +76,7 @@ async function BacktestsData({
 export default function BacktestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ universe?: string }>
+  searchParams: Promise<{ universe?: string; slingshot?: string }>
 }) {
   return (
     <Suspense fallback={<BacktestsSkeleton />}>

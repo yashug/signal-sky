@@ -73,6 +73,8 @@ export const getSignals = unstable_cache(
       volumeAvg20: s.volume_avg20 ? Number(s.volume_avg20) : null,
       signalDate: String(s.signal_date),
       isActive: s.is_active,
+      breakDate: s.details?.breakDate ?? null,
+      reclaimDate: s.details?.reclaimDate ?? null,
       details: s.details ?? {},
       createdAt: String(s.created_at),
     }))
@@ -143,6 +145,8 @@ export const getSignalBySymbol = unstable_cache(
       volumeAvg20: s.volume_avg20 ? Number(s.volume_avg20) : null,
       signalDate: String(s.signal_date),
       isActive: s.is_active,
+      breakDate: s.details?.breakDate ?? null,
+      reclaimDate: s.details?.reclaimDate ?? null,
       details: s.details ?? {},
       createdAt: String(s.created_at),
     }

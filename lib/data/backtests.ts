@@ -8,7 +8,7 @@ import type {
 } from "@/lib/api"
 
 export const getBacktests = unstable_cache(
-  async (universe: string): Promise<ApiBacktestsResponse> => {
+  async (universe: string, parametersHash = "v2-ath-ema220"): Promise<ApiBacktestsResponse> => {
     const univSQL = universeWhereSQL("b", universe)
 
     const [backtests, countResult] = await Promise.all([
@@ -20,6 +20,7 @@ export const getBacktests = unstable_cache(
           (SELECT um.name FROM universe_members um WHERE um.symbol = b.symbol LIMIT 1) as member_name
         FROM backtests b
         WHERE 1=1
+        AND b.parameters_hash = '${parametersHash}'
         ${univSQL}
         ORDER BY b.win_rate DESC
         LIMIT 500
@@ -28,6 +29,7 @@ export const getBacktests = unstable_cache(
         SELECT COUNT(*)::int as count
         FROM backtests b
         WHERE 1=1
+        AND b.parameters_hash = '${parametersHash}'
         ${univSQL}
       `) as Promise<[{ count: number }]>,
     ])
@@ -55,7 +57,7 @@ export const getBacktests = unstable_cache(
       pagination: { limit: 500, offset: 0 },
     }
   },
-  ["backtests"],
+  ["backtests", "universe", "parametersHash"],
   { tags: ["backtests"], revalidate: 604800 }
 )
 
@@ -68,7 +70,7 @@ export type BacktestAggregates = {
 }
 
 export const getBacktestAggregates = unstable_cache(
-  async (): Promise<BacktestAggregates | null> => {
+  async (parametersHash = "v2-ath-ema220"): Promise<BacktestAggregates | null> => {
     const row = await prisma.$queryRawUnsafe(`
       SELECT
         COUNT(*)::int AS symbol_count,
@@ -79,6 +81,7 @@ export const getBacktestAggregates = unstable_cache(
       FROM (
         SELECT DISTINCT ON (symbol) symbol, win_rate, avg_return, max_drawdown, sharpe_ratio
         FROM backtests
+        WHERE parameters_hash = '${parametersHash}'
         ORDER BY symbol, computed_at DESC
       ) latest
     `) as unknown as [{ symbol_count: number; win_rate: number; avg_return: number; max_drawdown: number; sharpe_ratio: number | null }]
@@ -94,7 +97,7 @@ export const getBacktestAggregates = unstable_cache(
       sharpeRatio: r.sharpe_ratio != null ? Number(r.sharpe_ratio) : null,
     }
   },
-  ["backtest-aggregates"],
+  ["backtest-aggregates", "parametersHash"],
   { tags: ["backtests"], revalidate: 604800 }
 )
 
@@ -108,6 +111,7 @@ export const getBacktestStatsMap = unstable_cache(
     const rows = (await prisma.$queryRaw`
       SELECT DISTINCT ON (symbol) symbol, win_rate::double precision as win_rate, total_trades::int as total_trades
       FROM backtests
+      WHERE parameters_hash = 'v2-ath-ema220'
       ORDER BY symbol, computed_at DESC
     `) as { symbol: string; win_rate: number; total_trades: number }[]
 
@@ -125,9 +129,9 @@ export const getBacktestStatsMap = unstable_cache(
 )
 
 export const getBacktestDetail = unstable_cache(
-  async (symbol: string): Promise<ApiBacktestDetail | null> => {
+  async (symbol: string, parametersHash = "v2-ath-ema220"): Promise<ApiBacktestDetail | null> => {
     const backtest = await prisma.backtest.findFirst({
-      where: { symbol, strategyName: "Reset & Reclaim" },
+      where: { symbol, strategyName: "Reset & Reclaim", parametersHash },
       orderBy: { computedAt: "desc" },
     })
 
@@ -188,6 +192,6 @@ export const getBacktestDetail = unstable_cache(
       },
     }
   },
-  ["backtest-detail"],
+  ["backtest-detail", "parametersHash"],
   { tags: ["backtests"], revalidate: 604800 }
 )

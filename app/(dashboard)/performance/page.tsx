@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { getBacktestAggregates, getBacktests } from "@/lib/data/backtests"
 import {
   TrendingUpIcon,
@@ -5,8 +6,13 @@ import {
   ShieldIcon,
   BarChart3Icon,
   InfoIcon,
+  ZapIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SlingshotChips } from "./slingshot-chips"
+
+const validSlingshotWindows = ["30", "60", "90"] as const
+type SlingshotWindow = (typeof validSlingshotWindows)[number]
 
 function StatCard({
   label,
@@ -41,10 +47,35 @@ function StatCard({
   )
 }
 
-export default async function PerformancePage() {
+function PerformanceSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 px-4 sm:px-6 py-5 animate-pulse">
+      <div className="h-9 w-48 rounded-lg bg-muted/40" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="rounded-xl border border-border/40 bg-surface p-4 h-24" />
+        ))}
+      </div>
+      <div className="rounded-xl border border-border/40 h-48" />
+    </div>
+  )
+}
+
+async function PerformanceData({
+  searchParams,
+}: {
+  searchParams: Promise<{ slingshot?: string }>
+}) {
+  const params = await searchParams
+  const slingshotParam = params.slingshot
+  const slingshot: SlingshotWindow | null = validSlingshotWindows.includes(slingshotParam as SlingshotWindow)
+    ? (slingshotParam as SlingshotWindow)
+    : null
+  const parametersHash = slingshot ? `v2-ath-ema220-s${slingshot}` : "v2-ath-ema220"
+
   const [aggregates, allBacktests] = await Promise.all([
-    getBacktestAggregates(),
-    getBacktests("all"),
+    getBacktestAggregates(parametersHash),
+    getBacktests("all", parametersHash),
   ])
 
   const top10 = allBacktests.backtests
@@ -54,17 +85,33 @@ export default async function PerformancePage() {
   return (
     <div className="flex flex-col gap-6 px-4 sm:px-6 py-5">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
-          <TrendingUpIcon className="size-4 text-primary" />
+      <div className="flex flex-wrap items-center gap-3 justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+            <TrendingUpIcon className="size-4 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">Strategy Performance</h1>
+            <p className="text-xs text-muted-foreground">
+              Historical outcomes for the Reset &amp; Reclaim strategy
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">Strategy Performance</h1>
-          <p className="text-xs text-muted-foreground">
-            Historical outcomes for the Reset &amp; Reclaim strategy
+
+        {/* Slingshot filter chips */}
+        <SlingshotChips active={slingshot} />
+      </div>
+
+      {/* Slingshot info strip */}
+      {slingshot && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-primary/10 bg-primary/[0.04] px-3 py-2">
+          <ZapIcon className="size-3.5 text-primary/60 shrink-0" />
+          <p className="text-[11px] text-foreground/60">
+            <span className="font-semibold text-primary/80">Slingshot ≤{slingshot}d:</span>{" "}
+            Aggregated over {aggregates?.symbolCount ?? 0} symbols. Only trades where the pullback below EMA lasted ≤{slingshot} days are included.
           </p>
         </div>
-      </div>
+      )}
 
       {/* Aggregate stats */}
       {aggregates ? (
@@ -102,7 +149,9 @@ export default async function PerformancePage() {
         </div>
       ) : (
         <div className="rounded-xl border border-border/30 bg-surface/40 py-12 text-center text-sm text-muted-foreground">
-          No backtest data yet. Run backtests from the admin panel to see strategy performance.
+          {slingshot
+            ? `No slingshot ≤${slingshot}d data yet. Run the admin bulk backtest to populate all variants.`
+            : "No backtest data yet. Run backtests from the admin panel to see strategy performance."}
         </div>
       )}
 
@@ -110,7 +159,15 @@ export default async function PerformancePage() {
       {top10.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold tracking-tight">Top Performers</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold tracking-tight">Top Performers</h2>
+              {slingshot && (
+                <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
+                  <ZapIcon className="size-2.5" />
+                  Slingshot ≤{slingshot}d
+                </span>
+              )}
+            </div>
             <span className="text-[11px] text-muted-foreground">Ranked by win rate · min 3 trades</span>
           </div>
           <div className="overflow-x-auto rounded-xl border border-border/40">
@@ -219,5 +276,17 @@ export default async function PerformancePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PerformancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ slingshot?: string }>
+}) {
+  return (
+    <Suspense fallback={<PerformanceSkeleton />}>
+      <PerformanceData searchParams={searchParams} />
+    </Suspense>
   )
 }

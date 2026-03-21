@@ -10,6 +10,11 @@ import type {
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -46,6 +51,7 @@ import {
   ScaleIcon,
   Loader2Icon,
   AlertCircleIcon,
+  XIcon,
 } from "lucide-react"
 
 const equityConfig: ChartConfig = {
@@ -227,26 +233,52 @@ function TradeRow({
   )
 }
 
+type InitialVariants = {
+  s30: ApiBacktestDetail | null
+  s60: ApiBacktestDetail | null
+  s90: ApiBacktestDetail | null
+}
+
+function variantForWindow(
+  w: number | null,
+  baseline: ApiBacktestDetail | null,
+  variants: InitialVariants
+): ApiBacktestDetail | null | undefined {
+  if (w === null) return baseline
+  if (w === 30) return variants.s30
+  if (w === 60) return variants.s60
+  if (w === 90) return variants.s90
+  return undefined
+}
+
 export function BacktestDetailClient({
   detail: initialDetail,
   symbol,
+  initialVariants,
 }: {
   detail: ApiBacktestDetail | null
   symbol: string
+  initialVariants?: InitialVariants
 }) {
   const router = useRouter()
   const [detail, setDetail] = useState<ApiBacktestDetail | null>(initialDetail)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [slingshotDays, setSlingshotDays] = useState<number | null>(null)
 
-  const triggerBacktest = useCallback(async () => {
+  const defaultVariants: InitialVariants = { s30: null, s60: null, s90: null }
+  const variants = initialVariants ?? defaultVariants
+
+  const triggerBacktest = useCallback(async (slingshot?: number | null) => {
     setGenerating(true)
     setError(null)
     try {
+      const body: Record<string, any> = { symbol }
+      if (slingshot != null) body.slingshotDays = slingshot
       const res = await fetch("/api/backtest/run-single", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -267,7 +299,7 @@ export function BacktestDetailClient({
 
   // Auto-trigger backtest if no data from server
   useState(() => {
-    if (!initialDetail) triggerBacktest()
+    if (!initialDetail) triggerBacktest(null)
   })
 
   const { equityData, tradeBarData, winLossData, tradeTimeline } =
@@ -337,23 +369,39 @@ export function BacktestDetailClient({
   }
 
   if (error || !detail) {
+    // If a slingshot variant is selected but not pre-computed, show generate CTA
+    const isVariantMissing = !error && slingshotDays !== null && !generating
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4">
-        <div className="flex size-16 items-center justify-center rounded-full border border-bear/20 bg-bear/5">
-          <AlertCircleIcon className="size-7 text-bear/60" />
+        <div className={cn(
+          "flex size-16 items-center justify-center rounded-full border",
+          isVariantMissing
+            ? "border-primary/20 bg-primary/5"
+            : "border-bear/20 bg-bear/5"
+        )}>
+          {isVariantMissing
+            ? <ZapIcon className="size-7 text-primary/60" />
+            : <AlertCircleIcon className="size-7 text-bear/60" />
+          }
         </div>
-        <h3 className="text-base font-semibold">Data Not Available</h3>
+        <h3 className="text-base font-semibold">
+          {isVariantMissing ? `Slingshot ≤${slingshotDays}d Not Pre-computed` : "Data Not Available"}
+        </h3>
         <p className="text-sm text-muted-foreground max-w-xs text-center">
-          {error || `Backtest data for ${symbol.replace(".NS", "")} is not available yet. Check back soon.`}
+          {error ?? (
+            isVariantMissing
+              ? `The ≤${slingshotDays}d slingshot filter has not been pre-computed for this stock yet. Run the admin bulk backtest or generate it now.`
+              : `Backtest data for ${symbol.replace(".NS", "")} is not available yet. Check back soon.`
+          )}
         </p>
         <div className="flex items-center gap-3">
-          {error && (
+          {(error || isVariantMissing) && (
             <button
-              onClick={triggerBacktest}
+              onClick={() => triggerBacktest(slingshotDays)}
               className="flex items-center gap-1.5 text-sm text-primary hover:underline cursor-pointer"
             >
               <ZapIcon className="size-3.5" />
-              Retry
+              {isVariantMissing ? "Generate slingshot data" : "Retry"}
             </button>
           )}
           <Link
@@ -431,8 +479,66 @@ export function BacktestDetailClient({
             </div>
           </div>
 
-          <div className="ml-auto hidden sm:flex items-center gap-3">
-            <div className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5">
+          <div className="ml-auto flex items-center gap-3">
+            {/* Slingshot selector — prominent, labeled chip group */}
+            <Tooltip>
+              <TooltipTrigger render={<div />}>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-1">
+                    <ZapIcon className={cn(
+                      "size-3 transition-colors",
+                      slingshotDays !== null ? "text-primary" : "text-muted-foreground/40"
+                    )} />
+                    <span className={cn(
+                      "text-[9px] font-bold uppercase tracking-widest transition-colors",
+                      slingshotDays !== null ? "text-primary/90" : "text-muted-foreground/40"
+                    )}>
+                      Slingshot
+                    </span>
+                  </div>
+                  <div className="flex gap-0.5 rounded-md border border-border/25 bg-muted/20 p-0.5">
+                    {([
+                      { value: null as number | null, label: "Baseline" },
+                      { value: 30, label: "≤30d" },
+                      { value: 60, label: "≤60d" },
+                      { value: 90, label: "≤90d" },
+                    ]).map(({ value, label }) => (
+                      <button
+                        key={String(value)}
+                        onClick={() => {
+                          setSlingshotDays(value)
+                          setError(null)
+                          const preloaded = variantForWindow(value, initialDetail, variants)
+                          if (preloaded !== null && preloaded !== undefined) {
+                            setDetail(preloaded)
+                          } else {
+                            // Not pre-computed — will show generate CTA
+                            setDetail(null)
+                          }
+                        }}
+                        className={cn(
+                          "h-5 px-2 rounded text-[10px] font-semibold transition-all",
+                          slingshotDays === value
+                            ? "bg-primary/20 text-primary shadow-sm"
+                            : "text-muted-foreground/40 hover:text-foreground hover:bg-muted/50"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[260px]">
+                <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Filter by how long the pullback below EMA lasted before the stock reclaimed.
+                  A shorter pullback duration — like a slingshot releasing — signals stronger underlying momentum.
+                  Tighter window = quicker bounces, more energetic setups.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5">
               <ZapIcon className="size-3 text-primary" />
               <span className="text-[10px] font-bold tracking-wide text-primary">
                 Reset & Reclaim
@@ -445,6 +551,36 @@ export function BacktestDetailClient({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-4 sm:px-6 py-5 space-y-6">
+          {/* Slingshot active callout */}
+          {slingshotDays !== null && (
+            <div className="flex items-start gap-3 rounded-lg border border-primary/15 bg-primary/[0.04] px-4 py-3">
+              <ZapIcon className="size-4 text-primary/60 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-primary/90 mb-0.5">
+                  Slingshot ≤{slingshotDays}d filter active
+                </p>
+                <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+                  Only trades where the pullback below EMA lasted ≤{slingshotDays} days before the stock reclaimed — faster bounces signal stronger momentum.
+                  Compare with{" "}
+                  <button
+                    onClick={() => { setSlingshotDays(null); triggerBacktest(null) }}
+                    className="text-primary hover:underline font-semibold"
+                  >
+                    Baseline
+                  </button>{" "}
+                  to see the difference.
+                </p>
+              </div>
+              <button
+                onClick={() => { setSlingshotDays(null); triggerBacktest(null) }}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
+              >
+                <XIcon className="size-3" />
+                Clear
+              </button>
+            </div>
+          )}
+
           {/* Key Stats Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2">
             <StatCard

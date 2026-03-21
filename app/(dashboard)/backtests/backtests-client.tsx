@@ -270,27 +270,39 @@ const columns: ColumnDef<ApiBacktestSummaryRow>[] = [
 export function BacktestsClient({
   data,
   initialUniverse,
+  initialSlingshot,
   universeMemberships,
 }: {
   data: ApiBacktestsResponse
   initialUniverse: string
+  initialSlingshot: string | null
   universeMemberships: Record<string, string[]>
 }) {
   const router = useRouter()
   const [universe, setUniverse] = useState(initialUniverse)
+  const [slingshotWindow, setSlingshotWindow] = useState<string | null>(initialSlingshot)
   const [sorting, setSorting] = useState<SortingState>([
     { id: "winRate", desc: true },
   ])
   const [globalFilter, setGlobalFilter] = useState("")
 
+  function handleSlingshotChange(value: string | null) {
+    setSlingshotWindow(value)
+    const params = new URLSearchParams()
+    if (universe !== "nifty50") params.set("universe", universe)
+    if (value) params.set("slingshot", value)
+    router.push(`/backtests${params.toString() ? `?${params}` : ""}`)
+  }
+
   const updateURL = useCallback(
     (newUniverse: string) => {
       const params = new URLSearchParams()
       if (newUniverse !== "nifty50") params.set("universe", newUniverse)
+      if (slingshotWindow) params.set("slingshot", slingshotWindow)
       const qs = params.toString()
       window.history.replaceState(null, "", `/backtests${qs ? `?${qs}` : ""}`)
     },
-    []
+    [slingshotWindow]
   )
 
   const backtests = useMemo(() => {
@@ -352,7 +364,48 @@ export function BacktestsClient({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Slingshot chip selector */}
+          <Tooltip>
+            <TooltipTrigger render={<div />}>
+              <div className="flex items-center gap-2">
+                <ZapIcon className={cn("size-3 transition-colors", slingshotWindow ? "text-primary" : "text-muted-foreground/40")} />
+                <span className={cn("text-[9px] font-bold uppercase tracking-widest hidden sm:block transition-colors", slingshotWindow ? "text-primary/90" : "text-muted-foreground/40")}>
+                  Slingshot
+                </span>
+                <div className="flex gap-0.5 rounded-md border border-border/25 bg-muted/20 p-0.5">
+                  {([
+                    { value: null, label: "Baseline" },
+                    { value: "30", label: "≤30d" },
+                    { value: "60", label: "≤60d" },
+                    { value: "90", label: "≤90d" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={String(opt.value)}
+                      onClick={() => handleSlingshotChange(opt.value)}
+                      className={cn(
+                        "px-2 py-0.5 rounded text-[10px] font-semibold transition-colors",
+                        slingshotWindow === opt.value
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[260px]">
+              <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Filter by how recently the stock "reclaimed" above EMA 220 after a pullback.
+                A stock that bounces back quickly — like a slingshot releasing — tends to have stronger upside momentum.
+                Tighter window = fresher, more energetic setups.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+
           <Select
             value={universe as UniverseGroupKey}
             onValueChange={(v) => { if (v) { setUniverse(v); updateURL(v) } }}
@@ -432,6 +485,23 @@ export function BacktestsClient({
               Avg PF: {aggStats.avgProfitFactor}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Slingshot info strip */}
+      {slingshotWindow && (
+        <div className="flex items-center gap-2.5 px-4 sm:px-6 py-2 border-b border-primary/10 bg-primary/[0.04]">
+          <ZapIcon className="size-3.5 text-primary/60 shrink-0" />
+          <p className="text-[11px] text-foreground/60 flex-1">
+            <span className="font-semibold text-primary/80">Slingshot ≤{slingshotWindow}d:</span>{" "}
+            Showing {data.total} symbol{data.total !== 1 ? "s" : ""} with slingshot data computed. Open any symbol and select a window to generate more.
+          </p>
+          <button
+            onClick={() => handleSlingshotChange(null)}
+            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            Clear
+          </button>
         </div>
       )}
 

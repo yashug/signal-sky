@@ -11,6 +11,8 @@ export type BacktestTradeResult = {
   pnlPercent: number | null
   daysHeld: number
   preSetATHAtEntry: number
+  reclaimDate?: string
+  pullbackStartDate?: string  // start of the below-EMA pullback; duration = pullbackStartDate→reclaimDate
 }
 
 export type BacktestSummary = {
@@ -52,7 +54,7 @@ function tradingDaysBetween(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / msPerDay)
 }
 
-export function runBacktest(bars: Bar[]): BacktestResult {
+export function runBacktest(bars: Bar[], options?: { slingshotDays?: number }): BacktestResult {
   const trades: BacktestTradeResult[] = []
   // Prefer EMA220 if available, fall back to EMA200
   const validBars = bars.filter((b) => b.ema220 != null || b.ema200 != null)
@@ -66,6 +68,9 @@ export function runBacktest(bars: Bar[]): BacktestResult {
   let entryDate = ""
   let entryPrice = 0
   let entryATH = 0
+  let reclaimBar: string | null = null
+  let pullbackStartDate: string | null = null  // first day of current below-EMA pullback phase
+  let entryPullbackStartDate: string | null = null  // captured at entry for trade record
 
   const maxHighUpTo: number[] = new Array(bars.length)
   let runMax = 0
@@ -90,17 +95,34 @@ export function runBacktest(bars: Bar[]): BacktestResult {
       if (bar.close < ema) {
         preSetATH = maxHighUpTo[origIdx]
         if (preSetATH <= 0) continue
+        pullbackStartDate = bar.date  // first day of this pullback
+        reclaimBar = null
         state = "seeking_entry"
       }
     } else if (state === "seeking_entry") {
       if (bar.close < ema) {
+        if (reclaimBar !== null) {
+          // Re-broke below EMA after a partial reclaim — start of a new pullback phase
+          pullbackStartDate = bar.date
+        }
+        // else: continuation of same below-EMA phase, keep pullbackStartDate unchanged
         preSetATH = maxHighUpTo[origIdx]
         if (preSetATH <= 0) continue
-      } else if (bar.close > preSetATH && bar.close > ema) {
-        entryDate = bar.date
-        entryPrice = bar.close
-        entryATH = preSetATH
-        state = "in_position"
+        reclaimBar = null
+      } else {
+        if (reclaimBar === null) reclaimBar = bar.date
+        if (bar.close > preSetATH && bar.close > ema) {
+          // Slingshot check: break-to-reclaim duration (how long the pullback lasted)
+          if (options?.slingshotDays && pullbackStartDate && reclaimBar) {
+            const pullbackDays = tradingDaysBetween(pullbackStartDate, reclaimBar)
+            if (pullbackDays > options.slingshotDays) continue
+          }
+          entryDate = bar.date
+          entryPrice = bar.close
+          entryATH = preSetATH
+          entryPullbackStartDate = pullbackStartDate
+          state = "in_position"
+        }
       }
     } else if (state === "in_position") {
       if (bar.close < ema) {
@@ -113,8 +135,12 @@ export function runBacktest(bars: Bar[]): BacktestResult {
           pnlPercent: Math.round(pnl * 100) / 100,
           daysHeld: tradingDaysBetween(entryDate, bar.date),
           preSetATHAtEntry: entryATH,
+          reclaimDate: reclaimBar ?? undefined,
+          pullbackStartDate: entryPullbackStartDate ?? undefined,
         })
+        pullbackStartDate = bar.date  // start of new pullback after exiting position
         preSetATH = maxHighUpTo[origIdx]
+        reclaimBar = null
         if (preSetATH <= 0) {
           state = "seeking_break"
         } else {
@@ -135,6 +161,8 @@ export function runBacktest(bars: Bar[]): BacktestResult {
       pnlPercent: Math.round(pnl * 100) / 100,
       daysHeld: tradingDaysBetween(entryDate, lastBar.date),
       preSetATHAtEntry: entryATH,
+      reclaimDate: reclaimBar ?? undefined,
+      pullbackStartDate: entryPullbackStartDate ?? undefined,
     })
   }
 

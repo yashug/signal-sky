@@ -11,6 +11,7 @@ const INDIA_UNIVERSES = [
   "niftysmallcap50", "niftysmallcap100", "niftybank",
 ]
 const US_UNIVERSES = ["sp100", "nasdaq100"]
+const SLINGSHOT_WINDOWS = [30, 60, 90]
 
 /**
  * POST /api/admin/backtest/run
@@ -86,58 +87,71 @@ export async function POST(req: NextRequest) {
             ema220: b.ema220 != null ? Number(b.ema220) : null,
           }))
 
-          const result = runBacktest(bars)
+          // Compute baseline + slingshot variants
+          const variants = [
+            { hash: "v2-ath-ema220", result: runBacktest(bars) },
+            ...SLINGSHOT_WINDOWS.map((days) => ({
+              hash: `v2-ath-ema220-s${days}`,
+              result: runBacktest(bars, { slingshotDays: days }),
+            })),
+          ]
 
-          if (result.trades.length === 0) {
+          const baseResult = variants[0].result
+          if (baseResult.trades.length === 0) {
             skipped++
             continue
           }
 
-          // Delete old backtest for this symbol
+          // Delete all existing records for this symbol
           await prisma.backtest.deleteMany({
             where: { symbol: memberSymbol, strategyName: "Reset & Reclaim" },
           })
 
-          const backtest = await prisma.backtest.create({
-            data: {
-              symbol: memberSymbol,
-              exchange,
-              strategyName: "Reset & Reclaim",
-              parametersHash: "v2-ath-ema220",
-              fromDate: new Date(result.fromDate),
-              toDate: new Date(result.toDate),
-              totalTrades: result.summary.totalTrades,
-              winRate: result.summary.winRate,
-              avgReturn: result.summary.avgReturnPct,
-              maxDrawdown: result.summary.maxDrawdownPct,
-              profitFactor: result.summary.profitFactor,
-              sharpeRatio: result.summary.sharpeRatio,
-              trades: result.trades as any,
-              summary: result.summary as any,
-            },
-          })
+          // Persist all non-empty variants
+          for (const { hash, result } of variants) {
+            if (result.trades.length === 0) continue
 
-          try {
-            await prisma.backtestTrade.createMany({
-              data: result.trades.map((t) => ({
-                backtestId: backtest.id,
+            const backtest = await prisma.backtest.create({
+              data: {
                 symbol: memberSymbol,
                 exchange,
-                entryDate: new Date(t.entryDate),
-                entryPrice: t.entryPrice,
-                exitDate: t.exitDate ? new Date(t.exitDate) : null,
-                exitPrice: t.exitPrice,
-                pnlPercent: t.pnlPercent,
-                daysHeld: t.daysHeld,
-                preSetATHAtEntry: t.preSetATHAtEntry,
-              })),
+                strategyName: "Reset & Reclaim",
+                parametersHash: hash,
+                fromDate: new Date(result.fromDate),
+                toDate: new Date(result.toDate),
+                totalTrades: result.summary.totalTrades,
+                winRate: result.summary.winRate,
+                avgReturn: result.summary.avgReturnPct,
+                maxDrawdown: result.summary.maxDrawdownPct,
+                profitFactor: result.summary.profitFactor,
+                sharpeRatio: result.summary.sharpeRatio,
+                trades: result.trades as any,
+                summary: result.summary as any,
+              },
             })
-          } catch {
-            // Non-critical — trade details already stored in backtest.trades JSON
+
+            try {
+              await prisma.backtestTrade.createMany({
+                data: result.trades.map((t) => ({
+                  backtestId: backtest.id,
+                  symbol: memberSymbol,
+                  exchange,
+                  entryDate: new Date(t.entryDate),
+                  entryPrice: t.entryPrice,
+                  exitDate: t.exitDate ? new Date(t.exitDate) : null,
+                  exitPrice: t.exitPrice,
+                  pnlPercent: t.pnlPercent,
+                  daysHeld: t.daysHeld,
+                  preSetATHAtEntry: t.preSetATHAtEntry,
+                })),
+              })
+            } catch {
+              // Non-critical — trade details already stored in backtest.trades JSON
+            }
           }
 
           updated++
-          setJob(market, { updated, skipped, errors, lastLine: `${memberSymbol} ✓` })
+          setJob(market, { updated, skipped, errors, lastLine: `${memberSymbol} ✓ (${variants.filter(v => v.result.trades.length > 0).length} variants)` })
         } catch (e: any) {
           errors++
           console.error(`[backtest/run] ${memberSymbol} error:`, e.message)

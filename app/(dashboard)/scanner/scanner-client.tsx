@@ -58,6 +58,7 @@ import {
   SparklesIcon,
   ArrowRightIcon,
   TrophyIcon,
+  XIcon,
 } from "lucide-react"
 import { UNIVERSE_OPTIONS, resolveUniverseTags, type UniverseGroupKey } from "@/lib/universes"
 import { useAuth } from "@/hooks/use-auth"
@@ -352,6 +353,7 @@ export function ScannerClient({
     const h = new URLSearchParams(window.location.search).get("heat")
     return h && validHeats.includes(h) ? h : "all"
   })
+  const [slingshotDays, setSlingshotDays] = useState<number | null>(null)
 
   const watchlistMap = useWatchlistMap()
   const { add: addToWatchlist, remove: removeFromWatchlist } = useWatchlistMutations()
@@ -386,9 +388,19 @@ export function ScannerClient({
   }, [universeSignals])
 
   const filteredData = useMemo(() => {
-    if (heatFilter === "all") return universeSignals
-    return universeSignals.filter((s) => s.heat === heatFilter)
-  }, [universeSignals, heatFilter])
+    let signals = heatFilter === "all" ? universeSignals : universeSignals.filter((s) => s.heat === heatFilter)
+    if (slingshotDays !== null) {
+      signals = signals.filter((s) => {
+        if (!s.breakDate || !s.reclaimDate) return false
+        // Pullback duration = break_start_date → reclaim_date (same metric as backtest engine)
+        const pullbackDays = Math.floor(
+          (new Date(s.reclaimDate).getTime() - new Date(s.breakDate).getTime()) / 86400000
+        )
+        return pullbackDays <= slingshotDays
+      })
+    }
+    return signals
+  }, [universeSignals, heatFilter, slingshotDays])
 
   const spotlightSignal = useMemo(() => {
     const priority = ["breakout", "boiling", "simmering", "cooling"]
@@ -586,13 +598,81 @@ export function ScannerClient({
           </TabsList>
         </Tabs>
 
-        <div className="ml-auto flex items-center gap-2">
-          <ZapIcon className="size-3 text-primary" />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="ml-auto flex items-center gap-3 shrink-0">
+          {/* Slingshot filter — prominent chip group */}
+          <Tooltip>
+            <TooltipTrigger render={<div />}>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <ZapIcon className={cn(
+                    "size-3 transition-colors",
+                    slingshotDays !== null ? "text-primary" : "text-muted-foreground/40"
+                  )} />
+                  <span className={cn(
+                    "text-[9px] font-bold uppercase tracking-widest transition-colors hidden sm:block",
+                    slingshotDays !== null ? "text-primary/90" : "text-muted-foreground/40"
+                  )}>
+                    Slingshot
+                  </span>
+                </div>
+                <div className="flex gap-0.5 rounded-md border border-border/25 bg-muted/20 p-0.5">
+                  {([
+                    { value: null as number | null, label: "Any" },
+                    { value: 30, label: "≤30d" },
+                    { value: 60, label: "≤60d" },
+                    { value: 90, label: "≤90d" },
+                  ]).map(({ value, label }) => (
+                    <button
+                      key={String(value)}
+                      onClick={() => setSlingshotDays(value)}
+                      className={cn(
+                        "h-5 px-2 rounded text-[10px] font-semibold transition-all",
+                        slingshotDays === value
+                          ? "bg-primary/20 text-primary shadow-sm"
+                          : "text-muted-foreground/40 hover:text-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[280px]">
+              <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
+              <p className="text-xs text-background/70 leading-relaxed mb-2">
+                Filters by how many days the stock stayed below EMA before reclaiming it.
+                Shorter pullbacks signal stronger momentum.
+              </p>
+              <p className="text-xs text-background/70 leading-relaxed border-t border-background/20 pt-2">
+                <span className="font-semibold text-background">Eg:</span> EMA = ₹500. Price drops to ₹480 on Jan 1, stays below ₹500, recovers to ₹510 on Jan 18 → <span className="font-semibold text-background">17 days below EMA</span>. Passes ≤30d & ≤60d. If it took 64 days to recover, only passes ≤90d.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+
+          <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums whitespace-nowrap">
             {table.getFilteredRowModel().rows.length} signals
           </span>
         </div>
       </div>
+
+      {/* Slingshot active info strip */}
+      {slingshotDays !== null && (
+        <div className="flex items-center gap-2.5 px-4 sm:px-6 py-2 border-b border-primary/10 bg-primary/[0.04]">
+          <ZapIcon className="size-3.5 text-primary/60 shrink-0" />
+          <p className="text-[11px] text-foreground/60 leading-none">
+            <span className="font-semibold text-primary/80">Slingshot ≤{slingshotDays}d:</span>{" "}
+            Showing stocks where the pullback below EMA lasted ≤{slingshotDays} days before reclaiming — faster bounces signal stronger momentum.
+          </p>
+          <button
+            onClick={() => setSlingshotDays(null)}
+            className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
+          >
+            <XIcon className="size-3" />
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-scroll" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}>

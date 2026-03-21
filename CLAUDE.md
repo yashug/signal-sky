@@ -348,6 +348,82 @@ revalidateTag("signals")           // ✗ TS error: Expected 2 arguments
 ```
 Do NOT pass `{ expire: 0 }` — that is PPR-only syntax.
 
+## Slingshot Filter System
+
+### What "Slingshot" Means
+A **slingshot** setup is one where the pullback below EMA was short — the stock bounced back quickly, like a slingshot releasing. The metric is:
+
+```
+pullback duration = reclaimDate − breakDate   (calendar days)
+```
+
+- **`breakDate`** — first day price crossed FROM above → below EMA220 (start of pullback). SQL: `break_start_date` from the LAG()-based `break_start` CTE.
+- **`reclaimDate`** — first day price crossed FROM below → above EMA220 after the break. SQL: `reclaim_date` from `reclaim_start` CTE.
+- Slingshot ≤30d means `reclaimDate − breakDate ≤ 30 days`.
+
+**NEVER measure `today − reclaimDate`** (that's recency, not pullback speed). **NEVER measure `reclaimBar − entryBar`** (that's nearly 0, filters nothing).
+
+### Where the Filter Is Applied
+
+| Layer | File | How |
+|---|---|---|
+| Scanner (client) | `app/(dashboard)/scanner/scanner-client.tsx` | `(reclaimDate - breakDate) <= slingshotDays` in `filteredData` memo |
+| Backtest engine | `lib/backtest-engine.ts` | `tradingDaysBetween(pullbackStartDate, reclaimBar) > slingshotDays → skip entry` |
+| Performance page | `app/(dashboard)/performance/page.tsx` | Reads pre-computed `parametersHash = "v2-ath-ema220-s{N}"` from DB |
+| Backtest detail | `app/(dashboard)/backtests/[symbol]/backtest-detail-client.tsx` | Switches between pre-loaded `initialVariants` (s30/s60/s90) instantly |
+
+### How Data Flows
+
+**Signals (Scanner):**
+1. Scan pipeline SQL computes `break_start_date` and `reclaim_date` via LAG() window functions
+2. Stored in `signal.details.breakDate` and `signal.details.reclaimDate`
+3. Serialized to `ApiSignal.breakDate` and `ApiSignal.reclaimDate` in `lib/data/signals.ts`
+4. Scanner client computes pullback duration client-side and filters
+
+**Backtests (Performance/Detail):**
+1. Admin bulk run (`POST /api/admin/backtest/run`) calls `runBacktest(bars)` 4 times per symbol:
+   - `"v2-ath-ema220"` — baseline (no slingshot filter)
+   - `"v2-ath-ema220-s30"` — slingshot ≤30d
+   - `"v2-ath-ema220-s60"` — slingshot ≤60d
+   - `"v2-ath-ema220-s90"` — slingshot ≤90d
+2. Each variant is a **fully independent backtest run** — the engine skips entries at simulation time, so each has its own trade list, win rate, avg return, etc.
+3. All 4 variants stored as separate DB rows (`backtests` table) with distinct `parameters_hash`
+4. Performance page queries by `parameters_hash` — aggregates over all pre-computed symbols
+5. Backtest detail page fetches all 4 variants server-side in parallel; chip switches are instant (no API call)
+
+### Backtest Engine Internals (`lib/backtest-engine.ts`)
+```typescript
+let pullbackStartDate: string | null = null  // first day below EMA in current pullback phase
+
+// seeking_break → seeking_entry (first cross below EMA):
+pullbackStartDate = bar.date
+
+// seeking_entry, bar re-breaks (reclaimBar was set, now below again):
+if (reclaimBar !== null) pullbackStartDate = bar.date  // new pullback phase starts
+// seeking_entry, continuing below EMA: do NOT update pullbackStartDate
+
+// At entry (bar.close > preSetATH && bar.close > ema):
+const pullbackDays = tradingDaysBetween(pullbackStartDate, reclaimBar)
+if (pullbackDays > options.slingshotDays) continue  // skip this entry
+```
+
+`reclaimBar` = first day back above EMA in the current reclaim attempt. Duration is `pullbackStartDate → reclaimBar`.
+
+### `getBacktestDetail` Signature
+```typescript
+getBacktestDetail(symbol: string, parametersHash = "v2-ath-ema220")
+```
+Always pass the `parametersHash` explicitly when fetching slingshot variants. Cache key includes `"parametersHash"`.
+
+### "Generate" Fallback
+If a slingshot variant is missing for a symbol (not yet bulk-run), the backtest detail page shows a "Generate slingshot data" CTA. This calls `POST /api/backtest/run-single` with `{ symbol, slingshotDays }`, stores the result to DB, and updates the detail view. The new record is also included in performance page aggregates after cache revalidation.
+
+### Known Gotchas
+- **Don't revert scanner filter to `today - reclaimDate`** — that was the old (wrong) implementation measuring recency, not pullback speed.
+- **Each slingshot variant has its own win rate** — it is NOT a post-hoc filter on baseline trades. Always run the engine separately per variant.
+- **`breakDate` on `ApiSignal` vs `getSignalChart`**: `ApiSignal.breakDate` comes from the scan SQL's `break_start_date` (LAG-detected most-recent above→below crossing). `ApiSignalChart.breakDate` in `lib/data/signals.ts → getSignalChart` is computed by a forward scan from `preSetATHDate` — same concept, different code path used for the chart view only.
+- **Signals need re-scanning to populate `breakDate`** — signals created before `breakDate` was added to `signal.details` will have `breakDate: null` and be excluded from slingshot filtering in the scanner. Re-running the scan fixes this.
+
 ## Known Gotchas
 
 1. **Supabase Auth trigger creates users** — Users may exist in `public.users` before `getSession()` runs. The upsert `update: {}` block won't set `trialEndsAt`. This is handled by a follow-up check in `lib/auth.ts`.

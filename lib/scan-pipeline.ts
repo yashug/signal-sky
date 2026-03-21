@@ -31,6 +31,8 @@ type BarRow = {
   volume: string
   ath: string
   ath_date: string | null
+  break_start_date: string | null
+  reclaim_date: string | null
   avg_vol: string | null
 }
 
@@ -80,6 +82,16 @@ export async function runScanForMarket(market: "india" | "us") {
       WHERE NOT above_ema AND prev_above_ema
       ORDER BY symbol, date DESC
     ),
+    -- Most recent cross from below → above EMA220 AFTER the most recent break
+    reclaim_start AS (
+      SELECT DISTINCT ON (bs_reclaim.symbol)
+        bs_reclaim.symbol, bs_reclaim.date AS reclaim_date
+      FROM bar_states bs_reclaim
+      JOIN break_start bs ON bs.symbol = bs_reclaim.symbol
+      WHERE bs_reclaim.above_ema AND NOT bs_reclaim.prev_above_ema
+        AND bs_reclaim.date > bs.break_start_date
+      ORDER BY bs_reclaim.symbol, bs_reclaim.date DESC
+    ),
     -- Pre-set ATH = max high from before the most recent reset
     ath_before_break AS (
       SELECT db.symbol, MAX(db.high) AS ath
@@ -115,9 +127,13 @@ export async function runScanForMarket(market: "india" | "us") {
       l.volume::bigint AS volume,
       a.ath::float AS ath,
       a.ath_date::text AS ath_date,
+      bs.break_start_date::text AS break_start_date,
+      r.reclaim_date::text AS reclaim_date,
       v.avg_vol::float AS avg_vol
     FROM latest l
     JOIN ath_data a ON a.symbol = l.symbol
+    LEFT JOIN break_start bs ON bs.symbol = l.symbol
+    LEFT JOIN reclaim_start r ON r.symbol = l.symbol
     LEFT JOIN vol20 v ON v.symbol = l.symbol
     WHERE l.ema220 IS NOT NULL
     `,
@@ -169,7 +185,11 @@ export async function runScanForMarket(market: "india" | "us") {
       volumeAvg20: avgVol ? BigInt(Math.round(avgVol)) : null,
       signalDate,
       isActive: true,
-      details: row.ath_date ? { preSetATHDate: row.ath_date.split("T")[0] } : {},
+      details: {
+        preSetATHDate: row.ath_date?.split("T")[0] ?? null,
+        breakDate: row.break_start_date?.split("T")[0] ?? null,
+        reclaimDate: row.reclaim_date?.split("T")[0] ?? null,
+      },
     })
   }
 

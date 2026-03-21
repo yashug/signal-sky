@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const symbol: string | undefined = body.symbol
+  const slingshotDays: number | undefined = typeof body.slingshotDays === "number" ? body.slingshotDays : undefined
   if (!symbol) {
     return NextResponse.json({ error: "symbol is required" }, { status: 400 })
   }
@@ -53,15 +54,19 @@ export async function POST(req: NextRequest) {
     }))
 
     // Run backtest
-    const result = runBacktest(bars)
+    const result = runBacktest(bars, { slingshotDays })
 
     if (result.trades.length === 0) {
       return NextResponse.json({ error: "No trades generated" }, { status: 422 })
     }
 
-    // Delete old backtest for this symbol
+    // Delete old backtest for this symbol + parameters combination
     await prisma.backtest.deleteMany({
-      where: { symbol, strategyName: "Reset & Reclaim" },
+      where: {
+        symbol,
+        strategyName: "Reset & Reclaim",
+        parametersHash: slingshotDays ? `v2-ath-ema220-s${slingshotDays}` : "v2-ath-ema220",
+      },
     })
 
     // Persist new backtest
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
         symbol,
         exchange,
         strategyName: "Reset & Reclaim",
-        parametersHash: "v2-ath-ema220",
+        parametersHash: slingshotDays ? `v2-ath-ema220-s${slingshotDays}` : "v2-ath-ema220",
         fromDate: new Date(result.fromDate),
         toDate: new Date(result.toDate),
         totalTrades: result.summary.totalTrades,

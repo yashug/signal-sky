@@ -741,7 +741,7 @@ function BacktestRunSection() {
             Backtest Engine
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Only re-runs symbols where bar data changed — skips already up-to-date results
+            Runs baseline + slingshot (≤30d / ≤60d / ≤90d) variants for all symbols. Skips symbols with &lt; 220 bars.
           </p>
         </div>
       </div>
