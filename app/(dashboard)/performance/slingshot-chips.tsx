@@ -46,9 +46,7 @@ export function SlingshotChips({ active }: { active: string | null }) {
       <TooltipContent side="bottom" className="max-w-[260px]">
         <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Filter by how quickly the stock broke its pre-set ATH after reclaiming EMA220.
-          Faster breakouts = stronger momentum. Each window is a fully independent backtest,
-          not a post-hoc filter on the baseline.
+          Filter to backtests where the stock bounced back above EMA220 and broke its ATH within X days — watching for the fastest, strongest breakouts. Each window is a fully independent backtest.
         </p>
       </TooltipContent>
     </Tooltip>

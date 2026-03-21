@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import type {
@@ -261,13 +261,24 @@ export function BacktestDetailClient({
   initialVariants?: InitialVariants
 }) {
   const router = useRouter()
-  const [detail, setDetail] = useState<ApiBacktestDetail | null>(initialDetail)
-  const [generating, setGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [slingshotDays, setSlingshotDays] = useState<number | null>(null)
-
   const defaultVariants: InitialVariants = { s30: null, s60: null, s90: null }
   const variants = initialVariants ?? defaultVariants
+
+  const [slingshotDays, setSlingshotDays] = useState<number | null>(null)
+  const [detail, setDetail] = useState<ApiBacktestDetail | null>(initialDetail)
+
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("slingshot")
+    const v = s ? parseInt(s) : null
+    if (v && [30, 60, 90].includes(v)) {
+      setSlingshotDays(v)
+      const preloaded = variantForWindow(v, initialDetail, variants)
+      if (preloaded !== undefined) setDetail(preloaded)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const triggerBacktest = useCallback(async (slingshot?: number | null) => {
     setGenerating(true)
@@ -508,6 +519,12 @@ export function BacktestDetailClient({
                         onClick={() => {
                           setSlingshotDays(value)
                           setError(null)
+                          // Update URL param
+                          const params = new URLSearchParams(window.location.search)
+                          if (value !== null) params.set("slingshot", String(value))
+                          else params.delete("slingshot")
+                          const qs = params.toString()
+                          window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`)
                           const preloaded = variantForWindow(value, initialDetail, variants)
                           if (preloaded !== null && preloaded !== undefined) {
                             setDetail(preloaded)
@@ -532,8 +549,7 @@ export function BacktestDetailClient({
               <TooltipContent side="bottom" className="max-w-[260px]">
                 <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Filter trades where the stock broke its pre-set ATH within X days of reclaiming EMA220.
-                  Faster breakouts = stronger momentum.
+                  Filter to trades where the stock bounced back above EMA220 and broke its ATH within X days — watching for the fastest, strongest breakouts.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -559,10 +575,17 @@ export function BacktestDetailClient({
                   Slingshot ≤{slingshotDays}d filter active
                 </p>
                 <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-                  Only trades where the ATH break happened within {slingshotDays} days of reclaiming EMA220 — a faster breakout signals stronger underlying momentum.
+                  Only trades where the stock bounced back above EMA220 and broke its ATH within {slingshotDays} days — watching for the fastest, strongest breakouts.
                   Compare with{" "}
                   <button
-                    onClick={() => { setSlingshotDays(null); triggerBacktest(null) }}
+                    onClick={() => {
+                          setSlingshotDays(null)
+                          const params = new URLSearchParams(window.location.search)
+                          params.delete("slingshot")
+                          const qs = params.toString()
+                          window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`)
+                          triggerBacktest(null)
+                        }}
                     className="text-primary hover:underline font-semibold"
                   >
                     Baseline
@@ -571,7 +594,14 @@ export function BacktestDetailClient({
                 </p>
               </div>
               <button
-                onClick={() => { setSlingshotDays(null); triggerBacktest(null) }}
+                onClick={() => {
+                          setSlingshotDays(null)
+                          const params = new URLSearchParams(window.location.search)
+                          params.delete("slingshot")
+                          const qs = params.toString()
+                          window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`)
+                          triggerBacktest(null)
+                        }}
                 className="flex items-center gap-1 text-[10px] text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
               >
                 <XIcon className="size-3" />

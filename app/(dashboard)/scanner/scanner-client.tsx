@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useWatchlistMap, useWatchlistMutations } from "@/hooks/use-watchlist"
@@ -354,19 +354,25 @@ export function ScannerClient({
     return h && validHeats.includes(h) ? h : "all"
   })
   const [slingshotDays, setSlingshotDays] = useState<number | null>(null)
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("slingshot")
+    const v = s ? parseInt(s) : null
+    if (v && [30, 60, 90].includes(v)) setSlingshotDays(v)
+  }, [])
 
   const watchlistMap = useWatchlistMap()
   const { add: addToWatchlist, remove: removeFromWatchlist } = useWatchlistMutations()
 
   const updateURL = useCallback(
-    (newUniverse: string, heat: string) => {
+    (newUniverse: string, heat: string, slingshot: number | null = slingshotDays) => {
       const params = new URLSearchParams()
       if (newUniverse !== "nifty50") params.set("universe", newUniverse)
       if (heat !== "all") params.set("heat", heat)
+      if (slingshot !== null) params.set("slingshot", String(slingshot))
       const qs = params.toString()
       window.history.replaceState(null, "", `/scanner${qs ? `?${qs}` : ""}`)
     },
-    []
+    [slingshotDays]
   )
 
   const universeSignals = useMemo(() => {
@@ -622,7 +628,7 @@ export function ScannerClient({
                   ]).map(({ value, label }) => (
                     <button
                       key={String(value)}
-                      onClick={() => setSlingshotDays(value)}
+                      onClick={() => { setSlingshotDays(value); updateURL(universe, heatFilter, value) }}
                       className={cn(
                         "h-5 px-2 rounded text-[10px] font-semibold transition-all",
                         slingshotDays === value
@@ -639,8 +645,8 @@ export function ScannerClient({
             <TooltipContent side="bottom" className="max-w-[280px]">
               <p className="text-xs font-semibold mb-1">⚡ Slingshot Filter</p>
               <p className="text-xs text-background/70 leading-relaxed mb-2">
-                Only shows stocks that reclaimed EMA220 within the last X days and are approaching their ATH.
-                If the stock already broke its ATH, the breakout fired within the window.
+                Only shows stocks that bounced back above EMA220 within the last X days — watching for the ATH breakout.
+                If the ATH is already broken, it fired within the window.
               </p>
               <p className="text-xs text-background/70 leading-relaxed border-t border-background/20 pt-2">
                 <span className="font-semibold text-background">Eg:</span> EMA = ₹500. Price recovers above ₹500 on Jan 18. If today is Feb 5 (18 days later) → passes ≤30d. If today is Mar 5 (45 days later), only passes ≤60d.
@@ -660,10 +666,10 @@ export function ScannerClient({
           <ZapIcon className="size-3.5 text-primary/60 shrink-0" />
           <p className="text-[11px] text-foreground/60 leading-none">
             <span className="font-semibold text-primary/80">Slingshot ≤{slingshotDays}d:</span>{" "}
-            Stocks that reclaimed EMA220 within the last {slingshotDays} days — still inside the breakout window.
+            Stocks that bounced back above EMA220 within the last {slingshotDays} days — watching for the ATH breakout.
           </p>
           <button
-            onClick={() => setSlingshotDays(null)}
+            onClick={() => { setSlingshotDays(null); updateURL(universe, heatFilter, null) }}
             className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
           >
             <XIcon className="size-3" />
