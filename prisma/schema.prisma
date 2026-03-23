@@ -99,6 +99,7 @@ model DailyBar {
 
   @@unique([symbol, exchange, date])
   @@index([symbol, date(sort: Desc)])
+  @@index([symbol, exchange, date(sort: Desc)])
   @@index([exchange])
   @@map("daily_bars")
 }
@@ -150,6 +151,8 @@ model Signal {
   @@index([heat])
   @@index([symbol])
   @@index([isActive, signalDate(sort: Desc)])
+  @@index([isActive, distancePct])
+  @@index([symbol, isActive, signalDate(sort: Desc)])
   @@map("signals")
 }
 
@@ -172,7 +175,6 @@ model MarketHealth {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@unique([universe, date])
-  @@index([universe, date(sort: Desc)])
   @@map("market_health")
 }
 
@@ -239,6 +241,7 @@ model JournalTrade {
 
   @@index([userId, status])
   @@index([symbol])
+  @@index([linkedSignalId])
   @@map("journal_trades")
 }
 
@@ -279,6 +282,8 @@ model Backtest {
 
   @@index([symbol, strategyName])
   @@index([parametersHash])
+  @@index([parametersHash, symbol])
+  @@index([signalId])
   @@map("backtests")
 }
 
@@ -315,6 +320,7 @@ model AlertPreference {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("alert_preferences")
 }
 
@@ -330,6 +336,8 @@ model AlertHistory {
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   signal Signal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
 
+  @@index([userId])
+  @@index([signalId])
   @@map("alert_history")
 }
 
@@ -346,5 +354,6 @@ model Feedback {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([isRead, createdAt(sort: Desc)])
+  @@index([userId])
   @@map("feedback")
 }

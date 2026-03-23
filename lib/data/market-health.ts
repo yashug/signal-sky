@@ -38,41 +38,49 @@ const ALL_KEYS = [
 
 export const getMarketHealth = unstable_cache(
   async (): Promise<ApiMarketHealthResponse> => {
+    // Single query: latest row per universe (replaces 11+ individual findFirst calls)
+    const rows = await prisma.$queryRaw<Array<{
+      universe: string
+      date: Date
+      total_stocks: number
+      above_ema200: number
+      pct_above: string
+    }>>`
+      SELECT DISTINCT ON (universe) universe, date, total_stocks, above_ema200, pct_above
+      FROM market_health
+      WHERE universe = ANY(${ALL_KEYS}::text[])
+      ORDER BY universe, date DESC
+    `
+
+    const byUniverse = new Map(rows.map(r => [r.universe, r]))
     const markets: ApiMarketHealth[] = []
 
     for (const key of ALL_KEYS) {
-      const latest = await prisma.marketHealth.findFirst({
-        where: { universe: key },
-        orderBy: { date: "desc" },
-      })
-
-      if (latest) {
+      const row = byUniverse.get(key)
+      if (row) {
         markets.push({
           universe: key,
           label: UNIVERSE_LABELS[key] ?? key,
-          date: latest.date.toISOString().split("T")[0],
-          totalStocks: latest.totalStocks,
-          aboveEma200: latest.aboveEma200,
-          percentAbove: Number(latest.pctAbove),
-          trafficLight: trafficLight(Number(latest.pctAbove)),
+          date: row.date.toISOString().split("T")[0],
+          totalStocks: row.total_stocks,
+          aboveEma200: row.above_ema200,
+          percentAbove: Number(row.pct_above),
+          trafficLight: trafficLight(Number(row.pct_above)),
         })
       } else if (COMPOSITE_TAGS[key]) {
-        const tagRows = await prisma.marketHealth.findMany({
-          where: { universe: { in: COMPOSITE_TAGS[key] } },
-          orderBy: { date: "desc" },
-          distinct: ["universe"],
-        })
+        const tags = COMPOSITE_TAGS[key]
+        const tagRows = tags.map(t => byUniverse.get(t)).filter(Boolean)
         if (tagRows.length > 0) {
           let above = 0, total = 0
           for (const r of tagRows) {
-            above += r.aboveEma200
-            total += r.totalStocks
+            above += r!.above_ema200
+            total += r!.total_stocks
           }
           const pctAbove = total > 0 ? (above / total) * 100 : 0
           markets.push({
             universe: key,
             label: UNIVERSE_LABELS[key] ?? key,
-            date: tagRows[0].date.toISOString().split("T")[0],
+            date: tagRows[0]!.date.toISOString().split("T")[0],
             totalStocks: total,
             aboveEma200: above,
             percentAbove: pctAbove,

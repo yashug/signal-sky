@@ -38,6 +38,58 @@ export function getTelegramDeepLink(token: string): string {
   return `https://t.me/${BOT_NAME}?start=${token}`
 }
 
+export function formatBundledSignalsMessage(opts: {
+  market: "india" | "us"
+  signals: Array<{
+    symbol: string
+    exchange: "NSE" | "US"
+    heat: "breakout" | "boiling" | "simmering" | "cooling"
+    price: number
+    ath: number
+    ema220: number
+    distancePct: number
+  }>
+  appUrl?: string
+}): string {
+  const { market, signals, appUrl } = opts
+  const base = appUrl ?? "https://signalsky.app"
+  const marketLabel = market === "india" ? "India (NSE)" : "US Markets"
+  const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+
+  const HEAT_EMOJI: Record<string, string> = {
+    breakout: "🚀", boiling: "🔥", simmering: "🌡️", cooling: "❄️",
+  }
+  const HEAT_LABEL: Record<string, string> = {
+    breakout: "Breakout", boiling: "Boiling", simmering: "Simmering", cooling: "Cooling",
+  }
+
+  const lines: string[] = [
+    `🔔 <b>${signals.length} new signal${signals.length !== 1 ? "s" : ""} — ${marketLabel}</b>`,
+    `<i>${date}</i>`,
+    ``,
+  ]
+
+  for (const s of signals) {
+    const currency = s.exchange === "NSE" ? "₹" : "$"
+    const emoji = HEAT_EMOJI[s.heat] ?? "📊"
+    const label = HEAT_LABEL[s.heat] ?? s.heat
+    const distLabel = s.distancePct <= 0
+      ? `${Math.abs(s.distancePct).toFixed(1)}% above ATH`
+      : `${s.distancePct.toFixed(1)}% below ATH`
+    const symbolClean = s.symbol.replace(".NS", "")
+    const url = `${base}/scanner/${s.symbol}`
+
+    lines.push(
+      `${emoji} <a href="${url}"><b>${symbolClean}</b></a> · ${label} · ${distLabel}`,
+      `Price: <code>${currency}${s.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</code>  EMA220: <code>${currency}${s.ema220.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</code>`,
+      ``,
+    )
+  }
+
+  lines.push(`<a href="${base}/scanner">View all on SignalSky →</a>`)
+  return lines.join("\n")
+}
+
 export function formatSignalMessage(opts: {
   symbol: string
   exchange: "NSE" | "US"

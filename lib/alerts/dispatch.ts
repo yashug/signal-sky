@@ -4,7 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma"
-import { sendTelegramMessage, formatSignalMessage } from "@/lib/telegram"
+import { sendTelegramMessage, formatBundledSignalsMessage } from "@/lib/telegram"
 import { sendBundledAlerts } from "@/lib/email/send"
 import { randomUUID } from "crypto"
 
@@ -81,48 +81,72 @@ export async function dispatchAlerts(
   let emailSent = 0
   let errors = 0
 
-  // ── Telegram: one message per signal (unchanged — Telegram is already compact) ──
+  // ── Telegram: one bundled message per user with all their matching signals ──
+  const telegramUserMap = new Map<string, { pref: (typeof activePrefs)[0]; signals: typeof marketSignals }>()
+
   for (const signal of marketSignals) {
     const telegramPrefs = activePrefs.filter((p) => {
       if (p.channel !== "telegram" || !p.user.telegramChatId) return false
       if (p.heatFilter.length > 0 && !p.heatFilter.includes(signal.heat as any)) return false
+      const key = `${p.userId}:${signal.id}:telegram`
+      if (alreadySentSet.has(key)) return false
       return true
     })
-
-    const TELEGRAM_BATCH = 25
-    for (let i = 0; i < telegramPrefs.length; i += TELEGRAM_BATCH) {
-      const batch = telegramPrefs.slice(i, i + TELEGRAM_BATCH)
-      await Promise.allSettled(
-        batch.map(async (pref) => {
-          const key = `${pref.userId}:${signal.id}:telegram`
-          if (alreadySentSet.has(key)) return
-          try {
-            const msg = formatSignalMessage({
-              symbol: signal.symbol,
-              exchange: signal.exchange as "NSE" | "US",
-              heat: signal.heat,
-              price: signal.price,
-              ath: signal.ath,
-              ema200: signal.ema200,
-              ema220: signal.ema220,
-              distancePct: signal.distancePct,
-              appUrl: APP_URL,
-            })
-            await sendTelegramMessage(pref.user.telegramChatId!, msg)
-            await prisma.alertHistory.create({
-              data: { userId: pref.userId, signalId: signal.id, channel: "telegram", status: "sent", sentAt: new Date() },
-            })
-            telegramSent++
-          } catch {
-            errors++
-            await prisma.alertHistory.create({
-              data: { userId: pref.userId, signalId: signal.id, channel: "telegram", status: "error" },
-            }).catch(() => {})
-          }
-        })
-      )
-      if (i + TELEGRAM_BATCH < telegramPrefs.length) await delay(1100)
+    for (const pref of telegramPrefs) {
+      if (!telegramUserMap.has(pref.userId)) {
+        telegramUserMap.set(pref.userId, { pref, signals: [] })
+      }
+      telegramUserMap.get(pref.userId)!.signals.push(signal)
     }
+  }
+
+  const TELEGRAM_BATCH = 25
+  const telegramEntries = Array.from(telegramUserMap.entries())
+  for (let i = 0; i < telegramEntries.length; i += TELEGRAM_BATCH) {
+    const batch = telegramEntries.slice(i, i + TELEGRAM_BATCH)
+    await Promise.allSettled(
+      batch.map(async ([userId, { pref, signals: userSignals }]) => {
+        try {
+          const msg = formatBundledSignalsMessage({
+            market,
+            signals: userSignals.map((s) => ({
+              symbol: s.symbol,
+              exchange: s.exchange as "NSE" | "US",
+              heat: s.heat,
+              price: s.price,
+              ath: s.ath,
+              ema220: s.ema220,
+              distancePct: s.distancePct,
+            })),
+            appUrl: APP_URL,
+          })
+          await sendTelegramMessage(pref.user.telegramChatId!, msg)
+          await prisma.alertHistory.createMany({
+            data: userSignals.map((s) => ({
+              userId,
+              signalId: s.id,
+              channel: "telegram",
+              status: "sent",
+              sentAt: new Date(),
+            })),
+            skipDuplicates: true,
+          })
+          telegramSent++
+        } catch {
+          errors++
+          await prisma.alertHistory.createMany({
+            data: userSignals.map((s) => ({
+              userId,
+              signalId: s.id,
+              channel: "telegram",
+              status: "error",
+            })),
+            skipDuplicates: true,
+          }).catch(() => {})
+        }
+      })
+    )
+    if (i + TELEGRAM_BATCH < telegramEntries.length) await delay(1100)
   }
 
   // ── Email: ONE bundled email per user with ALL their matching new signals ──

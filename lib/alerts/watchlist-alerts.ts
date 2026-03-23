@@ -68,38 +68,45 @@ export async function checkWatchlistAlerts(market: "india" | "us") {
 
     if (items.length === 0) return { triggered: 0 }
 
-    const triggered: string[] = []
+    // Mark all as triggered immediately to prevent duplicates
+    const ids = items.map((i) => i.id)
+    await prisma.$executeRawUnsafe(
+      `UPDATE watchlist_items SET alert_triggered_at = NOW() WHERE id = ANY($1::uuid[])`,
+      ids
+    )
 
+    // Group by user so we can send one bundled Telegram message per user
+    const byUser = new Map<string, typeof items>()
     for (const item of items) {
-      const currency = item.exchange === "NSE" ? "₹" : "$"
-      const symbolDisplay = item.symbol.replace(".NS", "")
-      const alertPriceNum = Number(item.alertPrice)
-      const currentPriceNum = Number(item.currentPrice)
-      const dir = item.alertDirection === "above" ? "crossed above" : "dropped below"
-
-      // Mark as triggered immediately to prevent duplicates
-      await prisma.$executeRawUnsafe(
-        `UPDATE watchlist_items SET alert_triggered_at = NOW() WHERE id = $1`,
-        item.id
-      )
-
-      // Send Telegram if connected
-      if (item.telegramChatId) {
-        const msg = [
-          `🔔 <b>Watchlist Alert: ${symbolDisplay}</b>`,
-          ``,
-          `Price has ${dir} your alert level of <b>${currency}${alertPriceNum.toLocaleString()}</b>`,
-          `Current price: <b>${currency}${currentPriceNum.toLocaleString(undefined, { maximumFractionDigits: 2 })}</b>`,
-          `Heat: <b>${item.heat}</b>`,
-        ].join("\n")
-        sendTelegramMessage(item.telegramChatId, msg).catch(() => {})
-      }
-
-      triggered.push(item.id)
+      if (!item.telegramChatId) continue
+      if (!byUser.has(item.userId)) byUser.set(item.userId, [])
+      byUser.get(item.userId)!.push(item)
     }
 
-    console.log(`[watchlist-alerts] triggered ${triggered.length} alerts for ${exchange}`)
-    return { triggered: triggered.length }
+    for (const [, userItems] of byUser) {
+      const chatId = userItems[0].telegramChatId!
+      const currency = userItems[0].exchange === "NSE" ? "₹" : "$"
+
+      const lines: string[] = [
+        `🔔 <b>${userItems.length} Watchlist Alert${userItems.length !== 1 ? "s" : ""}</b>`,
+        ``,
+      ]
+      for (const item of userItems) {
+        const symbolDisplay = item.symbol.replace(".NS", "")
+        const dir = item.alertDirection === "above" ? "crossed above" : "dropped below"
+        const alertPriceNum = Number(item.alertPrice)
+        const currentPriceNum = Number(item.currentPrice)
+        lines.push(
+          `<b>${symbolDisplay}</b> — ${dir} <b>${currency}${alertPriceNum.toLocaleString()}</b>`,
+          `Current: <code>${currency}${currentPriceNum.toLocaleString(undefined, { maximumFractionDigits: 2 })}</code>  Heat: <b>${item.heat}</b>`,
+          ``,
+        )
+      }
+      sendTelegramMessage(chatId, lines.join("\n")).catch(() => {})
+    }
+
+    console.log(`[watchlist-alerts] triggered ${items.length} alerts for ${exchange}`)
+    return { triggered: items.length }
   } catch (e: any) {
     console.error(`[watchlist-alerts] error:`, e.message)
     return { triggered: 0, error: e.message }
