@@ -244,21 +244,23 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
                           </div>
                         ) : item.alertPrice ? (
                           <Tooltip>
-                            <TooltipTrigger>
-                              <button
-                                type="button"
-                                onClick={() => startAlertEdit(item)}
-                                className="flex items-center gap-1"
-                              >
-                                {item.alertTriggeredAt ? (
-                                  <BellRingIcon className="size-3 text-heat-boiling" />
-                                ) : (
-                                  <BellIcon className="size-3 text-primary" />
-                                )}
-                                <span className="font-mono text-[11px] text-primary">
-                                  {item.exchange === "NSE" ? "₹" : "$"}{item.alertPrice.toLocaleString()}
-                                </span>
-                              </button>
+                            <TooltipTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={() => startAlertEdit(item)}
+                                  className="flex items-center gap-1"
+                                />
+                              }
+                            >
+                              {item.alertTriggeredAt ? (
+                                <BellRingIcon className="size-3 text-heat-boiling" />
+                              ) : (
+                                <BellIcon className="size-3 text-primary" />
+                              )}
+                              <span className="font-mono text-[11px] text-primary">
+                                {item.exchange === "NSE" ? "₹" : "$"}{item.alertPrice.toLocaleString()}
+                              </span>
                             </TooltipTrigger>
                             <TooltipContent side="top">
                               <p className="text-xs font-semibold">
@@ -272,14 +274,16 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
                           </Tooltip>
                         ) : (
                           <Tooltip>
-                            <TooltipTrigger>
-                              <button
-                                type="button"
-                                onClick={() => startAlertEdit(item)}
-                                className="text-muted-foreground/30 hover:text-muted-foreground transition-colors"
-                              >
-                                <BellOffIcon className="size-3.5" />
-                              </button>
+                            <TooltipTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={() => startAlertEdit(item)}
+                                  className="text-muted-foreground/30 hover:text-muted-foreground transition-colors"
+                                />
+                              }
+                            >
+                              <BellOffIcon className="size-3.5" />
                             </TooltipTrigger>
                             <TooltipContent side="top">
                               <p className="text-xs">Click to set a price alert</p>

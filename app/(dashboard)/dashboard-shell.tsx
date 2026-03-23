@@ -77,11 +77,14 @@ function formatTimeAgo(dateStr: string): string {
   return `${diffDays}d ago`
 }
 
-function NavLink({ href, className, children }: { href: string; className?: string; children?: React.ReactNode }) {
+function NavLink({ href, className, children, onClick, ...props }: React.ComponentProps<typeof Link>) {
   const { setOpenMobile } = useSidebar()
-  const handleClick = useCallback(() => setOpenMobile(false), [setOpenMobile])
+  const handleClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+    setOpenMobile(false)
+    onClick?.(e)
+  }, [setOpenMobile, onClick])
   return (
-    <Link href={href} className={className} onClick={handleClick}>
+    <Link href={href} className={className} onClick={handleClick} transitionTypes={["page-transition"]} {...props}>
       {children}
     </Link>
   )
