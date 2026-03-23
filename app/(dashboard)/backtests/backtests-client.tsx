@@ -353,7 +353,7 @@ export function BacktestsClient({
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b border-border/30">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20">
             <BarChart3Icon className="size-4 text-primary" />
           </div>
           <div>
@@ -524,7 +524,7 @@ export function BacktestsClient({
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
                     key={headerGroup.id}
-                    className="border-b border-border/30 hover:bg-transparent"
+                    className="border-b border-border/30 bg-surface/40 hover:bg-surface/40"
                   >
                     {headerGroup.headers.map((header) => (
                       <TableHead

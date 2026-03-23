@@ -90,7 +90,7 @@ function StatCard({
       <CardContent className="flex items-start gap-3 py-3 px-4">
         <div
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/50",
+            "flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/30 ring-1 ring-border/10",
             accent
           )}
         >
@@ -262,7 +262,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
     <div className="flex flex-col gap-6 px-4 sm:px-6 py-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20">
           <BookOpenIcon className="size-4 text-primary" />
         </div>
         <div>
@@ -556,7 +556,7 @@ export function JournalClient({ initialTrades }: { initialTrades: JournalTradeDa
             <div className="min-w-[700px]">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/30 hover:bg-transparent">
+                <TableRow className="border-b border-border/30 bg-surface/40 hover:bg-surface/40">
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-4">
                     Status
                   </TableHead>

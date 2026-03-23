@@ -67,7 +67,7 @@ async function main() {
   }
 
   const arg = process.argv[2] as VoiceoverVariant | undefined;
-  const validVariants: VoiceoverVariant[] = ["30s", "60s", "90s", "explainer"];
+  const validVariants: VoiceoverVariant[] = ["30s", "60s", "90s", "explainer", "demo"];
 
   if (arg && validVariants.includes(arg)) {
     await generateVoiceover(arg);

@@ -174,7 +174,7 @@ export function BacktestCard({ signal }: { signal: ApiSignal }) {
         </span>
       </div>
 
-      <Card size="sm" className="bg-surface border-border/40">
+      <Card size="sm" className="bg-surface border-border/40 ring-1 ring-border/10">
         <CardContent className="pt-4">
           {/* Key metrics */}
           <div className="grid grid-cols-3 gap-3">

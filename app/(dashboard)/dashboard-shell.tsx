@@ -142,7 +142,7 @@ export function DashboardShell({
         <Sidebar collapsible="icon" className="border-r-0">
           <SidebarHeader className="px-3 py-4">
             <NavLink href="/scanner" className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20 text-primary">
                 <ZapIcon className="size-4" />
               </div>
               <div className="flex flex-col group-data-[collapsible=icon]:hidden">
@@ -252,7 +252,7 @@ export function DashboardShell({
           <MarketHealthBar markets={marketHealthData} />
           {/* Trial banner */}
           {accessInfo.isTrialActive && !accessInfo.isPro && (
-            <div className="flex items-center justify-between gap-3 px-4 py-2 bg-primary/5 border-b border-primary/10">
+            <div className="flex items-center justify-between gap-3 px-4 py-2 bg-primary/8 border-b border-primary/20">
               <div className="flex items-center gap-2">
                 <ClockIcon className="size-3.5 text-primary shrink-0" />
                 <span className="text-xs text-primary">
@@ -261,7 +261,7 @@ export function DashboardShell({
               </div>
               <Link
                 href="/pricing"
-                className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary/80 transition-colors whitespace-nowrap glow-signal"
               >
                 Subscribe Now
                 <ArrowRightIcon className="size-3" />

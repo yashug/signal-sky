@@ -22,7 +22,11 @@
     "remotion:render:90s-v": "npx remotion render remotion/index.ts Promo90V out/promo-90s-vertical.mp4",
     "remotion:render:all": "npm run remotion:render:30s-h && npm run remotion:render:60s-h && npm run remotion:render:90s-h && npm run remotion:render:30s-v && npm run remotion:render:60s-v && npm run remotion:render:90s-v",
     "remotion:voiceover:explainer": "npx tsx remotion/scripts/generate-voiceover.ts explainer",
-    "remotion:render:explainer": "npx remotion render remotion/index.ts Explainer90H out/explainer-90s.mp4"
+    "remotion:render:explainer": "npx remotion render remotion/index.ts Explainer90H out/explainer-90s.mp4",
+    "remotion:voiceover:demo": "npx tsx remotion/scripts/generate-voiceover.ts demo",
+    "remotion:render:demo-h": "npx remotion render remotion/index.ts Demo120H out/demo-120s-horizontal.mp4",
+    "remotion:studio:demo": "npx remotion studio remotion/index.ts",
+    "remotion:render:reel": "npx remotion render remotion/index.ts DemoReel46V out/demo-reel-46s-vertical.mp4"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

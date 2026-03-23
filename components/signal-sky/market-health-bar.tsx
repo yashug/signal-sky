@@ -24,7 +24,7 @@ function getTrafficLight(percent: number) {
 function MarketCard({ market }: { market: ApiMarketHealth }) {
   const light = getTrafficLight(market.percentAbove)
   return (
-    <div className="flex items-center gap-2.5 rounded-md border border-border/40 bg-surface px-3 py-1.5 transition-colors hover:bg-surface-raised">
+    <div className="flex items-center gap-2.5 rounded-md border border-border/30 bg-card/80 backdrop-blur-sm ring-1 ring-border/15 px-3 py-1.5 transition-colors hover:bg-surface-raised">
       <div className={cn("size-2 rounded-full shrink-0 animate-pulse-dot", light.bg, light.glow)} />
       <div className="flex flex-col">
         <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground leading-none mb-0.5">
@@ -51,7 +51,7 @@ function CompactChip({ market }: { market: ApiMarketHealth }) {
   const light = getTrafficLight(market.percentAbove)
   const short = SHORT_LABELS[market.universe] ?? market.universe.slice(0, 4).toUpperCase()
   return (
-    <div className="flex items-center gap-1 rounded border border-border/30 bg-surface px-1.5 py-1">
+    <div className="flex items-center gap-1 rounded border border-border/30 bg-card/80 backdrop-blur-sm ring-1 ring-border/15 px-1.5 py-1">
       <div className={cn("size-1.5 rounded-full shrink-0", light.bg)} />
       <span className="font-mono text-[9px] font-semibold tracking-wide text-muted-foreground">{short}</span>
       <span className={cn("font-mono text-[11px] font-bold", light.color)}>

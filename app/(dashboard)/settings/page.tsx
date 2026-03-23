@@ -1269,7 +1269,7 @@ export default function SettingsPage() {
     <div className="flex flex-col px-4 sm:px-6 py-5 max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20">
           <SettingsIcon className="size-4 text-primary" />
         </div>
         <div>

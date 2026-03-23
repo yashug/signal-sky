@@ -29,7 +29,7 @@ function MarketSummaryCard({ market }: { market: ApiMarketHealth }) {
   const label = getHealthLabel(market.percentAbove)
 
   return (
-    <Card className="border-border/40 bg-surface hover:bg-surface-raised/50 transition-colors">
+    <Card className="border-border/40 bg-surface ring-1 ring-border/10 hover:bg-surface-raised/50 transition-colors">
       <CardContent className="pt-5 pb-4">
         <div className="flex items-start justify-between mb-3">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -73,7 +73,7 @@ export function MarketHealthClient({ data }: { data: ApiMarketHealthResponse }) 
   return (
     <div className="flex flex-col gap-6 px-4 sm:px-6 py-5">
       <div className="flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20">
           <HeartPulseIcon className="size-4 text-primary" />
         </div>
         <div>
@@ -89,7 +89,7 @@ export function MarketHealthClient({ data }: { data: ApiMarketHealthResponse }) 
           {indianMarkets.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.15em] bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent">
                   Indian Indices
                 </span>
                 <div className="flex-1 h-px bg-border/30" />
@@ -105,7 +105,7 @@ export function MarketHealthClient({ data }: { data: ApiMarketHealthResponse }) 
           {usMarkets.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.15em] bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent">
                   US Indices
                 </span>
                 <div className="flex-1 h-px bg-border/30" />

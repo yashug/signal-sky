@@ -19,3 +19,27 @@ export const THEME = {
     warming: "#6487d4",
   },
 } as const;
+
+// Light theme — matches app's :root CSS variables exactly
+export const LIGHT = {
+  background: "#f9f8f5",
+  card: "#fefefe",
+  surface: "#f2f2f7",
+  border: "#dcdce8",
+  foreground: "#1d2038",
+  muted: "#eaeaef",
+  mutedFg: "#6e7194",
+  primary: "#2a73cc",
+  bull: "#1d8f52",
+  bear: "#c44a1d",
+  simmering: "#8f6e0a",
+  cooling: "#4a68b0",
+  sidebar: "#f5f5f9",
+  sidebarBorder: "#e4e4ec",
+  heat: {
+    breakout: "#1d8f52",
+    boiling: "#c44a1d",
+    simmering: "#8f6e0a",
+    cooling: "#4a68b0",
+  },
+} as const;

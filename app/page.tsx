@@ -29,7 +29,7 @@ import { getLandingStats } from "@/lib/data/signals"
 function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20 text-primary">
         <ZapIcon className="size-4.5" />
       </div>
       <span className="text-[17px] font-semibold tracking-tight text-foreground">
@@ -41,7 +41,7 @@ function Logo() {
 
 function Navbar() {
   return (
-    <nav className="fixed top-2 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/70 backdrop-blur-xl navbar-glow-line">
       <div className="mx-auto max-w-6xl flex items-center justify-between px-6 h-16">
         <Logo />
         <div className="hidden md:flex items-center gap-8">
@@ -50,6 +50,7 @@ function Navbar() {
           <a href="#preview" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Preview</a>
           <a href="#pricing" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
           <Link href="/guide" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Guide</Link>
+          <Link href="/changelog" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Changelog</Link>
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />
@@ -61,7 +62,7 @@ function Navbar() {
           </Link>
           <Link
             href="/sign-in"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98]"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] glow-cta-primary"
           >
             Get Started
             <ArrowRightIcon className="size-3.5" />
@@ -74,7 +75,7 @@ function Navbar() {
 
 function HeroSection() {
   return (
-    <section className="relative pt-32 pb-24 overflow-hidden">
+    <section className="relative pt-36 pb-24 overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 bg-grid opacity-30" />
       <div
@@ -85,6 +86,10 @@ function HeroSection() {
         className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full opacity-10 blur-[100px]"
         style={{ background: "radial-gradient(circle, oklch(0.72 0.19 155), transparent 70%)" }}
       />
+      <div className="absolute top-24 -left-20 w-[350px] h-[350px] rounded-full opacity-[0.06] blur-[90px] pointer-events-none"
+        style={{ background: "radial-gradient(circle, oklch(0.68 0.22 25), transparent 70%)" }} />
+      <div className="absolute top-1/2 -right-10 w-[300px] h-[300px] rounded-full opacity-[0.07] blur-[80px] pointer-events-none"
+        style={{ background: "radial-gradient(circle, oklch(0.65 0.17 300), transparent 70%)" }} />
 
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="flex flex-col items-center text-center">
@@ -94,7 +99,7 @@ function HeroSection() {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-bull opacity-60" />
               <span className="relative inline-flex size-1.5 rounded-full bg-bull" />
             </span>
-            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-primary">
+            <span className="text-[11px] font-medium uppercase tracking-[0.12em] bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent">
               Live market scanning
             </span>
           </div>
@@ -131,7 +136,7 @@ function HeroSection() {
           <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
             <Link
               href="/sign-in"
-              className="group inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] glow-signal"
+              className="group inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] glow-cta-primary"
             >
               Start 7-day free trial
               <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -152,8 +157,8 @@ function HeroSection() {
               { label: "Years of Backtest Data", value: "20", suffix: "Y" },
             ].map((stat) => (
               <div key={stat.label} className="flex flex-col items-center gap-1">
-                <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
-                  {stat.value}<span className="text-primary">{stat.suffix}</span>
+                <span className="font-mono text-4xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
+                  {stat.value}{stat.suffix && <span className="bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent font-mono text-2xl font-bold ml-0.5">{stat.suffix}</span>}
                 </span>
                 <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
                   {stat.label}
@@ -299,57 +304,96 @@ function HeroSection() {
               <div className="h-12 bg-gradient-to-t from-card to-transparent" />
             </div>
           </div>
+
+          {/* Card A — "New Signal" top-right */}
+          <div className="absolute -top-5 right-4 lg:right-8 z-10 animate-float-a hidden sm:block">
+            <div className="flex items-center gap-2.5 rounded-xl border border-border/30 bg-card/90 backdrop-blur-md px-3 py-2.5 shadow-lg ring-1 ring-border/20">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-heat-breakout opacity-60" />
+                <span className="relative inline-flex size-2 rounded-full bg-heat-breakout" />
+              </span>
+              <div>
+                <p className="text-[10px] font-semibold text-foreground leading-none">New Signal</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5 font-mono">INDUSTOWER · Breakout</p>
+              </div>
+              <RocketIcon className="size-3.5 text-heat-breakout ml-1" />
+            </div>
+          </div>
+
+          {/* Card B — Telegram alert top-left */}
+          <div className="absolute -top-4 left-4 lg:left-6 z-10 animate-float-b hidden sm:block">
+            <div className="flex items-center gap-2 rounded-xl border border-border/30 bg-card/90 backdrop-blur-md px-3 py-2 shadow-lg ring-1 ring-border/20">
+              <SendIcon className="size-3 text-primary" />
+              <p className="text-[10px] font-medium text-muted-foreground">Alert sent via Telegram</p>
+            </div>
+          </div>
+
+          {/* Card C — Market Health bottom-left */}
+          <div className="absolute -bottom-5 left-4 lg:left-10 z-10 animate-float-c hidden sm:block">
+            <div className="flex items-center gap-2.5 rounded-xl border border-border/30 bg-card/90 backdrop-blur-md px-3 py-2.5 shadow-lg ring-1 ring-border/20">
+              <HeartPulseIcon className="size-3.5 text-bull" />
+              <div>
+                <p className="text-[9px] text-muted-foreground">Market Health</p>
+                <p className="text-[11px] font-mono font-bold text-bull leading-none">62% Bullish</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
   )
 }
 
-function FeaturesSection() {
-  const features = [
-    {
-      icon: CrosshairIcon,
-      title: "Signal Scanner",
-      description: "Real-time detection of Reset & Reclaim setups across all Nifty & US universes. Classified by distance to prior peak — from Warming to Breakout.",
-      accent: "from-primary to-[oklch(0.65_0.17_250)]",
-      isNew: false,
-    },
-    {
-      icon: HeartPulseIcon,
-      title: "Market Health",
-      description: "Track market breadth with % of stocks above EMA 220. Sector-level breakdown with traffic light system for regime detection.",
-      accent: "from-bull to-[oklch(0.78_0.16_80)]",
-      isNew: false,
-    },
-    {
-      icon: BookOpenIcon,
-      title: "Trade Journal",
-      description: "Log entries, exits, stop losses and targets. Track realized and unrealized P&L with win rate analytics.",
-      accent: "from-[oklch(0.78_0.16_80)] to-[oklch(0.68_0.22_25)]",
-      isNew: false,
-    },
-    {
-      icon: BarChart3Icon,
-      title: "Backtests",
-      description: "Validate the strategy on 20 years of data. Run full backtests per symbol with win rate, drawdown and Sharpe — then compare with live signals.",
-      accent: "from-[oklch(0.65_0.17_250)] to-primary",
-      isNew: false,
-    },
-    {
-      icon: BellIcon,
-      title: "Telegram & Email Alerts",
-      description: "Get notified the moment a new signal appears. Connect your Telegram for instant push alerts, or receive a daily digest email — never miss a setup again.",
-      accent: "from-heat-boiling to-heat-simmering",
-      isNew: true,
-    },
+function TickerSection() {
+  const items = [
+    { symbol: "RELIANCE.NS", heat: "breakout" },
+    { symbol: "AAPL",        heat: "boiling"  },
+    { symbol: "HDFCBANK.NS", heat: "simmering" },
+    { symbol: "NVDA",        heat: "breakout" },
+    { symbol: "TCS.NS",      heat: "boiling"  },
+    { symbol: "TSLA",        heat: "simmering" },
+    { symbol: "INFY.NS",     heat: "breakout" },
+    { symbol: "MSFT",        heat: "boiling"  },
+    { symbol: "KOTAKBANK.NS",heat: "simmering" },
+    { symbol: "GOOGL",       heat: "breakout" },
   ]
+  const heatConfig = {
+    breakout:  { label: "Breakout",  className: "bg-heat-breakout/10  text-heat-breakout  border-heat-breakout/20",  Icon: RocketIcon     },
+    boiling:   { label: "Boiling",   className: "bg-heat-boiling/10   text-heat-boiling   border-heat-boiling/20",   Icon: FlameIcon      },
+    simmering: { label: "Simmering", className: "bg-heat-simmering/10 text-heat-simmering border-heat-simmering/20", Icon: ThermometerIcon },
+  }
+  const doubled = [...items, ...items]
 
   return (
-    <section id="features" className="relative py-28">
+    <div className="relative py-4 overflow-hidden border-y border-border/15 bg-surface/30">
+      <div className="absolute left-0 top-0 bottom-0 w-20 z-10 pointer-events-none bg-gradient-to-r from-background to-transparent" />
+      <div className="absolute right-0 top-0 bottom-0 w-20 z-10 pointer-events-none bg-gradient-to-l from-background to-transparent" />
+      <div className="flex animate-ticker" style={{ width: "max-content" }}>
+        {doubled.map((item, i) => {
+          const cfg = heatConfig[item.heat as keyof typeof heatConfig]
+          return (
+            <div key={i} className="flex items-center gap-2 px-5 shrink-0">
+              <span className="font-mono text-[12px] font-semibold text-foreground">{item.symbol}</span>
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${cfg.className}`}>
+                <cfg.Icon className="size-2" />
+                {cfg.label}
+              </span>
+              <span className="text-border/40 text-[10px] select-none">·</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function FeaturesSection() {
+  return (
+    <section id="features" className="relative py-28 bg-gradient-to-b from-background via-surface/20 to-background">
       <div className="absolute inset-0 bg-grid opacity-15" />
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="text-center mb-16">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary mb-3 block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent mb-3 block">
             Built for traders
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em] text-foreground">
@@ -357,62 +401,158 @@ function FeaturesSection() {
           </h2>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          {features.map((feature) => (
-            <div
-              key={feature.title}
-              className={`group relative rounded-2xl border bg-card/60 p-7 transition-all hover:bg-card/80 ${
-                feature.isNew
-                  ? "border-heat-boiling/30 hover:border-heat-boiling/50 sm:col-span-2"
-                  : "border-border/25 hover:border-border/40"
-              }`}
-            >
-              {feature.isNew && (
-                <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full border border-heat-boiling/30 bg-heat-boiling/10 px-2.5 py-0.5">
-                  <SparklesIcon className="size-2.5 text-heat-boiling" />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-heat-boiling">New</span>
-                </div>
-              )}
-              <div
-                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{
-                  background: `radial-gradient(300px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), oklch(0.72 0.19 220 / 0.04), transparent 60%)`,
-                }}
-              />
-              <div className={`relative ${feature.isNew ? "flex flex-col sm:flex-row sm:items-center gap-6" : ""}`}>
-                <div className={`${feature.isNew ? "shrink-0" : ""}`}>
-                  <div className={`mb-5 inline-flex size-11 items-center justify-center rounded-xl bg-gradient-to-br ${feature.accent} p-[1px] ${feature.isNew ? "sm:mb-0" : ""}`}>
-                    <div className="flex size-full items-center justify-center rounded-[10px] bg-card">
-                      <feature.icon className="size-5 text-foreground" />
-                    </div>
-                  </div>
-                </div>
-                <div className={feature.isNew ? "flex-1" : ""}>
-                  <h3 className="text-[15px] font-semibold text-foreground mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-[13px] leading-relaxed text-muted-foreground">
-                    {feature.description}
-                  </p>
-                  {feature.isNew && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {[
-                        { icon: SendIcon, label: "Telegram push alerts" },
-                        { icon: BellIcon, label: "Daily & weekly email digest" },
-                        { icon: FlameIcon, label: "Filter by heat level" },
-                        { icon: ActivityIcon, label: "Per-universe filtering" },
-                      ].map((chip) => (
-                        <span key={chip.label} className="inline-flex items-center gap-1.5 rounded-full border border-border/30 bg-surface/60 px-3 py-1 text-[11px] text-muted-foreground">
-                          <chip.icon className="size-3 text-heat-boiling" />
-                          {chip.label}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+        {/* Bento grid — Row 1: Scanner (2col) + Market Health (1col) */}
+        <div className="grid gap-5 sm:grid-cols-3 mb-5">
+          {/* Signal Scanner — wide */}
+          <div className="rounded-2xl border border-border/25 bg-card/60 backdrop-blur-sm ring-1 ring-border/10 p-6 hover:border-border/40 hover:bg-card/80 transition-all overflow-hidden sm:col-span-2">
+            <div className="mb-4 inline-flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[oklch(0.65_0.17_250)] p-[1px]">
+              <div className="flex size-full items-center justify-center rounded-[10px] bg-card">
+                <CrosshairIcon className="size-5 text-foreground" />
               </div>
             </div>
-          ))}
+            <h3 className="text-[15px] font-semibold text-foreground mb-1">Signal Scanner</h3>
+            <p className="text-[13px] leading-relaxed text-muted-foreground mb-5">
+              Real-time detection of Reset &amp; Reclaim setups across all Nifty &amp; US universes. Classified by distance to prior peak.
+            </p>
+            {/* Mini signal rows */}
+            <div className="space-y-2">
+              {[
+                { symbol: "INDUSTOWER", heat: "breakout" as const, gap: "+2.5%" },
+                { symbol: "LT",         heat: "boiling" as const,  gap: "0.5%" },
+                { symbol: "POLYCAB",    heat: "simmering" as const, gap: "3.9%" },
+              ].map((row) => (
+                <div key={row.symbol} className={`flex items-center justify-between rounded-lg px-3 py-2 border ${
+                  row.heat === "breakout" ? "border-heat-breakout/15 bg-heat-breakout/[0.04]" :
+                  row.heat === "boiling"  ? "border-heat-boiling/15 bg-heat-boiling/[0.04]" :
+                  "border-heat-simmering/15 bg-heat-simmering/[0.04]"
+                }`}>
+                  <span className="font-mono text-[12px] font-semibold text-foreground">{row.symbol}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                      row.heat === "breakout" ? "bg-heat-breakout/10 text-heat-breakout border-heat-breakout/20" :
+                      row.heat === "boiling"  ? "bg-heat-boiling/10 text-heat-boiling border-heat-boiling/20" :
+                      "bg-heat-simmering/10 text-heat-simmering border-heat-simmering/20"
+                    }`}>
+                      {row.heat === "breakout" ? <RocketIcon className="size-2" /> : row.heat === "boiling" ? <FlameIcon className="size-2" /> : <ThermometerIcon className="size-2" />}
+                      {row.heat}
+                    </span>
+                    <span className={`font-mono text-[11px] font-semibold ${row.heat === "breakout" ? "text-heat-breakout" : row.heat === "boiling" ? "text-heat-boiling" : "text-heat-simmering"}`}>{row.gap}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Market Health */}
+          <div className="rounded-2xl border border-border/25 bg-card/60 backdrop-blur-sm ring-1 ring-border/10 p-6 hover:border-border/40 hover:bg-card/80 transition-all overflow-hidden">
+            <div className="mb-4 inline-flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-bull to-[oklch(0.78_0.16_80)] p-[1px]">
+              <div className="flex size-full items-center justify-center rounded-[10px] bg-card">
+                <HeartPulseIcon className="size-5 text-foreground" />
+              </div>
+            </div>
+            <h3 className="text-[15px] font-semibold text-foreground mb-1">Market Health</h3>
+            <p className="text-[13px] leading-relaxed text-muted-foreground mb-5">
+              Track breadth with % of stocks above EMA 220.
+            </p>
+            {/* Mini progress bars */}
+            <div className="space-y-3">
+              {[
+                { label: "NIFTY 200", pct: 62, color: "bg-bull" },
+                { label: "S&P 100",   pct: 54, color: "bg-heat-simmering" },
+                { label: "Tech",      pct: 78, color: "bg-primary" },
+              ].map((m) => (
+                <div key={m.label}>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px] text-muted-foreground">{m.label}</span>
+                    <span className="font-mono text-[11px] font-semibold text-foreground">{m.pct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full rounded-full ${m.color}`} style={{ width: `${m.pct}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Backtests + Journal + Alerts */}
+        <div className="grid gap-5 sm:grid-cols-3">
+          {/* Backtests */}
+          <div className="rounded-2xl border border-border/25 bg-card/60 backdrop-blur-sm ring-1 ring-border/10 p-6 hover:border-border/40 hover:bg-card/80 transition-all overflow-hidden">
+            <div className="mb-4 inline-flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-[oklch(0.65_0.17_250)] to-primary p-[1px]">
+              <div className="flex size-full items-center justify-center rounded-[10px] bg-card">
+                <BarChart3Icon className="size-5 text-foreground" />
+              </div>
+            </div>
+            <h3 className="text-[15px] font-semibold text-foreground mb-1">Backtests</h3>
+            <p className="text-[13px] leading-relaxed text-muted-foreground mb-4">
+              Validate on 20 years of data. Win rate, drawdown, and Sharpe — per symbol.
+            </p>
+            {/* Mini bar chart */}
+            <div className="flex items-end gap-1 h-10">
+              {[60, 40, 75, 55, 80, 45, 70, 65, 50, 85].map((h, i) => (
+                <div key={i} className={`flex-1 rounded-sm ${i % 3 === 0 ? "bg-primary/60" : "bg-bull/50"}`} style={{ height: `${h}%` }} />
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">Win rate</span>
+              <span className="font-mono text-[13px] font-bold text-primary">50%</span>
+            </div>
+          </div>
+
+          {/* Journal */}
+          <div className="rounded-2xl border border-border/25 bg-card/60 backdrop-blur-sm ring-1 ring-border/10 p-6 hover:border-border/40 hover:bg-card/80 transition-all overflow-hidden">
+            <div className="mb-4 inline-flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-[oklch(0.78_0.16_80)] to-[oklch(0.68_0.22_25)] p-[1px]">
+              <div className="flex size-full items-center justify-center rounded-[10px] bg-card">
+                <BookOpenIcon className="size-5 text-foreground" />
+              </div>
+            </div>
+            <h3 className="text-[15px] font-semibold text-foreground mb-1">Trade Journal</h3>
+            <p className="text-[13px] leading-relaxed text-muted-foreground mb-4">
+              Log entries, exits, stops. Track P&amp;L and win rate analytics.
+            </p>
+            <div className="space-y-2">
+              {[
+                { sym: "RELIANCE", pnl: "+₹4,200", win: true },
+                { sym: "AAPL",     pnl: "+$312",   win: true },
+                { sym: "LT",       pnl: "-₹1,100", win: false },
+              ].map((t) => (
+                <div key={t.sym} className="flex items-center justify-between rounded-lg bg-surface/60 px-3 py-1.5">
+                  <span className="font-mono text-[11px] text-foreground">{t.sym}</span>
+                  <span className={`font-mono text-[11px] font-semibold ${t.win ? "text-bull" : "text-bear"}`}>{t.pnl}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Alerts */}
+          <div className="relative rounded-2xl border border-heat-boiling/25 bg-card/60 backdrop-blur-sm ring-1 ring-border/10 p-6 hover:border-heat-boiling/40 hover:bg-card/80 transition-all overflow-hidden">
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full border border-heat-boiling/30 bg-heat-boiling/10 px-2.5 py-0.5">
+              <SparklesIcon className="size-2.5 text-heat-boiling" />
+              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-heat-boiling">New</span>
+            </div>
+            <div className="mb-4 inline-flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-heat-boiling to-heat-simmering p-[1px]">
+              <div className="flex size-full items-center justify-center rounded-[10px] bg-card">
+                <BellIcon className="size-5 text-foreground" />
+              </div>
+            </div>
+            <h3 className="text-[15px] font-semibold text-foreground mb-1">Alerts</h3>
+            <p className="text-[13px] leading-relaxed text-muted-foreground mb-4">
+              Telegram &amp; email the moment a signal fires. Never miss a setup.
+            </p>
+            {/* Telegram message bubble */}
+            <div className="rounded-xl bg-primary/8 border border-primary/15 p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <SendIcon className="size-3 text-primary" />
+                <span className="text-[10px] font-semibold text-primary">@signalskyin_bot</span>
+              </div>
+              <p className="text-[10px] text-foreground leading-relaxed">
+                🚀 <strong>INDUSTOWER</strong> — Breakout<br />
+                Price: ₹437 · Peak: ₹426<br />
+                <span className="text-heat-breakout font-semibold">Above prior ATH +2.5%</span>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -499,10 +639,14 @@ function ExplainerVideoSection() {
 
 function PreviewSection() {
   return (
-    <section id="preview" className="relative py-28 overflow-hidden">
+    <section id="preview" className="relative py-28 overflow-hidden bg-gradient-to-b from-surface/20 via-background to-surface/10">
       <div
         className="absolute top-1/2 left-0 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-10 blur-[100px]"
         style={{ background: "radial-gradient(circle, oklch(0.72 0.19 155), transparent 70%)" }}
+      />
+      <div
+        className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full opacity-8 blur-[100px] pointer-events-none"
+        style={{ background: "radial-gradient(circle, oklch(0.72 0.19 220), transparent 70%)" }}
       />
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="grid gap-12 lg:grid-cols-2 items-center">
@@ -544,7 +688,7 @@ function PreviewSection() {
               ].map((item) => (
                 <div key={item.step} className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl border bg-surface ${"isNew" in item && item.isNew ? "border-heat-boiling/40 text-heat-boiling" : "border-border/30 text-primary"}`}>
+                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl border bg-surface ${"isNew" in item && item.isNew ? "border-heat-boiling/40 text-heat-boiling" : "border-primary/30 text-primary shadow-[0_0_12px_oklch(0.55_0.22_220/0.1)]"}`}>
                       <item.icon className="size-4.5" />
                     </div>
                     {item.step !== "04" && (
@@ -553,7 +697,7 @@ function PreviewSection() {
                   </div>
                   <div className="pb-6">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] font-semibold text-primary tracking-wider">
+                      <span className="font-mono text-[10px] font-semibold tracking-wider bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent">
                         STEP {item.step}
                       </span>
                       {"isNew" in item && item.isNew && (
@@ -653,8 +797,13 @@ function PreviewSection() {
 
 function TrustSection() {
   return (
-    <section className="relative py-20 border-y border-border/15">
+    <section className="relative py-20 border-y border-border/15 bg-surface/20">
       <div className="mx-auto max-w-6xl px-6">
+        <div className="text-center mb-10">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent">
+            Why traders trust us
+          </span>
+        </div>
         <div className="grid gap-6 sm:grid-cols-3">
           {[
             {
@@ -673,7 +822,7 @@ function TrustSection() {
               description: "Reset & Reclaim is not a black box. Every signal comes with 20 years of historical backtest data to validate the setup.",
             },
           ].map((item) => (
-            <div key={item.title} className="flex gap-4 p-5 rounded-xl">
+            <div key={item.title} className="flex gap-4 p-5 rounded-2xl border border-border/15 bg-card/40 backdrop-blur-sm ring-1 ring-border/10 hover:bg-card/60 transition-all">
               <item.icon className="size-5 text-primary shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-[14px] font-semibold text-foreground mb-1">{item.title}</h3>
@@ -689,7 +838,7 @@ function TrustSection() {
 
 function StrategySection() {
   return (
-    <section id="strategy" className="relative py-28 overflow-hidden">
+    <section id="strategy" className="relative py-28 overflow-hidden bg-gradient-to-b from-surface/10 via-background to-surface/10">
       {/* Background effects */}
       <div
         className="absolute top-1/3 right-0 w-[500px] h-[500px] rounded-full opacity-10 blur-[120px]"
@@ -699,11 +848,15 @@ function StrategySection() {
         className="absolute bottom-0 left-1/4 w-[400px] h-[300px] rounded-full opacity-8 blur-[100px]"
         style={{ background: "radial-gradient(circle, oklch(0.72 0.19 155), transparent 70%)" }}
       />
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] rounded-full opacity-[0.06] blur-[100px] pointer-events-none"
+        style={{ background: "radial-gradient(circle, oklch(0.72 0.19 220), transparent 70%)" }}
+      />
 
       <div className="relative mx-auto max-w-6xl px-6">
         {/* Section header */}
         <div className="text-center mb-16">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary mb-3 block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent mb-3 block">
             The strategy
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em] text-foreground">
@@ -896,7 +1049,7 @@ function StrategySection() {
 
         {/* Three phases explained */}
         <div className="grid gap-5 sm:grid-cols-3 mb-14">
-          <div className="rounded-2xl border border-bull/15 bg-bull/[0.03] p-6">
+          <div className="rounded-2xl border border-bull/15 bg-bull/[0.03] p-6 ring-1 ring-bull/10">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex size-9 items-center justify-center rounded-lg border border-bull/15 bg-background">
                 <TrendingUpIcon className="size-4 text-bull" />
@@ -913,7 +1066,7 @@ function StrategySection() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-heat-boiling/15 bg-heat-boiling/[0.03] p-6">
+          <div className="rounded-2xl border border-heat-boiling/15 bg-heat-boiling/[0.03] p-6 ring-1 ring-heat-boiling/10">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex size-9 items-center justify-center rounded-lg border border-heat-boiling/15 bg-background">
                 <ActivityIcon className="size-4 text-heat-boiling" />
@@ -930,7 +1083,7 @@ function StrategySection() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-6">
+          <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-6 ring-1 ring-primary/10">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex size-9 items-center justify-center rounded-lg border border-primary/15 bg-background">
                 <CrosshairIcon className="size-4 text-primary" />
@@ -1141,15 +1294,19 @@ function StrategySection() {
 
 function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
   return (
-    <section id="pricing" className="relative py-28">
+    <section id="pricing" className="relative py-28 bg-gradient-to-b from-background to-surface/20">
       <div className="absolute inset-0 bg-grid opacity-10" />
       <div
         className="absolute top-0 right-1/4 w-[400px] h-[400px] rounded-full opacity-8 blur-[100px]"
         style={{ background: "radial-gradient(circle, oklch(0.65 0.17 300), transparent 70%)" }}
       />
+      <div
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full opacity-[0.05] blur-[100px] pointer-events-none"
+        style={{ background: "radial-gradient(ellipse, oklch(0.72 0.19 220), transparent 70%)" }}
+      />
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="text-center mb-4">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary mb-3 block">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] bg-gradient-to-r from-primary to-[oklch(0.65_0.17_300)] bg-clip-text text-transparent mb-3 block">
             Early Adopter Pricing
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em] text-foreground">
@@ -1200,7 +1357,9 @@ function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
           </div>
 
           {/* Pro Yearly */}
-          <div className="relative rounded-2xl border border-primary/30 bg-card/80 p-6 ring-1 ring-primary/10 flex flex-col">
+          <div className="relative rounded-2xl border border-primary/30 bg-card/80 p-6 ring-1 ring-primary/10 flex flex-col pricing-yearly-glow sm:scale-[1.02]">
+            {/* Gradient top highlight */}
+            <div className="absolute top-0 left-0 right-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
               <span className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
                 <SparklesIcon className="size-2.5" />
@@ -1236,7 +1395,7 @@ function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
             </ul>
             <Link
               href="/sign-in"
-              className="flex items-center justify-center w-full rounded-xl py-2.5 text-[13px] font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all glow-signal"
+              className="flex items-center justify-center w-full rounded-xl py-2.5 text-[13px] font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all glow-cta-primary"
             >
               <SparklesIcon className="size-3 mr-1.5" />
               Start Free Trial
@@ -1262,7 +1421,7 @@ function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
                 <span className="rounded-full bg-heat-boiling/10 px-2 py-0.5 text-[9px] font-bold text-heat-boiling">67% OFF</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="font-mono text-3xl font-bold tracking-tight text-heat-simmering">&#8377;4,999</span>
+                <span className="font-mono text-3xl font-bold tracking-tight bg-gradient-to-r from-heat-simmering to-heat-boiling bg-clip-text text-transparent">&#8377;4,999</span>
                 <span className="text-sm text-muted-foreground">one-time</span>
               </div>
             </div>
@@ -1292,25 +1451,38 @@ function PricingSection({ deal }: { deal: LifetimeDealInfo }) {
 
 function CtaSection() {
   return (
-    <section className="relative py-28">
+    <section className="relative py-28 overflow-hidden">
+      {/* Large center bloom */}
       <div
-        className="absolute inset-0 opacity-10"
-        style={{ background: "radial-gradient(ellipse at center, oklch(0.72 0.19 220 / 0.4), transparent 60%)" }}
+        className="absolute inset-0 opacity-20"
+        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, oklch(0.72 0.19 220 / 0.5), transparent 70%)" }}
+      />
+      {/* Secondary bull bloom */}
+      <div
+        className="absolute bottom-0 left-1/4 w-[400px] h-[300px] rounded-full opacity-[0.08] blur-[80px] pointer-events-none"
+        style={{ background: "radial-gradient(circle, oklch(0.72 0.19 155), transparent 70%)" }}
       />
       <div className="relative mx-auto max-w-6xl px-6 text-center">
-        <div className="inline-flex items-center gap-2 mb-6">
-          <ZapIcon className="size-5 text-primary" />
+        {/* Animated badge */}
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-4 py-2 mb-8">
+          <ZapIcon className="size-4 text-primary animate-pulse" />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
+            Start for free — no card required
+          </span>
         </div>
-        <h2 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em] text-foreground max-w-xl mx-auto">
-          Stop missing breakouts.<br />Start scanning today.
+        <h2 className="text-3xl sm:text-[2.75rem] font-bold tracking-[-0.03em] text-foreground max-w-xl mx-auto leading-[1.1]">
+          Stop missing breakouts.<br />
+          <span className="bg-gradient-to-r from-primary via-[oklch(0.78_0.16_200)] to-bull bg-clip-text text-transparent">
+            Start scanning today.
+          </span>
         </h2>
         <p className="text-sm text-muted-foreground mt-4 max-w-md mx-auto">
-          Join traders using SignalSky to find Reset & Reclaim setups across India and US markets.
+          Join traders using SignalSky to find Reset &amp; Reclaim setups across India and US markets.
         </p>
-        <div className="mt-8">
+        <div className="mt-10">
           <Link
             href="/sign-in"
-            className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] glow-signal"
+            className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] glow-cta-primary"
           >
             Start your free trial
             <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -1326,11 +1498,16 @@ function Footer() {
     <footer className="border-t border-border/15 py-10">
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <ZapIcon className="size-3.5" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <ZapIcon className="size-3.5" />
+              </div>
+              <span className="text-sm font-semibold tracking-tight text-foreground">SignalSky</span>
             </div>
-            <span className="text-sm font-semibold tracking-tight text-foreground">SignalSky</span>
+            <span className="text-[10px] bg-gradient-to-r from-primary to-bull bg-clip-text text-transparent font-medium pl-9">
+              Scan smarter. Trade better.
+            </span>
           </div>
           <div className="flex items-center gap-5 flex-wrap justify-center">
             <Link href="/pricing" className="text-[12px] text-muted-foreground hover:text-foreground transition-colors">
@@ -1461,7 +1638,7 @@ export default async function LandingPage() {
       />
       <Navbar />
       {/* Live stats bar */}
-      <div className="pt-24">
+      <div className="pt-16">
         <div className="border-b border-border/15 bg-surface/40 backdrop-blur-sm py-2.5 px-6">
           <div className="mx-auto max-w-6xl flex items-center justify-center gap-6 flex-wrap">
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -1482,6 +1659,7 @@ export default async function LandingPage() {
         </div>
       </div>
       <HeroSection />
+      <TickerSection />
       <FeaturesSection />
       <AppHighlightsSection />
       <TrustSection />

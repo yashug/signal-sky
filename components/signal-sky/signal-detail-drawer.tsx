@@ -75,7 +75,7 @@ function MetricBlock({ label, value, sub, icon: Icon, accent }: {
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/50", accent)}>
+      <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/8 ring-1 ring-primary/15", accent)}>
         <Icon className="size-3.5" />
       </div>
       <div className="flex flex-col">

@@ -42,6 +42,24 @@ Here's where it gets exciting. The stock recovers. It crosses back above the EMA
 Why does this work? Because big institutions — hedge funds, mutual funds — missed the first run up. Now they're loading in right here, before the breakout. When institutions buy, stocks move.
 
 SignalSky scans over a thousand stocks across India and the US every single morning to find exactly these setups — before they break out. Start your free trial at signalsky dot app.`,
+
+  "demo": `This is SignalSky. Professional signal scanning for India and US markets. Built around one strategy that has proven itself for decades: Reset and Reclaim.
+
+Every morning, the scanner shows exactly where each stock stands. Filter by universe — Nifty 50, Bank Nifty, S&P 100. Add the Slingshot filter to see only stocks that bounced back to their EMA within thirty days. Four heat levels: Breakout, Boiling, Simmering, Warming. Color coded. Ranked. The entire Indian and US market — in one table.
+
+Click any row. The chart overlays the EMA two-twenty, your pre-set prior peak, and marks exactly when the stock broke below and reclaimed above it. The position calculator handles your risk — type in one-and-a-half percent, get your stop loss, target, and share count instantly.
+
+Before putting real money in, check the history. RELIANCE shows a seventy-two percent win rate, Sharpe of one-point-eight, over twenty years of daily data. Switch to the slingshot thirty-day variant — a tighter filter for higher-conviction entries.
+
+The Performance page aggregates across all symbols. Two hundred and thirty-four backtests. Sixty-eight percent average win rate on the baseline. Switch to slingshot thirty-day — it climbs to seventy-six. The tighter the window, the sharper the edge.
+
+Check market health before you trade. Seventy-six percent of Nifty 50 is above EMA two-twenty right now. Conditions are bullish. If this drops below forty, you wait.
+
+Log every trade directly from the scanner. India in rupees, US in dollars — tracked separately. Your actual edge, measured precisely, trade by trade.
+
+Connect Telegram in thirty seconds. Set your heat filter — Breakout only, or all levels. The bot fires the moment a new signal matches. No more morning chart checking.
+
+Start your seven-day free trial. No card required. signalsky dot app.`,
 } as const;
 
 export type VoiceoverVariant = keyof typeof VOICEOVER_SCRIPTS;
@@ -51,4 +69,5 @@ export const AUDIO_FILES: Record<VoiceoverVariant, string> = {
   "60s": "audio/vo-60s.mp3",
   "90s": "audio/vo-90s.mp3",
   "explainer": "audio/vo-explainer.mp3",
+  "demo": "audio/vo-demo.mp3",
 };

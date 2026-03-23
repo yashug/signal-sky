@@ -97,7 +97,7 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
   return (
     <div className="flex flex-col gap-6 px-4 sm:px-6 py-5">
       <div className="flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20">
           <StarIcon className="size-4 text-primary" />
         </div>
         <div>
@@ -126,7 +126,7 @@ export function WatchlistClient({ initialItems }: { initialItems: WatchlistItemD
             <div className="min-w-[700px]">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/30 hover:bg-transparent">
+                <TableRow className="border-b border-border/30 bg-surface/40 hover:bg-surface/40">
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-4 w-10" />
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Symbol</TableHead>
                   <TableHead className="h-9 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">Price</TableHead>

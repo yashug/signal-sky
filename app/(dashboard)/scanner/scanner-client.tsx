@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useWatchlistMap, useWatchlistMutations } from "@/hooks/use-watchlist"
 import {
   useReactTable,
@@ -74,25 +74,25 @@ const HEAT_CONFIG = {
     label: "Breakout",
     tooltip: "Price crossed above prior peak (0–5% above)",
     icon: RocketIcon,
-    className: "bg-heat-breakout/10 text-heat-breakout border-heat-breakout/20",
+    className: "bg-heat-breakout/15 text-heat-breakout border-heat-breakout/25",
   },
   boiling: {
     label: "Boiling",
     tooltip: "Within 2% of prior peak — breakout imminent",
     icon: FlameIcon,
-    className: "bg-heat-boiling/10 text-heat-boiling border-heat-boiling/20",
+    className: "bg-heat-boiling/15 text-heat-boiling border-heat-boiling/25",
   },
   simmering: {
     label: "Simmering",
     tooltip: "2–5% from prior peak — building momentum",
     icon: ThermometerIcon,
-    className: "bg-heat-simmering/10 text-heat-simmering border-heat-simmering/20",
+    className: "bg-heat-simmering/15 text-heat-simmering border-heat-simmering/25",
   },
   cooling: {
     label: "Warming",
     tooltip: "5–15% from prior peak — on the radar",
     icon: TrendingUpIcon,
-    className: "bg-heat-cooling/10 text-heat-cooling border-heat-cooling/20",
+    className: "bg-heat-cooling/15 text-heat-cooling border-heat-cooling/25",
   },
 } as const
 
@@ -326,6 +326,7 @@ export function ScannerClient({
   backtestStats?: Record<string, BacktestStatEntry>
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
 
   const trialInfo = useMemo(() => {
@@ -343,36 +344,33 @@ export function ScannerClient({
 
   const validHeats = ["all", "breakout", "boiling", "simmering", "cooling"]
 
-  const [universe, setUniverse] = useState(initialUniverse)
+  // Derive filter state directly from URL — reactive to back/forward navigation
+  const rawUniverse = searchParams.get("universe")
+  const universe = rawUniverse && rawUniverse !== "nifty50" ? rawUniverse : initialUniverse
+  const rawHeat = searchParams.get("heat")
+  const heatFilter = rawHeat && validHeats.includes(rawHeat) ? rawHeat : "all"
+  const rawSlingshot = searchParams.get("slingshot")
+  const slingshotVal = rawSlingshot ? parseInt(rawSlingshot) : null
+  const slingshotDays = slingshotVal && [30, 60, 90].includes(slingshotVal) ? slingshotVal : null
+
   const [sorting, setSorting] = useState<SortingState>([
     { id: "distancePct", desc: false },
   ])
   const [globalFilter, setGlobalFilter] = useState("")
-  const [heatFilter, setHeatFilter] = useState<string>(() => {
-    if (typeof window === "undefined") return "all"
-    const h = new URLSearchParams(window.location.search).get("heat")
-    return h && validHeats.includes(h) ? h : "all"
-  })
-  const [slingshotDays, setSlingshotDays] = useState<number | null>(null)
-  useEffect(() => {
-    const s = new URLSearchParams(window.location.search).get("slingshot")
-    const v = s ? parseInt(s) : null
-    if (v && [30, 60, 90].includes(v)) setSlingshotDays(v)
-  }, [])
 
   const watchlistMap = useWatchlistMap()
   const { add: addToWatchlist, remove: removeFromWatchlist } = useWatchlistMutations()
 
   const updateURL = useCallback(
-    (newUniverse: string, heat: string, slingshot: number | null = slingshotDays) => {
+    (newUniverse: string, heat: string, slingshot: number | null) => {
       const params = new URLSearchParams()
       if (newUniverse !== "nifty50") params.set("universe", newUniverse)
       if (heat !== "all") params.set("heat", heat)
       if (slingshot !== null) params.set("slingshot", String(slingshot))
       const qs = params.toString()
-      window.history.replaceState(null, "", `/scanner${qs ? `?${qs}` : ""}`)
+      router.push(`/scanner${qs ? `?${qs}` : ""}`)
     },
-    [slingshotDays]
+    [router]
   )
 
   const universeSignals = useMemo(() => {
@@ -449,7 +447,7 @@ export function ScannerClient({
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b border-border/30">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20">
             <CrosshairIcon className="size-4 text-primary" />
           </div>
           <div>
@@ -461,7 +459,7 @@ export function ScannerClient({
         </div>
 
         <div className="flex items-center gap-3">
-          <Select value={universe as UniverseGroupKey} onValueChange={(v) => { if (v) { setUniverse(v); updateURL(v, heatFilter) } }}>
+          <Select value={universe as UniverseGroupKey} onValueChange={(v) => { if (v) updateURL(v, heatFilter, slingshotDays) }}>
             <SelectTrigger size="sm" className="h-8 w-[160px] sm:w-[180px] bg-surface border-border/40 text-xs">
               <GlobeIcon className="size-3 text-muted-foreground mr-1" />
               <SelectValue />
@@ -562,7 +560,7 @@ export function ScannerClient({
 
       {/* Heat filter tabs */}
       <div className="flex items-center gap-4 px-4 sm:px-6 py-3 border-b border-border/20 bg-surface/30 overflow-x-auto">
-        <Tabs value={heatFilter} onValueChange={(v: string) => { setHeatFilter(v); updateURL(universe, v) }}>
+        <Tabs value={heatFilter} onValueChange={(v: string) => updateURL(universe, v, slingshotDays)}>
           <TabsList variant="line" className="h-8 gap-0.5">
             <TabsTrigger value="all" className="text-xs px-3 h-7 gap-1.5">
               <LayersIcon className="size-3" />
@@ -628,7 +626,7 @@ export function ScannerClient({
                   ]).map(({ value, label }) => (
                     <button
                       key={String(value)}
-                      onClick={() => { setSlingshotDays(value); updateURL(universe, heatFilter, value) }}
+                      onClick={() => updateURL(universe, heatFilter, value)}
                       className={cn(
                         "h-5 px-2 rounded text-[10px] font-semibold transition-all",
                         slingshotDays === value
@@ -669,7 +667,7 @@ export function ScannerClient({
             Stocks that bounced back above EMA220 within the last {slingshotDays} days — watching for the ATH breakout.
           </p>
           <button
-            onClick={() => { setSlingshotDays(null); updateURL(universe, heatFilter, null) }}
+            onClick={() => updateURL(universe, heatFilter, null)}
             className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
           >
             <XIcon className="size-3" />
@@ -684,7 +682,7 @@ export function ScannerClient({
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-b border-border/30 hover:bg-transparent">
+                <TableRow key={headerGroup.id} className="border-b border-border/30 bg-surface/40 hover:bg-surface/40">
                   <TableHead className="h-9 w-10 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" />
                   {headerGroup.headers.map((header) => (
                     <TableHead
