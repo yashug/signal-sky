@@ -4,6 +4,8 @@ import { THEME } from "../config/theme";
 import { SignalSkyLogo } from "../components/SignalSkyLogo";
 import { PricingBadge } from "../components/PricingBadge";
 import { FloatingTicker } from "../components/FloatingTicker";
+import { GlowOrb } from "../components/GlowOrb";
+import { CountUp } from "../components/CountUp";
 
 interface Scene8Props {
   isVertical?: boolean;
@@ -52,9 +54,22 @@ export const Scene8CTA: React.FC<Scene8Props> = ({ isVertical = false }) => {
         }}
       />
 
+      {/* Pulsing glow orb behind logo */}
+      <GlowOrb
+        color={THEME.primary}
+        size={500}
+        x="50%"
+        y={isVertical ? "20%" : "25%"}
+        breatheSpeed={1.1}
+        baseOpacity={0.4}
+        pulseAmount={0.18}
+      />
+
       {/* Logo */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           opacity: logoProgress,
           transform: `scale(${0.8 + logoProgress * 0.2})`,
         }}
@@ -65,9 +80,11 @@ export const Scene8CTA: React.FC<Scene8Props> = ({ isVertical = false }) => {
       {/* Headline */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           textAlign: "center",
           opacity: headlineProgress,
-          transform: `translateY(${(1 - headlineProgress) * 20}px)`,
+          transform: `translateY(${(1 - headlineProgress) * 60}px)`,
         }}
       >
         <div
@@ -89,6 +106,8 @@ export const Scene8CTA: React.FC<Scene8Props> = ({ isVertical = false }) => {
       {/* Trial CTA */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           opacity: trialProgress,
           transform: `scale(${0.9 + trialProgress * 0.1})`,
           backgroundColor: THEME.primary,
@@ -102,7 +121,17 @@ export const Scene8CTA: React.FC<Scene8Props> = ({ isVertical = false }) => {
           boxShadow: `0 8px 40px ${THEME.primary}40`,
         }}
       >
-        Start 7-day free trial →
+        Start{" "}
+        <CountUp
+          from={0}
+          to={7}
+          startFrame={30}
+          durationFrames={45}
+          suffix="-day"
+          fontSize={isVertical ? 20 : 24}
+          color="#fff"
+        />{" "}
+        free trial →
         <div style={{ fontSize: 13, fontWeight: 400, opacity: 0.85, marginTop: 4 }}>
           No credit card required · Cancel anytime
         </div>
@@ -111,6 +140,8 @@ export const Scene8CTA: React.FC<Scene8Props> = ({ isVertical = false }) => {
       {/* URL */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           opacity: urlProgress,
           transform: `translateY(${(1 - urlProgress) * 10}px)`,
           fontFamily: "monospace",
@@ -126,6 +157,8 @@ export const Scene8CTA: React.FC<Scene8Props> = ({ isVertical = false }) => {
       {/* Pricing badges */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           display: "flex",
           gap: 16,
           flexWrap: "wrap",

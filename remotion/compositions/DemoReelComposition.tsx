@@ -1,6 +1,10 @@
 import React from "react";
 import { interpolate, spring, Sequence, useCurrentFrame, useVideoConfig } from "remotion";
 import { LIGHT } from "../config/theme";
+import { BackgroundMusic } from "../components/BackgroundMusic";
+import { AnimatedBackground } from "../components/AnimatedBackground";
+import { BlurReveal } from "../components/BlurReveal";
+import { GlowOrb } from "../components/GlowOrb";
 
 // ─────────────────────────────────────────────────
 //  Reel: 1080×1920 portrait, 40s = 1200 frames @ 30fps
@@ -107,48 +111,34 @@ const R1Intro: React.FC = () => {
   const logoScale   = spring({ frame, fps, config: { stiffness: 200, damping: 26 } });
   const logoOpacity = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" });
 
-  const tagProgress = spring({ frame: frame - 20, fps, config: { stiffness: 180, damping: 24 } });
   const subProgress = spring({ frame: frame - 45, fps, config: { stiffness: 180, damping: 24 } });
 
-  const TICKERS = ["RELIANCE", "TCS", "NVDA", "AAPL", "HDFC", "INFY", "WIPRO", "MSFT"];
-
   return (
-    <ReelFrame>
-      {/* Floating tickers */}
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", opacity: 0.06 }}>
-        {TICKERS.map((t, i) => (
-          <div
-            key={t}
-            style={{
-              position: "absolute",
-              left: `${(i * 28 + 5) % 85}%`,
-              top: `${(i * 19 + 8) % 85}%`,
-              fontSize: 18,
-              fontFamily: "monospace",
-              fontWeight: 700,
-              color: FG,
-              transform: `rotate(${(i % 3 - 1) * 8}deg)`,
-            }}
-          >
-            {t}
-          </div>
-        ))}
-      </div>
+    <ReelFrame bg="transparent">
+      {/* Animated gradient background */}
+      <AnimatedBackground
+        baseColor={BG}
+        accentColor={PRI}
+        secondaryColor={BULL}
+        particleCount={6}
+        speed={0.8}
+      />
 
-      {/* Subtle grid */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `linear-gradient(${BRD}60 1px, transparent 1px), linear-gradient(90deg, ${BRD}60 1px, transparent 1px)`,
-          backgroundSize: "64px 64px",
-          opacity: 0.25,
-        }}
+      {/* Glow orb behind logo */}
+      <GlowOrb
+        color={PRI}
+        size={500}
+        x="50%"
+        y="40%"
+        breatheSpeed={0.9}
+        baseOpacity={0.35}
+        pulseAmount={0.12}
       />
 
       {/* Center content */}
       <div
         style={{
+          position: "relative",
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -156,6 +146,7 @@ const R1Intro: React.FC = () => {
           justifyContent: "center",
           padding: "0 60px",
           gap: 0,
+          zIndex: 1,
         }}
       >
         {/* Logo */}
@@ -178,7 +169,7 @@ const R1Intro: React.FC = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: `0 12px 40px ${PRI}35`,
+              boxShadow: `0 12px 40px ${PRI}55`,
             }}
           >
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -202,36 +193,32 @@ const R1Intro: React.FC = () => {
           }}
         />
 
-        {/* Tagline */}
-        <div
-          style={{
-            fontSize: 40,
-            fontWeight: 800,
-            color: FG,
-            letterSpacing: "-0.04em",
-            textAlign: "center",
-            lineHeight: 1.2,
-            opacity: tagProgress,
-            transform: `translateY(${(1 - tagProgress) * 20}px)`,
-            marginBottom: 20,
-          }}
-        >
-          Smart signals.{"\n"}Every morning.
-        </div>
+        {/* Tagline — BlurReveal */}
+        <BlurReveal
+          text="Smart signals. Every morning."
+          startFrame={20}
+          fontSize={40}
+          color={FG}
+          fontWeight={800}
+          align="center"
+          staggerFrames={5}
+          letterSpacing="-0.04em"
+          lineHeight={1.2}
+        />
 
-        <div
-          style={{
-            fontSize: 20,
-            color: MFG,
-            textAlign: "center",
-            opacity: subProgress,
-            transform: `translateY(${(1 - subProgress) * 12}px)`,
-            letterSpacing: "0.01em",
-            lineHeight: 1.6,
-          }}
-        >
-          Reset & Reclaim strategy for{"\n"}NSE · NASDAQ · S&P 500
-        </div>
+        <div style={{ height: 20 }} />
+
+        <BlurReveal
+          text="Reset & Reclaim strategy for NSE · NASDAQ · S&P 500"
+          startFrame={45}
+          fontSize={20}
+          color={MFG}
+          fontWeight={400}
+          align="center"
+          staggerFrames={3}
+          letterSpacing="0.01em"
+          lineHeight={1.6}
+        />
 
         {/* Bottom badges */}
         <div
@@ -893,8 +880,20 @@ const R6CTA: React.FC = () => {
 
   return (
     <ReelFrame>
+      {/* Glow orb behind logo */}
+      <GlowOrb
+        color={PRI}
+        size={600}
+        x="50%"
+        y="45%"
+        breatheSpeed={1.0}
+        baseOpacity={0.3}
+        pulseAmount={0.15}
+      />
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -908,7 +907,7 @@ const R6CTA: React.FC = () => {
       >
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 20, background: `linear-gradient(135deg, ${PRI} 0%, #5a9fe8 100%)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 32px ${PRI}35` }}>
+          <div style={{ width: 72, height: 72, borderRadius: 20, background: `linear-gradient(135deg, ${PRI} 0%, #5a9fe8 100%)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 32px ${PRI}55` }}>
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
           </div>
           <div style={{ fontSize: 48, fontWeight: 800, color: FG, letterSpacing: "-0.04em" }}>SignalSky</div>
@@ -970,9 +969,14 @@ const R6CTA: React.FC = () => {
 };
 
 // ─── Reel Composition ───
+const REEL_TOTAL_FRAMES = rf(46); // 46s × 30fps = 1380 frames
+
 export const DemoReelComposition: React.FC = () => {
   return (
     <>
+      {/* Background music — full volume (no voiceover) */}
+      <BackgroundMusic totalFrames={REEL_TOTAL_FRAMES} duck={false} fullVolume={0.45} />
+
       <Sequence from={0}            durationInFrames={rf(5)}>  <R1Intro />       </Sequence>
       <Sequence from={rf(5)}        durationInFrames={rf(13)}> <R2Scanner />     </Sequence>
       <Sequence from={rf(18)}       durationInFrames={rf(9)}>  <R3Performance /> </Sequence>

@@ -2,6 +2,7 @@ import React from "react";
 import { Audio, Sequence, staticFile, useVideoConfig } from "remotion";
 import { CompositionConfig, f, FPS, SCENE_TIMING } from "../config/compositions";
 import { AUDIO_FILES } from "../config/voiceover";
+import { BackgroundMusic } from "../components/BackgroundMusic";
 import { Scene1Hook } from "../scenes/Scene1Hook";
 import { Scene2Problem } from "../scenes/Scene2Problem";
 import { Scene3Solution } from "../scenes/Scene3Solution";
@@ -21,6 +22,7 @@ export const PromoComposition: React.FC<PromoCompositionProps> = ({
   audioVariant,
 }) => {
   const { width, height, timingScale } = config;
+  const durationInFrames = config.durationInSeconds * FPS;
   const isVertical = height > width;
   const is30s = config.durationInSeconds === 30;
 
@@ -47,6 +49,15 @@ export const PromoComposition: React.FC<PromoCompositionProps> = ({
           // Remotion will show a yellow warning in Studio if the file doesn't exist — that's OK
         />
       )}
+
+      {/* Background music — ducked under voiceover */}
+      <BackgroundMusic
+        totalFrames={durationInFrames}
+        duck={true}
+        duckVolume={0.18}
+        fadeInFrames={45}
+        fadeOutFrames={45}
+      />
 
       {/* Scene 1 — Hook */}
       <Sequence from={frame(T.hook.start)} durationInFrames={dur(T.hook.duration)}>

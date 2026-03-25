@@ -8,6 +8,7 @@ interface SceneFadeProps {
   fadeOutFrames?: number;
   label?: string;
   labelColor?: string;
+  theme?: "dark" | "light";
 }
 
 /**
@@ -21,7 +22,9 @@ export const SceneFade: React.FC<SceneFadeProps> = ({
   fadeOutFrames = 18,
   label,
   labelColor = "#2a73cc",
+  theme = "dark",
 }) => {
+  const overlayColor = theme === "dark" ? "#181921" : "#f9f8f5";
   const frame = useCurrentFrame();
 
   const fadeInOpacity = interpolate(frame, [0, fadeInFrames], [0, 1], {
@@ -104,7 +107,7 @@ export const SceneFade: React.FC<SceneFadeProps> = ({
         style={{
           position: "absolute",
           inset: 0,
-          backgroundColor: "#f9f8f5",
+          backgroundColor: overlayColor,
           opacity: overlayOpacity,
           pointerEvents: "none",
           zIndex: 9997,

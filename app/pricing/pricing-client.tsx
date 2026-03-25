@@ -51,6 +51,7 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
   const isExpired = searchParams.get("expired") === "1"
   const paymentError = searchParams.get("error")
   const [checkingOut, setCheckingOut] = useState<string | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
   const [trialSummary, setTrialSummary] = useState<TrialSummary | null>(null)
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
 
@@ -190,14 +191,21 @@ function PricingContent({ deal }: { deal: LifetimeDealInfo }) {
             </Link>
             <button
               onClick={async () => {
+                if (signingOut) return
+                setSigningOut(true)
                 const supabase = createClient()
                 await supabase.auth.signOut()
-                router.push("/")
+                window.location.href = "/"
               }}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-bear transition-colors cursor-pointer"
+              disabled={signingOut}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-bear transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <LogOutIcon className="size-3" />
-              Sign out
+              {signingOut ? (
+                <Loader2Icon className="size-3 animate-spin" />
+              ) : (
+                <LogOutIcon className="size-3" />
+              )}
+              {signingOut ? "Signing out..." : "Sign out"}
             </button>
           </div>
         </div>
