@@ -6,10 +6,22 @@ import { ExplainerComposition } from "./compositions/ExplainerComposition";
 import { DemoComposition } from "./compositions/DemoComposition";
 import { DemoReelComposition } from "./compositions/DemoReelComposition";
 import { LaunchReelComposition } from "./compositions/LaunchReelComposition";
+import { WalkthroughComposition } from "./compositions/WalkthroughComposition";
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      {/* 🎬 Walkthrough: 110s cinematic product demo (landscape 16:9) */}
+      <Composition
+        id="Walkthrough110H"
+        component={WalkthroughComposition as React.ComponentType<Record<string, unknown>>}
+        durationInFrames={110 * FPS}
+        fps={FPS}
+        width={1920}
+        height={1080}
+        defaultProps={{}}
+      />
+
       {/* 🚀 Launch Reel: 30s product demo (portrait 9:16) */}
       <Composition
         id="LaunchReel30V"

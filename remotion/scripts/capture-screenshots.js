@@ -17,8 +17,9 @@ const fs = require("fs");
 const CHROME_EXE =
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const DEBUG_PORT = 9222;
+const TEMP_PROFILE = "/tmp/ss-chrome-session"; // non-default dir = remote debugging allowed
 const OUT_DIR = path.resolve(__dirname, "../../remotion/public/screenshots");
-const BASE = "https://signalsky.app";
+const BASE = "http://localhost:3000";
 const VIEWPORT = { width: 1440, height: 900 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -62,63 +63,50 @@ async function tryClick(page, selectors, label) {
 }
 
 async function waitForAuth(page) {
+  // RECORDING_MODE active — sign-in page auto-redirects to /scanner, no manual login needed
   const url = page.url();
-  const needsLogin =
-    url.includes("/sign-in") || url.includes("accounts.google.com");
-  if (needsLogin) {
-    console.log(
-      "\n⏳  Not logged in — please sign in with the Susmitha Yaswanth Google account in the browser that just opened."
-    );
-    console.log("   Script will continue automatically after login.\n");
+  if (url.includes("/sign-in")) {
+    console.log("  ⏳  On sign-in page, waiting for auto-redirect (RECORDING_MODE)...");
     await page.waitForFunction(
-      () =>
-        !window.location.href.includes("/sign-in") &&
-        !window.location.href.includes("accounts.google.com"),
-      { timeout: 120000, polling: 1000 }
+      () => !window.location.href.includes("/sign-in"),
+      { timeout: 15000, polling: 500 }
     );
-    await sleep(3000);
-    console.log("  ✅ Logged in!\n");
-  } else {
-    console.log("  ✅ Already logged in\n");
+    await sleep(1500);
   }
+  console.log("  ✅ Auth OK\n");
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  // ── Step 1: Kill any existing Chrome & lock files ──────────────────────────
+  // ── Step 1: Kill any existing Chrome ──────────────────────────────────────
   console.log("🛑  Closing existing Chrome...");
   try {
     execSync(`osascript -e 'quit app "Google Chrome"'`, { timeout: 6000 });
     await sleep(2000);
   } catch {}
-  // Clear lock files
-  const profileDir =
-    "/Users/yaswanth/Library/Application Support/Google/Chrome";
+  // Clear temp profile lock files
   [
-    `${profileDir}/SingletonLock`,
-    `${profileDir}/SingletonSocket`,
-    `${profileDir}/Default/LOCK`,
-    `${profileDir}/Default/lockfile`,
+    `${TEMP_PROFILE}/Default/LOCK`,
+    `${TEMP_PROFILE}/SingletonLock`,
+    `${TEMP_PROFILE}/SingletonSocket`,
   ].forEach((f) => { try { fs.unlinkSync(f); } catch {} });
-  console.log("  ✅ Chrome closed, locks cleared\n");
+  console.log("  ✅ Chrome closed\n");
 
-  // ── Step 2: Launch YOUR Chrome with remote debugging ──────────────────────
-  // This uses your real profile — all cookies, sessions, extensions intact.
-  console.log(
-    `🚀  Launching Chrome (your profile) on debug port ${DEBUG_PORT}...`
-  );
+  // ── Step 2: Launch YOUR Chrome with session + remote debugging ─────────────
+  // Uses /tmp session copy — Chrome allows remote debugging on non-default dirs.
+  // Your Supabase session cookies are in there from the copy step.
+  console.log(`🚀  Launching Chrome on debug port ${DEBUG_PORT}...`);
   const chromeProcArgs = [
     `--remote-debugging-port=${DEBUG_PORT}`,
     "--remote-debugging-address=127.0.0.1",
-    `--user-data-dir=${profileDir}`,
+    `--user-data-dir=${TEMP_PROFILE}`,
     "--profile-directory=Default",
     "--no-first-run",
     "--no-default-browser-check",
     "--disable-infobars",
     "--disable-session-crashed-bubble",
-    "--restore-last-session",
     `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
     "about:blank",
   ];
@@ -200,17 +188,20 @@ async function main() {
   await sleep(1500);
   await shot(page, "scanner-slingshot-30d");
 
+  // hover over TITAN row if visible, else first row
   try {
-    const row = await page.$("tbody tr:first-child");
-    if (row) { await row.hover(); await sleep(600); }
-  } catch {}
+    const titanRow = await page.$("tbody tr:has(td ::-p-text(TITAN))") || await page.$("tbody tr:first-child");
+    if (titanRow) { await titanRow.hover(); await sleep(800); }
+  } catch {
+    try { const row = await page.$("tbody tr:first-child"); if (row) { await row.hover(); await sleep(600); } } catch {}
+  }
   await shot(page, "scanner-row-hover");
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SCENE 4 — Signal Detail: RELIANCE
+  // SCENE 4 — Signal Detail: TITAN
   // ═══════════════════════════════════════════════════════════════════════════
-  console.log("━━━━ SCENE 4: Signal Detail — RELIANCE");
-  await nav(page, `${BASE}/scanner/RELIANCE.NS`, "RELIANCE detail");
+  console.log("━━━━ SCENE 4: Signal Detail — TITAN");
+  await nav(page, `${BASE}/scanner/TITAN.NS`, "TITAN detail");
   await shot(page, "signal-detail-hero");
   await scrollTo(page, 450);
   await shot(page, "signal-detail-chart");
@@ -225,7 +216,7 @@ async function main() {
   console.log("━━━━ SCENE 5: Backtests");
   await nav(page, `${BASE}/backtests`, "Backtests list");
   await shot(page, "backtests-list");
-  await nav(page, `${BASE}/backtests/RELIANCE.NS`, "RELIANCE backtest");
+  await nav(page, `${BASE}/backtests/TITAN.NS`, "TITAN backtest");
   await shot(page, "backtest-detail-baseline");
   await tryClick(
     page,

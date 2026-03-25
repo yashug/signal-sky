@@ -34,6 +34,9 @@ const AuthContext = createContext<AuthContextValue>({
   refresh: async () => {},
 })
 
+// RECORDING_MODE: skip Supabase auth, use initialUser only — remove before deploying to prod
+const RECORDING_MODE = process.env.NEXT_PUBLIC_RECORDING_MODE === "true"
+
 export function AuthProvider({
   children,
   initialUser,
@@ -64,6 +67,28 @@ export function AuthProvider({
   }, [])
 
   const fetchUser = useCallback(async () => {
+    // RECORDING_MODE: fetch profile directly (no Supabase auth check)
+    if (RECORDING_MODE) {
+      try {
+        const res = await fetch("/api/user/profile")
+        const profile = res.ok ? await res.json() : null
+        if (profile) {
+          setUser({
+            id: profile.id,
+            email: profile.email,
+            name: profile.name,
+            image: profile.image,
+            tier: profile.tier ?? "PRO",
+            trialEndsAt: profile.trialEndsAt ?? null,
+            isAdmin: profile.isAdmin === true,
+            settings: (profile.settings as UserSettings) ?? {},
+          })
+        }
+      } catch {}
+      setLoading(false)
+      return
+    }
+
     const supabase = getSupabase()
     const {
       data: { user: authUser },
@@ -105,6 +130,11 @@ export function AuthProvider({
   }, [getSupabase])
 
   useEffect(() => {
+    if (RECORDING_MODE) {
+      if (!initialUser) fetchUser()
+      return
+    }
+
     if (!initialUser) {
       fetchUser()
     }

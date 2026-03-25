@@ -1,15 +1,23 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { getGoogleOAuthUrl } from "./actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ZapIcon } from "lucide-react"
 
+const RECORDING_MODE = process.env.NEXT_PUBLIC_RECORDING_MODE === "true"
+
 export default function SignInPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   async function handleSignIn() {
+    // RECORDING_MODE: skip OAuth, go straight to scanner — remove before deploying to prod
+    if (RECORDING_MODE) {
+      router.push(searchParams.get("next") ?? "/scanner")
+      return
+    }
     const url = await getGoogleOAuthUrl(searchParams.get("next"))
     window.location.href = url
   }

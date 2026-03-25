@@ -1,3 +1,12 @@
+/**
+ * SignalSky — LaunchReel30V
+ *
+ * 30-second portrait reel (1080×1920) using real app screenshots.
+ * Designed for Instagram Reels / TikTok / YouTube Shorts.
+ *
+ * 6 scenes, bg music at low volume, click-zoom + cursor ripple on key interactions.
+ */
+
 import React from "react";
 import {
   AbsoluteFill,
@@ -7,1002 +16,687 @@ import {
   spring,
   staticFile,
   useCurrentFrame,
-  useVideoConfig,
 } from "remotion";
-import { THEME } from "../config/theme";
 import { BackgroundMusic } from "../components/BackgroundMusic";
-import { AnimatedBackground } from "../components/AnimatedBackground";
-import { GlowOrb } from "../components/GlowOrb";
 
-// ─── Timing ───────────────────────────────────────────────────────────────────
 const FPS = 30;
-const rf = (s: number) => Math.round(s * FPS);
+const f = (s: number) => Math.round(s * FPS);
+const TOTAL = f(30);
 
-// Scene start frames
-const S1_START = rf(0);   // Hook           0–3s
-const S2_START = rf(3);   // Product Intro  3–6s
-const S3_START = rf(6);   // Demo           6–14s
-const S4_START = rf(14);  // Showcase       14–19s
-const S5_START = rf(19);  // Features       19–24s
-const S6_START = rf(24);  // CTA            24–30s
-const TOTAL    = rf(30);
+// ── Colors ─────────────────────────────────────────────────────────────────
+const C = {
+  bg: "#0B0C12",
+  primary: "#3B82F6",
+  accent: "#6EE7B7",
+  gold: "#F59E0B",
+  green: "#22C55E",
+  red: "#EF4444",
+  orange: "#F97316",
+  text: "#F0F4FF",
+  muted: "#6B7280",
+  card: "#13151F",
+  border: "#ffffff14",
+};
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const BG   = THEME.background;  // #181921
-const FG   = THEME.foreground;  // #e5e7ee
-const MFG  = THEME.mutedFg;     // #9097b8
-const PRI  = THEME.primary;     // #4f9de0
-const BULL = THEME.bull;        // #23c475
-const CARD = THEME.card;        // #1d1e29
-const BRD  = THEME.border;      // #2d2f40
-const BEAR = THEME.bear;        // #e05c22
-const SIM  = THEME.simmering;   // #d4a32a
+// ── Scene timings ──────────────────────────────────────────────────────────
+const S1 = { start: 0,  dur: 4  };   // Hook
+const S2 = { start: 4,  dur: 8  };   // Scanner
+const S3 = { start: 12, dur: 6  };   // Signal Detail
+const S4 = { start: 18, dur: 4  };   // Backtests
+const S5 = { start: 22, dur: 4  };   // Market Health + Alerts
+const S6 = { start: 26, dur: 4  };   // CTA
 
-// Safe zone (px from edges)
-const ST = 150;  // top
-const SB = 170;  // bottom
-const SS = 72;   // sides
+// ── Helpers ────────────────────────────────────────────────────────────────
+function clamp(v: number, lo: number, hi: number) {
+  return Math.min(hi, Math.max(lo, v));
+}
 
-// ─── Shared shell ─────────────────────────────────────────────────────────────
-const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <AbsoluteFill
-    style={{
-      backgroundColor: BG,
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+// ── Gradient orb background ────────────────────────────────────────────────
+const BgOrbs: React.FC<{ frame: number }> = ({ frame }) => {
+  const shift = Math.sin(frame * 0.02) * 30;
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+      <div style={{
+        position: "absolute", top: -200 + shift, left: -150,
+        width: 900, height: 900, borderRadius: "50%",
+        background: `radial-gradient(circle, ${C.primary}20 0%, transparent 65%)`,
+      }} />
+      <div style={{
+        position: "absolute", bottom: -200 - shift * 0.5, right: -100,
+        width: 700, height: 700, borderRadius: "50%",
+        background: `radial-gradient(circle, ${C.accent}14 0%, transparent 65%)`,
+      }} />
+      <div style={{
+        position: "absolute", top: "40%", left: "20%",
+        width: 500, height: 500, borderRadius: "50%",
+        background: `radial-gradient(circle, #7C3AED0a 0%, transparent 70%)`,
+        transform: `translateY(${shift}px)`,
+      }} />
+    </div>
+  );
+};
+
+// ── Browser-frame screenshot card ─────────────────────────────────────────
+// Portrait-optimised: 960px wide, proportional height
+interface ScreenCardProps {
+  src: string;
+  sceneFrame: number;
+  sceneDurS: number;
+  kbDir?: "in" | "out";
+  /** click zoom event */
+  click?: { atFrame: number; cx: number; cy: number; scale?: number; hold?: number };
+  /** y offset from center (px) */
+  offsetY?: number;
+}
+
+const ScreenCard: React.FC<ScreenCardProps> = ({
+  src, sceneFrame, sceneDurS,
+  kbDir = "in",
+  click,
+  offsetY = 0,
+}) => {
+  const enter = spring({ frame: sceneFrame, fps: FPS, config: { damping: 18, stiffness: 90 } });
+
+  // Ken Burns
+  const progress = clamp(sceneFrame / (sceneDurS * FPS), 0, 1);
+  const kbScale = kbDir === "in"
+    ? interpolate(progress, [0, 1], [1.0, 1.07])
+    : interpolate(progress, [0, 1], [1.07, 1.0]);
+
+  // Click zoom
+  let zoomScale = kbScale;
+  let zoomOriginX = 50;
+  let zoomOriginY = 50;
+
+  if (click) {
+    const scale = click.scale ?? 1.5;
+    const hold = click.hold ?? 55;
+    const rel = sceneFrame - click.atFrame;
+    if (rel > -3) {
+      const zoomIn = spring({ frame: Math.max(0, rel), fps: FPS, config: { damping: 22, stiffness: 75 } });
+      const zoomOut = spring({ frame: Math.max(0, rel - hold), fps: FPS, config: { damping: 20, stiffness: 65 } });
+      const zoomed = interpolate(zoomIn, [0, 1], [1.0, scale]);
+      const back = interpolate(zoomOut, [0, 1], [scale, 1.0]);
+      const cs = rel >= hold ? back : zoomed;
+      if (cs > 1.05) {
+        zoomScale = cs;
+        zoomOriginX = click.cx;
+        zoomOriginY = click.cy;
+      }
+    }
+  }
+
+  // Cursor ripple
+  const showCursor = click && sceneFrame >= click.atFrame - 4 && sceneFrame <= click.atFrame + 50;
+  const rippleRel = click ? sceneFrame - click.atFrame : -99;
+  const rippleScale = interpolate(rippleRel, [0, 20], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const rippleOpacity = interpolate(rippleRel, [0, 5, 20], [0.8, 0.5, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const cursorOpacity = interpolate(rippleRel, [-4, 0, 40, 50], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  const cardW = 960;
+  const cardH = 600; // matches 1440×900 screenshots at 960/1440*900
+
+  return (
+    <div style={{
+      position: "absolute",
+      left: (1080 - cardW) / 2,
+      top: "50%",
+      marginTop: -cardH / 2 + offsetY,
+      width: cardW, height: cardH,
+      borderRadius: 20,
       overflow: "hidden",
-    }}
-  >
-    {children}
-  </AbsoluteFill>
+      boxShadow: "0 0 0 1px rgba(255,255,255,0.08), 0 32px 100px rgba(0,0,0,0.7)",
+      opacity: enter,
+      transform: `translateY(${interpolate(enter, [0, 1], [50, 0])}px) scale(${interpolate(enter, [0, 1], [0.94, 1])})`,
+    }}>
+      {/* Screenshot with zoom */}
+      <div style={{
+        width: "100%", height: "100%",
+        transform: `scale(${zoomScale})`,
+        transformOrigin: `${zoomOriginX}% ${zoomOriginY}%`,
+        overflow: "hidden",
+      }}>
+        <Img
+          src={staticFile(src)}
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+        />
+      </div>
+
+      {/* Browser chrome */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 30,
+        background: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
+        display: "flex", alignItems: "center", gap: 6, padding: "0 12px",
+      }}>
+        {["#FF5F57","#FFBD2E","#28C840"].map((c, i) => (
+          <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />
+        ))}
+      </div>
+
+      {/* Cursor dot */}
+      {showCursor && click && (
+        <>
+          <div style={{
+            position: "absolute",
+            left: `${click.cx}%`, top: `${click.cy}%`,
+            transform: "translate(-50%, -50%)",
+            width: 14, height: 14, borderRadius: "50%",
+            background: "rgba(255,255,255,0.95)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+            opacity: cursorOpacity, zIndex: 20,
+          }} />
+          <div style={{
+            position: "absolute",
+            left: `${click.cx}%`, top: `${click.cy}%`,
+            transform: `translate(-50%, -50%) scale(${rippleScale})`,
+            width: 48, height: 48, borderRadius: "50%",
+            border: "2px solid rgba(255,255,255,0.75)",
+            opacity: rippleOpacity, zIndex: 19,
+          }} />
+        </>
+      )}
+    </div>
+  );
+};
+
+// ── Floating text label ────────────────────────────────────────────────────
+const Tag: React.FC<{
+  text: string; sceneFrame: number; delay?: number;
+  x: number; y: number; color?: string;
+}> = ({ text, sceneFrame, delay = 0, x, y, color = C.primary }) => {
+  const s = spring({ frame: Math.max(0, sceneFrame - delay), fps: FPS, config: { damping: 16, stiffness: 110 } });
+  return (
+    <div style={{
+      position: "absolute", left: x, top: y,
+      opacity: s,
+      transform: `translateY(${interpolate(s, [0, 1], [10, 0])}px)`,
+      display: "flex", alignItems: "center", gap: 7,
+      padding: "6px 14px",
+      background: `${color}1a`, border: `1px solid ${color}55`,
+      borderRadius: 999,
+    }}>
+      <div style={{ width: 7, height: 7, borderRadius: "50%", background: color }} />
+      <span style={{
+        fontSize: 24, fontWeight: 700, color,
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        letterSpacing: "0.03em",
+      }}>{text}</span>
+    </div>
+  );
+};
+
+// ── Scene label pill (top) ─────────────────────────────────────────────────
+const SceneLabel: React.FC<{ text: string; sceneFrame: number; color?: string }> = ({
+  text, sceneFrame, color = C.primary,
+}) => {
+  const s = spring({ frame: sceneFrame, fps: FPS, config: { damping: 18, stiffness: 120 } });
+  return (
+    <div style={{
+      position: "absolute", top: 130, left: 60,
+      display: "flex", alignItems: "center", gap: 8,
+      opacity: s, transform: `translateX(${interpolate(s, [0, 1], [-20, 0])}px)`,
+    }}>
+      <div style={{ width: 6, height: 6, borderRadius: "50%", background: color }} />
+      <span style={{
+        fontSize: 22, fontWeight: 700, color,
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        letterSpacing: "0.1em", textTransform: "uppercase",
+      }}>{text}</span>
+    </div>
+  );
+};
+
+// ── Headline text ──────────────────────────────────────────────────────────
+const Headline: React.FC<{
+  lines: string[]; sceneFrame: number; size?: number;
+  bottomY: number; color?: string; accentColor?: string; accentLine?: number;
+}> = ({ lines, sceneFrame, size = 72, bottomY, color = C.text, accentColor = C.primary, accentLine = -1 }) => {
+  return (
+    <div style={{
+      position: "absolute", bottom: bottomY, left: 60, right: 60,
+    }}>
+      {lines.map((line, i) => {
+        const s = spring({ frame: Math.max(0, sceneFrame - i * 5), fps: FPS, config: { damping: 18, stiffness: 100 } });
+        return (
+          <div key={i} style={{
+            fontSize: size, fontWeight: 800, lineHeight: 1.1,
+            letterSpacing: "-0.03em",
+            color: i === accentLine ? accentColor : color,
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            opacity: s,
+            transform: `translateY(${interpolate(s, [0, 1], [20, 0])}px)`,
+          }}>{line}</div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ── Progress dots ──────────────────────────────────────────────────────────
+const Dots: React.FC<{ current: number; total: number }> = ({ current, total }) => (
+  <div style={{
+    position: "absolute", bottom: 80, left: "50%",
+    transform: "translateX(-50%)",
+    display: "flex", gap: 8,
+  }}>
+    {Array.from({ length: total }).map((_, i) => (
+      <div key={i} style={{
+        width: i === current ? 24 : 8, height: 8, borderRadius: 4,
+        background: i === current ? C.primary : "rgba(255,255,255,0.2)",
+      }} />
+    ))}
+  </div>
 );
 
-// ─── SCENE 1 — Hook (0–3s) ────────────────────────────────────────────────────
-// "Still missing breakouts every day?" slams in, holds, fades out.
-const S1Hook: React.FC = () => {
+// ── Logo badge (top-right) ─────────────────────────────────────────────────
+const LogoBadge: React.FC<{ frame: number }> = ({ frame }) => {
+  const s = spring({ frame: Math.max(0, frame - 5), fps: FPS, config: { damping: 20, stiffness: 120 } });
+  return (
+    <div style={{
+      position: "absolute", top: 120, right: 60,
+      display: "flex", alignItems: "center", gap: 8,
+      opacity: interpolate(s, [0, 1], [0, 0.75]),
+    }}>
+      <div style={{
+        width: 34, height: 34, borderRadius: 9,
+        background: `linear-gradient(135deg, ${C.primary}, #7C3AED)`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <span style={{ color: "#fff", fontSize: 16, fontWeight: 800 }}>⚡</span>
+      </div>
+      <span style={{
+        fontSize: 22, fontWeight: 700, color: "rgba(255,255,255,0.7)",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+      }}>SignalSky</span>
+    </div>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SCENE 1 — Hook (0–4s)
+// Bold headline + landing screenshot as blurred background
+// ══════════════════════════════════════════════════════════════════════════════
+const Scene1: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  const slamSpring = spring({ frame, fps, config: { stiffness: 360, damping: 28 } });
-  const scale = interpolate(slamSpring, [0, 1], [2, 1]);
-
-  // Fade out last 20f
-  const opacity = interpolate(frame, [70, 90], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const slamS = spring({ frame, fps: FPS, config: { stiffness: 280, damping: 28 } });
+  const subS  = spring({ frame: Math.max(0, frame - 20), fps: FPS, config: { damping: 18, stiffness: 100 } });
 
   return (
-    <Shell>
-      <AnimatedBackground
-        baseColor={BG}
-        accentColor={PRI}
-        secondaryColor={BULL}
-        particleCount={10}
-        speed={0.7}
+    <AbsoluteFill>
+      {/* Blurred landing screenshot as bg */}
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+        <Img
+          src={staticFile("screenshots/01-landing-hero.png")}
+          style={{
+            width: "120%", height: "120%",
+            objectFit: "cover", objectPosition: "top",
+            marginLeft: "-10%", marginTop: "-5%",
+            filter: "blur(18px) brightness(0.25)",
+          }}
+        />
+      </div>
+
+      <BgOrbs frame={frame} />
+
+      {/* Central headline */}
+      <AbsoluteFill style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32 }}>
+        <div style={{
+          textAlign: "center",
+          transform: `scale(${interpolate(slamS, [0, 1], [0.7, 1])})`,
+          opacity: slamS,
+        }}>
+          <div style={{
+            fontSize: 96, fontWeight: 900, lineHeight: 1.0,
+            letterSpacing: "-0.04em", color: C.text,
+            fontFamily: "system-ui, -apple-system, sans-serif",
+          }}>
+            Still scanning
+            <br />
+            <span style={{
+              background: `linear-gradient(135deg, ${C.primary}, ${C.accent})`,
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            }}>manually?</span>
+          </div>
+        </div>
+
+        <div style={{
+          opacity: subS,
+          transform: `translateY(${interpolate(subS, [0, 1], [16, 0])}px)`,
+          textAlign: "center",
+        }}>
+          <div style={{
+            fontSize: 36, color: C.muted, fontWeight: 500,
+            fontFamily: "system-ui", letterSpacing: "-0.01em",
+          }}>
+            Reset & Reclaim · automated.
+          </div>
+        </div>
+      </AbsoluteFill>
+
+      <Dots current={0} total={6} />
+    </AbsoluteFill>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SCENE 2 — Scanner (4–12s)
+// Real scanner screenshot with slingshot filter click zoom + heat badge tags
+// ══════════════════════════════════════════════════════════════════════════════
+const Scene2: React.FC = () => {
+  const frame = useCurrentFrame();
+  const sf = frame;
+
+  return (
+    <AbsoluteFill style={{ background: C.bg }}>
+      <BgOrbs frame={frame} />
+      <LogoBadge frame={frame} />
+      <SceneLabel text="Scanner" sceneFrame={sf} color={C.orange} />
+
+      <ScreenCard
+        src="screenshots/07-scanner-slingshot-30d.png"
+        sceneFrame={sf}
+        sceneDurS={8}
+        kbDir="in"
+        click={{ atFrame: 35, cx: 27, cy: 8, scale: 1.6, hold: 70 }}
+        offsetY={-60}
       />
-      {/* Central radial glow */}
-      <GlowOrb color={PRI} size={900} x="50%" y="48%" breatheSpeed={0.6} baseOpacity={0.38} pulseAmount={0.12} />
 
-      <AbsoluteFill
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: `${ST}px ${SS}px ${SB}px`,
-          opacity,
-        }}
-      >
-        <div style={{ textAlign: "center", transform: `scale(${scale})` }}>
-          <div
-            style={{
-              fontSize: 80,
-              fontWeight: 800,
-              color: FG,
-              letterSpacing: "-0.04em",
-              lineHeight: 1.15,
-            }}
-          >
-            Still missing
-            <br />
-            <span style={{ color: PRI }}>breakouts</span>
-            <br />
-            every day?
-          </div>
-        </div>
-      </AbsoluteFill>
-    </Shell>
+      {/* Heat badge tags */}
+      <Tag text="🟢 Breakout" sceneFrame={sf} delay={18} x={60} y={820} color={C.green} />
+      <Tag text="🔥 Boiling" sceneFrame={sf} delay={24} x={60} y={880} color={C.orange} />
+      <Tag text="Slingshot ≤30d ✓" sceneFrame={sf} delay={30} x={60} y={940} color={C.primary} />
+
+      <Headline
+        lines={["Find the setup", "before it breaks out."]}
+        sceneFrame={sf} size={64}
+        bottomY={200} accentColor={C.orange} accentLine={1}
+      />
+
+      <Dots current={1} total={6} />
+    </AbsoluteFill>
   );
 };
 
-// ─── SCENE 2 — Product Intro (3–6s) ──────────────────────────────────────────
-// Logo scales 3→1, tagline slides up, 20 particles burst from logo.
-const S2Intro: React.FC = () => {
+// ══════════════════════════════════════════════════════════════════════════════
+// SCENE 3 — Signal Detail (12–18s)
+// TITAN chart + position calculator with click zoom
+// ══════════════════════════════════════════════════════════════════════════════
+const Scene3: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Logo: spring from scale=3 → 1
-  const rawLogo = spring({ frame, fps, config: { stiffness: 220, damping: 26 } });
-  const logoScale = interpolate(rawLogo, [0, 1], [3, 1]);
-
-  // Tagline slides up below logo
-  const rawTag = spring({ frame: frame - 18, fps, config: { stiffness: 180, damping: 24 } });
-  const tagY = interpolate(rawTag, [0, 1], [50, 0]);
-  const tagOpacity = interpolate(frame - 18, [0, 18], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // 20-particle burst behind logo
-  const burstSpring = spring({ frame: frame - 2, fps, config: { stiffness: 90, damping: 35 } });
-  const particles = Array.from({ length: 20 }, (_, i) => {
-    const angle = (i / 20) * Math.PI * 2;
-    const dist  = burstSpring * (180 + (i % 5) * 60);
-    const size  = 5 + (i % 4) * 3;
-    const col   = i % 3 === 0 ? PRI : i % 3 === 1 ? BULL : "#ffffff";
-    return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, size, col, opacity: (1 - burstSpring) * 0.85 };
-  });
+  const sf = frame;
+  const showCalc = sf > f(3);
 
   return (
-    <Shell>
-      <AnimatedBackground baseColor={BG} accentColor={PRI} secondaryColor={BULL} particleCount={6} speed={0.5} />
+    <AbsoluteFill style={{ background: C.bg }}>
+      <BgOrbs frame={frame} />
+      <LogoBadge frame={frame} />
+      <SceneLabel text="Signal Detail — TITAN" sceneFrame={sf} color={C.accent} />
 
-      {/* Particle burst — centred in canvas */}
-      <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-        <div style={{ position: "relative", width: 0, height: 0 }}>
-          {particles.map((p, i) => (
-            <div
-              key={i}
-              style={{
-                position: "absolute",
-                width: p.size,
-                height: p.size,
-                borderRadius: "50%",
-                backgroundColor: p.col,
-                left: p.x - p.size / 2,
-                top: p.y - p.size / 2,
-                opacity: p.opacity,
-              }}
-            />
-          ))}
-        </div>
-      </AbsoluteFill>
+      <ScreenCard
+        src={showCalc ? "screenshots/12-signal-detail-position-calc.png" : "screenshots/10-signal-detail-chart.png"}
+        sceneFrame={showCalc ? sf - f(3) : sf}
+        sceneDurS={showCalc ? 3 : 3}
+        kbDir={showCalc ? "out" : "in"}
+        click={showCalc
+          ? { atFrame: 5, cx: 35, cy: 58, scale: 1.45, hold: 50 }
+          : { atFrame: 18, cx: 50, cy: 42, scale: 1.4, hold: 40 }
+        }
+        offsetY={-60}
+      />
 
-      <AbsoluteFill
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: `${ST}px ${SS}px ${SB}px`,
-          gap: 0,
-          zIndex: 1,
-        }}
-      >
-        {/* Logo icon + wordmark */}
-        <div
-          style={{
-            transform: `scale(${logoScale})`,
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            marginBottom: 28,
-          }}
-        >
-          <div
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: 28,
-              background: `linear-gradient(135deg, ${PRI} 0%, #2e5fad 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: `0 16px 56px ${PRI}55`,
-            }}
-          >
-            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-          </div>
-          <div style={{ fontSize: 76, fontWeight: 800, color: FG, letterSpacing: "-0.04em" }}>
-            SignalSky
-          </div>
-        </div>
+      {!showCalc && (
+        <>
+          <Tag text="Pre-set ATH" sceneFrame={sf} delay={10} x={60} y={820} color={C.green} />
+          <Tag text="Reclaim date ✓" sceneFrame={sf} delay={16} x={60} y={880} color={C.primary} />
+        </>
+      )}
+      {showCalc && (
+        <Tag text="Auto stop loss + size" sceneFrame={sf - f(3)} delay={8} x={60} y={850} color={C.gold} />
+      )}
 
-        {/* Accent bar */}
-        <div
-          style={{
-            width: rawLogo * 280,
-            height: 4,
-            backgroundColor: PRI,
-            borderRadius: 2,
-            marginBottom: 40,
-            opacity: rawLogo,
-          }}
-        />
+      <Headline
+        lines={["Three moments.", "One trade setup."]}
+        sceneFrame={sf} size={64}
+        bottomY={200} accentColor={C.accent} accentLine={1}
+      />
 
-        {/* Tagline */}
-        <div
-          style={{
-            transform: `translateY(${tagY}px)`,
-            opacity: tagOpacity,
-            textAlign: "center",
-            fontSize: 52,
-            fontWeight: 800,
-            color: FG,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.2,
-          }}
-        >
-          Catch breakouts
-          <br />
-          <span style={{ color: PRI }}>before they run.</span>
-        </div>
-      </AbsoluteFill>
-    </Shell>
+      <Dots current={2} total={6} />
+    </AbsoluteFill>
   );
 };
 
-// ─── SCENE 3 — Simulated Demo (6–14s, 240 local frames) ──────────────────────
-// Animated cursor moves: appears → input field (types RELIANCE) → Scan button
-// (click ripple + depress) → spinner → 3 signal cards spring in staggered.
-const TYPED_WORD = "RELIANCE";
-
-// Absolute Y positions inside 1920-tall canvas (local frame is also full-canvas)
-const INPUT_TOP   = ST + 160;   // top of input box
-const INPUT_H     = 80;
-const INPUT_CY    = INPUT_TOP + INPUT_H / 2;
-
-const BTN_TOP     = INPUT_TOP + INPUT_H + 24;
-const BTN_H       = 72;
-const BTN_CY      = BTN_TOP + BTN_H / 2;
-
-const CARD_TOP    = BTN_TOP + BTN_H + 48;
-const CARD_H      = 220;
-
-// Phase local frames
-const PH_CURSOR_ARRIVE = 0;   // cursor appears & moves to input (0→25f)
-const PH_CLICK_INPUT   = 22;  // ripple on input
-const PH_TYPE_START    = 32;  // typing begins
-const PH_TYPE_END      = 32 + TYPED_WORD.length * 5; // 72f
-const PH_MOVE_BTN      = 80;  // cursor moves to scan button
-const PH_CLICK_BTN     = 95;  // ripple + depress
-const PH_SPINNER       = 110; // show spinner
-const PH_CARDS         = 130; // cards start animating in
-
-const S3Demo: React.FC = () => {
+// ══════════════════════════════════════════════════════════════════════════════
+// SCENE 4 — Backtests (18–22s)
+// Chip switch from baseline → slingshot 30d
+// ══════════════════════════════════════════════════════════════════════════════
+const Scene4: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const sf = frame;
+  const showChip = sf > f(2);
 
-  // ── Cursor position ──────────────────────────────────────────────────────
-  const toInput = spring({ frame, fps, config: { stiffness: 180, damping: 22 } });
-  const toBtn   = spring({ frame: frame - PH_MOVE_BTN, fps, config: { stiffness: 180, damping: 22 } });
+  return (
+    <AbsoluteFill style={{ background: C.bg }}>
+      <BgOrbs frame={frame} />
+      <LogoBadge frame={frame} />
+      <SceneLabel text="Backtests" sceneFrame={sf} color={C.gold} />
 
-  const cursorX = 540;
-  const cursorY = frame < PH_MOVE_BTN
-    ? interpolate(toInput, [0, 1], [900, INPUT_CY])
-    : interpolate(toBtn, [0, 1], [INPUT_CY, BTN_CY]);
+      <ScreenCard
+        src={showChip ? "screenshots/15-backtest-detail-slingshot30.png" : "screenshots/14-backtest-detail-baseline.png"}
+        sceneFrame={showChip ? sf - f(2) : sf}
+        sceneDurS={showChip ? 2 : 2}
+        kbDir="in"
+        click={showChip
+          ? { atFrame: 3, cx: 22, cy: 7, scale: 1.55, hold: 55 }
+          : undefined
+        }
+        offsetY={-60}
+      />
 
-  const cursorOpacity = frame < PH_CARDS
-    ? 1
-    : interpolate(frame, [PH_CARDS, PH_CARDS + 20], [1, 0], {
-        extrapolateLeft: "clamp",
-        extrapolateRight: "clamp",
-      });
+      <Tag text="20yr backtest data" sceneFrame={sf} delay={10} x={60} y={840} color={C.gold} />
+      <Tag text="Slingshot ≤30d edge ↑" sceneFrame={sf} delay={18} x={60} y={900} color={C.green} />
 
-  // ── Typed text ────────────────────────────────────────────────────────────
-  const charsTyped =
-    frame >= PH_TYPE_START
-      ? Math.min(TYPED_WORD.length, Math.floor((frame - PH_TYPE_START) / 5))
-      : 0;
+      <Headline
+        lines={["Historical edge.", "Proven."]}
+        sceneFrame={sf} size={72}
+        bottomY={200} accentColor={C.gold} accentLine={1}
+      />
 
-  // ── Input focus ────────────────────────────────────────────────────────────
-  const inputFocused = frame >= PH_CLICK_INPUT && frame < PH_MOVE_BTN;
+      <Dots current={3} total={6} />
+    </AbsoluteFill>
+  );
+};
 
-  // Input ripple
-  const inRipple   = spring({ frame: frame - PH_CLICK_INPUT, fps, config: { stiffness: 400, damping: 28 } });
-  const inRippleOp = interpolate(frame - PH_CLICK_INPUT, [0, 24], [0.55, 0], {
+// ══════════════════════════════════════════════════════════════════════════════
+// SCENE 5 — Market Health + Alerts (22–26s)
+// Split: first half market health, second half alerts
+// ══════════════════════════════════════════════════════════════════════════════
+const Scene5: React.FC = () => {
+  const frame = useCurrentFrame();
+  const sf = frame;
+  const showAlerts = sf > f(2);
+
+  return (
+    <AbsoluteFill style={{ background: C.bg }}>
+      <BgOrbs frame={frame} />
+      <LogoBadge frame={frame} />
+      <SceneLabel
+        text={showAlerts ? "Alerts" : "Market Health"}
+        sceneFrame={showAlerts ? sf - f(2) : sf}
+        color={showAlerts ? C.gold : C.accent}
+      />
+
+      <ScreenCard
+        src={showAlerts ? "screenshots/22-settings-alerts-telegram.png" : "screenshots/19-market-health-cards.png"}
+        sceneFrame={showAlerts ? sf - f(2) : sf}
+        sceneDurS={2}
+        kbDir="in"
+        click={showAlerts
+          ? { atFrame: 10, cx: 35, cy: 38, scale: 1.5, hold: 45 }
+          : undefined
+        }
+        offsetY={-60}
+      />
+
+      {!showAlerts && (
+        <Tag text="76% Nifty 50 above EMA 220" sceneFrame={sf} delay={12} x={60} y={860} color={C.accent} />
+      )}
+      {showAlerts && (
+        <Tag text="Telegram alert in 30s" sceneFrame={sf - f(2)} delay={8} x={60} y={860} color={C.gold} />
+      )}
+
+      <Headline
+        lines={["Know when to trade.", "Never miss a signal."]}
+        sceneFrame={sf} size={58}
+        bottomY={200} accentColor={C.accent} accentLine={1}
+      />
+
+      <Dots current={4} total={6} />
+    </AbsoluteFill>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SCENE 6 — CTA (26–30s)
+// Pricing screenshot + URL + stats
+// ══════════════════════════════════════════════════════════════════════════════
+const Scene6: React.FC = () => {
+  const frame = useCurrentFrame();
+  const sf = frame;
+  const enter = spring({ frame: sf, fps: FPS, config: { damping: 16, stiffness: 80 } });
+
+  // Fade to black last 18 frames
+  const fadeOut = interpolate(sf, [f(3) + 10, f(4)], [0, 1], {
     extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
 
-  // ── Button ────────────────────────────────────────────────────────────────
-  const btnDepressRaw = spring({ frame: frame - PH_CLICK_BTN, fps, config: { stiffness: 500, damping: 22 } });
-  // depress then snap back
-  const btnScale = frame >= PH_CLICK_BTN && frame < PH_SPINNER
-    ? interpolate(btnDepressRaw, [0, 1], [1, 0.94])
-    : frame >= PH_SPINNER
-    ? interpolate(spring({ frame: frame - PH_SPINNER, fps, config: { stiffness: 300, damping: 24 } }), [0, 1], [0.94, 1])
-    : 1;
-
-  const btnRipple   = spring({ frame: frame - PH_CLICK_BTN, fps, config: { stiffness: 400, damping: 28 } });
-  const btnRippleOp = interpolate(frame - PH_CLICK_BTN, [0, 30], [0.55, 0], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-
-  // Spinner rotation
-  const spinnerRot = ((frame - PH_SPINNER) / fps) * 360;
-
-  // ── UI entrance ───────────────────────────────────────────────────────────
-  const uiIn = spring({ frame, fps, config: { stiffness: 160, damping: 22 } });
-
-  // ── Signal cards ──────────────────────────────────────────────────────────
-  const cards = [
-    { symbol: "RELIANCE", exchange: "NSE", heat: "🚀 Breakout",  col: BULL, price: "₹2,547", change: "+2.1%", wr: "72%", sl: "12d", ath: "₹2,531" },
-    { symbol: "TCS",      exchange: "NSE", heat: "🔥 Boiling",   col: BEAR, price: "₹3,312", change: "+1.4%", wr: "68%", sl: "8d",  ath: "₹3,280" },
-    { symbol: "HDFCBANK", exchange: "NSE", heat: "🌡 Simmering", col: SIM,  price: "₹1,892", change: "+0.7%", wr: "64%", sl: "25d", ath: "₹1,860" },
-  ];
-
   return (
-    <Shell>
-      {/* UI — full canvas */}
-      <AbsoluteFill
-        style={{
-          opacity: uiIn,
-          transform: `translateY(${interpolate(uiIn, [0, 1], [30, 0])}px)`,
-        }}
-      >
-        {/* Header bar */}
-        <div
-          style={{
-            position: "absolute",
-            top: ST,
-            left: SS,
-            right: SS,
-            height: 80,
-            display: "flex",
-            alignItems: "center",
-            gap: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              background: `linear-gradient(135deg, ${PRI} 0%, #2e5fad 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-          </div>
-          <div style={{ fontSize: 44, fontWeight: 800, color: FG, letterSpacing: "-0.04em" }}>Scanner</div>
-          <div
-            style={{
-              marginLeft: "auto",
-              fontSize: 30,
-              color: frame >= PH_CARDS ? BULL : MFG,
-              fontFamily: "monospace",
-              fontWeight: 700,
-              opacity: frame >= PH_CARDS ? 1 : 0.3,
-            }}
-          >
-            {frame >= PH_CARDS ? "3 signals found" : "scanning..."}
-          </div>
-        </div>
+    <AbsoluteFill style={{ background: C.bg }}>
+      <BgOrbs frame={frame} />
 
-        {/* Input field */}
-        <div
-          style={{
-            position: "absolute",
-            top: INPUT_TOP,
-            left: SS,
-            right: SS,
-            height: INPUT_H,
-            borderRadius: 18,
-            border: `2.5px solid ${inputFocused ? PRI : BRD}`,
-            backgroundColor: CARD,
-            display: "flex",
-            alignItems: "center",
-            paddingLeft: 32,
-            paddingRight: 32,
-            boxShadow: inputFocused
-              ? `0 0 0 5px ${PRI}22, 0 6px 30px ${PRI}18`
-              : "none",
-            overflow: "hidden",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 40,
-              color: charsTyped > 0 ? FG : MFG,
-              fontFamily: "monospace",
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              flex: 1,
-            }}
-          >
-            {charsTyped > 0 ? TYPED_WORD.slice(0, charsTyped) : "Search symbol..."}
-          </span>
-          {/* Blinking cursor */}
-          {inputFocused && (
-            <span
-              style={{
-                display: "inline-block",
-                width: 3,
-                height: 40,
-                backgroundColor: PRI,
-                marginLeft: 2,
-                opacity: Math.floor(frame / 8) % 2 === 0 ? 1 : 0,
-              }}
-            />
-          )}
-        </div>
-
-        {/* Input click ripple */}
-        {frame >= PH_CLICK_INPUT && frame < PH_CLICK_INPUT + 30 && (
-          <div
-            style={{
-              position: "absolute",
-              left: 540,
-              top: INPUT_CY,
-              width: inRipple * 600,
-              height: inRipple * 600,
-              borderRadius: "50%",
-              border: `2px solid ${PRI}`,
-              transform: "translate(-50%, -50%)",
-              opacity: inRippleOp,
-              pointerEvents: "none",
-            }}
-          />
-        )}
-
-        {/* Scan button */}
-        <div
-          style={{
-            position: "absolute",
-            top: BTN_TOP,
-            left: SS,
-            right: SS,
-            height: BTN_H,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              borderRadius: 18,
-              background: `linear-gradient(135deg, ${PRI} 0%, #2e5fad 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transform: `scale(${btnScale})`,
-              boxShadow: `0 10px 40px ${PRI}45`,
-            }}
-          >
-            {frame >= PH_SPINNER && frame < PH_CARDS ? (
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: "50%",
-                  border: `4px solid rgba(255,255,255,0.3)`,
-                  borderTopColor: "white",
-                  transform: `rotate(${spinnerRot}deg)`,
-                }}
-              />
-            ) : (
-              <span style={{ fontSize: 40, fontWeight: 800, color: "white", letterSpacing: "-0.02em" }}>
-                Scan Markets
-              </span>
-            )}
-          </div>
-
-          {/* Button click ripple */}
-          {frame >= PH_CLICK_BTN && frame < PH_CLICK_BTN + 40 && (
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                width: btnRipple * 800,
-                height: btnRipple * 800,
-                borderRadius: "50%",
-                border: `2px solid ${PRI}80`,
-                transform: "translate(-50%, -50%)",
-                opacity: btnRippleOp,
-                pointerEvents: "none",
-              }}
-            />
-          )}
-        </div>
-
-        {/* Signal cards */}
-        {frame >= PH_CARDS &&
-          cards.map((card, i) => {
-            const cf = frame - PH_CARDS - i * 18;
-            const cp = spring({ frame: cf, fps, config: { stiffness: 200, damping: 24 } });
-            return (
-              <div
-                key={card.symbol}
-                style={{
-                  position: "absolute",
-                  top: CARD_TOP + i * (CARD_H + 20),
-                  left: SS,
-                  right: SS,
-                  height: CARD_H,
-                  borderRadius: 22,
-                  backgroundColor: CARD,
-                  border: `1px solid ${BRD}`,
-                  borderLeft: `7px solid ${card.col}`,
-                  padding: "24px 28px",
-                  boxShadow: "0 6px 28px rgba(0,0,0,0.35)",
-                  opacity: cp,
-                  transform: `translateX(${interpolate(cp, [0, 1], [-40, 0])}px)`,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                }}
-              >
-                {/* Row 1 */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontSize: 40, fontWeight: 800, color: FG, fontFamily: "monospace", letterSpacing: "-0.02em" }}>
-                      {card.symbol}
-                    </div>
-                    <div style={{ fontSize: 28, color: card.col, fontWeight: 700, marginTop: 4 }}>{card.heat}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 36, fontWeight: 800, color: FG, fontFamily: "monospace" }}>{card.price}</div>
-                    <div style={{ fontSize: 28, color: BULL, fontFamily: "monospace", fontWeight: 600 }}>↑ {card.change}</div>
-                  </div>
-                </div>
-                {/* Row 2: badges */}
-                <div style={{ display: "flex", gap: 16 }}>
-                  {[
-                    { k: "Win Rate", v: card.wr, c: card.col },
-                    { k: "Slingshot", v: card.sl, c: PRI },
-                    { k: "Prior ATH", v: card.ath, c: BULL },
-                  ].map(({ k, v, c }) => (
-                    <div
-                      key={k}
-                      style={{
-                        flex: 1,
-                        padding: "10px 14px",
-                        borderRadius: 12,
-                        backgroundColor: `${c}12`,
-                        border: `1px solid ${c}28`,
-                      }}
-                    >
-                      <div style={{ fontSize: 22, color: MFG }}>{k}</div>
-                      <div style={{ fontSize: 28, fontWeight: 800, color: c, fontFamily: "monospace" }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-      </AbsoluteFill>
-
-      {/* ── Animated cursor ───────────────────────────────────────────────────── */}
-      <div
-        style={{
-          position: "absolute",
-          left: cursorX - 14,
-          top: cursorY - 14,
-          width: 28,
-          height: 28,
-          pointerEvents: "none",
-          zIndex: 999,
-          opacity: cursorOpacity,
-        }}
-      >
-        {/* Glow halo */}
-        <div
-          style={{
-            position: "absolute",
-            inset: -10,
-            borderRadius: "50%",
-            backgroundColor: "white",
-            opacity: 0.18,
-          }}
-        />
-        {/* Main dot */}
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            backgroundColor: "white",
-            opacity: 0.88,
-            boxShadow: "0 0 16px rgba(255,255,255,0.6)",
-          }}
+      {/* Pricing screenshot faded at bottom */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0, height: 500,
+        opacity: interpolate(enter, [0, 1], [0, 0.22]),
+        overflow: "hidden",
+        maskImage: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%)",
+      }}>
+        <Img
+          src={staticFile("screenshots/24-pricing-full.png")}
+          style={{ width: "100%", objectFit: "cover", objectPosition: "top" }}
         />
       </div>
-    </Shell>
-  );
-};
 
-// ─── SCENE 4 — Product Image Showcase (14–19s, 150 local frames) ─────────────
-// Downloaded OG image displayed large, crossfades between 3 feature headlines.
-const SHOWCASE_LABELS = [
-  "Signal Scanner · 470+ stocks daily",
-  "20-Year Backtested Strategy · Proven Edge",
-  "Instant Telegram & Email Alerts",
-];
-
-const S4Showcase: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Image entrance
-  const imgSpring = spring({ frame, fps, config: { stiffness: 160, damping: 22 } });
-  const imgScale  = interpolate(imgSpring, [0, 1], [0.88, 1]);
-  const imgOpacity = interpolate(frame, [0, 18], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-
-  // Cycling headline — change every 50 frames
-  const labelFade = (idx: number) => {
-    const s = idx * 50;
-    return interpolate(frame, [s, s + 12, s + 38, s + 50], [0, 1, 1, 0], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    });
-  };
-
-  const subOpacity = interpolate(frame, [10, 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-
-  return (
-    <Shell>
-      <AnimatedBackground baseColor={BG} accentColor={PRI} secondaryColor={BULL} particleCount={5} speed={0.4} />
-      <GlowOrb color={PRI} size={700} x="50%" y="50%" breatheSpeed={0.7} baseOpacity={0.25} pulseAmount={0.08} />
-
-      <AbsoluteFill
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: `${ST}px ${SS}px ${SB}px`,
-          gap: 36,
-          zIndex: 1,
-        }}
-      >
-        {/* Cycling feature headline */}
-        <div style={{ height: 72, position: "relative", width: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>
-          {SHOWCASE_LABELS.map((label, i) => (
-            <div
-              key={i}
-              style={{
-                position: "absolute",
-                fontSize: 38,
-                fontWeight: 700,
-                color: PRI,
-                textAlign: "center",
-                letterSpacing: "-0.02em",
-                opacity: labelFade(i),
-                whiteSpace: "nowrap",
-              }}
-            >
-              {label}
-            </div>
-          ))}
-        </div>
-
-        {/* Product image — large, centered */}
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 960,
-            transform: `scale(${imgScale})`,
-            opacity: imgOpacity,
-            borderRadius: 24,
-            overflow: "hidden",
-            boxShadow: `0 32px 100px rgba(0,0,0,0.6), 0 0 0 1.5px ${BRD}`,
-          }}
-        >
-          <Img
-            src={staticFile("product-1.png")}
-            style={{ width: "100%", height: "auto", display: "block" }}
-          />
-        </div>
-
-        {/* Sub caption */}
-        <div
-          style={{
-            fontSize: 30,
-            color: MFG,
-            textAlign: "center",
-            opacity: subOpacity,
-            letterSpacing: "-0.01em",
-          }}
-        >
-          NSE · NASDAQ · S&amp;P 500 · All in one place
-        </div>
-      </AbsoluteFill>
-    </Shell>
-  );
-};
-
-// ─── SCENE 5 — Feature Callouts (19–24s, 150 local frames) ───────────────────
-// OG image shrinks to 38% and drifts to top. Three feature lines spring in below.
-const FEATURES = [
-  { icon: "✓", text: "Reset & Reclaim strategy · 470+ stocks scanned daily", color: BULL   },
-  { icon: "⚡", text: "Telegram & email alerts   · Real-time delivery",       color: PRI    },
-  { icon: "★", text: "20-year backtests          · 50% win rate proven",      color: SIM    },
-] as const;
-
-const S5Features: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Image animates from large→small and moves to top
-  const transitionSpring = spring({ frame, fps, config: { stiffness: 140, damping: 22 } });
-  const imgScale = interpolate(transitionSpring, [0, 1], [1, 0.38]);
-  const imgTopOffset = interpolate(transitionSpring, [0, 1], [600, ST + 10]);
-
-  return (
-    <Shell>
-      {/* Product image — floats to top */}
-      <div
-        style={{
-          position: "absolute",
-          top: imgTopOffset,
-          left: 0,
-          right: 0,
-          display: "flex",
-          justifyContent: "center",
-          zIndex: 0,
-        }}
-      >
-        <div
-          style={{
-            width: `${imgScale * 100}%`,
-            maxWidth: 960 * 0.38,
-            borderRadius: 16,
-            overflow: "hidden",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
-            opacity: 0.85,
-          }}
-        >
-          <Img src={staticFile("product-1.png")} style={{ width: "100%", height: "auto", display: "block" }} />
-        </div>
-      </div>
-
-      {/* Feature lines */}
-      <AbsoluteFill
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          paddingBottom: SB + 40,
-          paddingLeft: SS,
-          paddingRight: SS,
-          gap: 48,
-          zIndex: 1,
-        }}
-      >
-        {FEATURES.map((f, i) => {
-          const fp = spring({ frame: frame - (i * 14 + 38), fps, config: { stiffness: 220, damping: 24 } });
-          return (
-            <div
-              key={i}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 28,
-                opacity: fp,
-                transform: `translateX(${interpolate(fp, [0, 1], [80, 0])}px)`,
-              }}
-            >
-              {/* Icon chip */}
-              <div
-                style={{
-                  width: 72,
-                  height: 72,
-                  flexShrink: 0,
-                  borderRadius: 20,
-                  backgroundColor: `${f.color}18`,
-                  border: `2px solid ${f.color}38`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 36,
-                }}
-              >
-                {f.icon}
-              </div>
-              <div
-                style={{
-                  fontSize: 36,
-                  fontWeight: 600,
-                  color: FG,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.3,
-                  fontFamily: "monospace",
-                }}
-              >
-                {f.text}
-              </div>
-            </div>
-          );
-        })}
-      </AbsoluteFill>
-    </Shell>
-  );
-};
-
-// ─── SCENE 6 — Social Proof + CTA (24–30s, 180 local frames) ─────────────────
-// Stats count up, logo + tagline, URL pulses.
-const STATS = [
-  { to: 150, suffix: "+", label: "Active Traders",  color: PRI  },
-  { to: 470, suffix: "+", label: "Stocks Scanned",  color: BULL },
-  { to: 50,  suffix: "%", label: "Backtest Win Rate", color: SIM  },
-] as const;
-
-const S6CTA: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  const entrySpring = spring({ frame, fps, config: { stiffness: 160, damping: 22 } });
-
-  // Gentle URL pulse
-  const urlPulse = 1 + Math.sin((frame / fps) * Math.PI * 1.4) * 0.016;
-
-  // Fade to black last 20f
-  const fadeOut = interpolate(frame, [160, 180], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  return (
-    <Shell>
-      <GlowOrb color={PRI}  size={800} x="50%" y="38%" breatheSpeed={0.9} baseOpacity={0.32} pulseAmount={0.12} />
-      <GlowOrb color={BULL} size={450} x="80%" y="72%" breatheSpeed={0.6} baseOpacity={0.18} pulseAmount={0.08} />
-
-      {/* Fade to black overlay */}
-      <AbsoluteFill style={{ backgroundColor: "#000", opacity: fadeOut, zIndex: 99, pointerEvents: "none" }} />
-
-      <AbsoluteFill
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: `${ST}px ${SS}px ${SB}px`,
-          gap: 0,
-          opacity: entrySpring,
-          transform: `scale(${interpolate(entrySpring, [0, 1], [0.93, 1])})`,
-          zIndex: 1,
-        }}
-      >
-        {/* Social proof counters */}
-        <div
-          style={{
-            display: "flex",
-            gap: 48,
-            marginBottom: 72,
-            flexWrap: "wrap",
-            justifyContent: "center",
-          }}
-        >
-          {STATS.map((stat, i) => {
-            const statSpring = spring({ frame: frame - i * 14, fps, config: { stiffness: 120, damping: 22 } });
-            const rawValue   = stat.to * Math.min(1, statSpring);
-            const displayVal = Math.round(rawValue);
-            const cardP = spring({ frame: frame - i * 14, fps, config: { stiffness: 200, damping: 24 } });
-
-            return (
-              <div
-                key={stat.label}
-                style={{
-                  textAlign: "center",
-                  opacity: cardP,
-                  transform: `translateY(${interpolate(cardP, [0, 1], [24, 0])}px)`,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 90,
-                    fontWeight: 800,
-                    color: stat.color,
-                    fontFamily: "monospace",
-                    letterSpacing: "-0.04em",
-                    lineHeight: 1,
-                  }}
-                >
-                  {displayVal}{stat.suffix}
-                </div>
-                <div style={{ fontSize: 30, color: MFG, marginTop: 10, fontWeight: 500 }}>{stat.label}</div>
-              </div>
-            );
-          })}
-        </div>
-
+      {/* Center content */}
+      <AbsoluteFill style={{
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        gap: 40, padding: "0 60px",
+        opacity: enter,
+        transform: `scale(${interpolate(enter, [0, 1], [0.93, 1])})`,
+      }}>
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 22, marginBottom: 24 }}>
-          <div
-            style={{
-              width: 84,
-              height: 84,
-              borderRadius: 24,
-              background: `linear-gradient(135deg, ${PRI} 0%, #2e5fad 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: `0 12px 44px ${PRI}55`,
-            }}
-          >
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 14,
+            background: `linear-gradient(135deg, ${C.primary}, #7C3AED)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span style={{ color: "#fff", fontSize: 26, fontWeight: 800 }}>⚡</span>
           </div>
-          <div style={{ fontSize: 68, fontWeight: 800, color: FG, letterSpacing: "-0.04em" }}>SignalSky</div>
+          <span style={{
+            fontSize: 52, fontWeight: 800, color: C.text,
+            fontFamily: "system-ui", letterSpacing: "-0.03em",
+          }}>SignalSky</span>
         </div>
 
-        {/* CTA headline */}
-        <div
-          style={{
-            fontSize: 52,
-            fontWeight: 800,
-            color: FG,
-            textAlign: "center",
-            letterSpacing: "-0.04em",
-            lineHeight: 1.2,
-            marginBottom: 24,
-          }}
-        >
-          Your edge starts
-          <br />
-          <span style={{ color: PRI }}>tomorrow morning.</span>
+        {/* Headline */}
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            fontSize: 76, fontWeight: 900, lineHeight: 1.0,
+            letterSpacing: "-0.04em", color: C.text,
+            fontFamily: "system-ui, -apple-system, sans-serif",
+          }}>
+            Stop scanning.
+            <br />
+            <span style={{
+              background: `linear-gradient(135deg, ${C.primary}, ${C.accent})`,
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            }}>Start trading.</span>
+          </div>
         </div>
 
-        <div style={{ fontSize: 34, color: MFG, marginBottom: 64, textAlign: "center", fontWeight: 500 }}>
+        {/* Stats */}
+        <div style={{
+          display: "flex", gap: 0,
+          background: `${C.card}cc`, border: `1px solid ${C.border}`,
+          borderRadius: 20, overflow: "hidden", width: "100%",
+        }}>
+          {[
+            { v: "20yr", l: "Backtests", c: C.primary },
+            { v: "68%+", l: "Win rate", c: C.green },
+            { v: "₹299", l: "/ month", c: C.gold },
+          ].map((s, i) => {
+            const ss = spring({ frame: Math.max(0, sf - 8 - i * 6), fps: FPS, config: { damping: 18, stiffness: 100 } });
+            return (
+              <div key={i} style={{
+                flex: 1, padding: "24px 0", textAlign: "center",
+                borderRight: i < 2 ? `1px solid ${C.border}` : "none",
+                opacity: ss, transform: `translateY(${interpolate(ss, [0, 1], [12, 0])}px)`,
+              }}>
+                <div style={{ fontSize: 38, fontWeight: 800, color: s.c, fontFamily: "system-ui", letterSpacing: "-0.03em" }}>{s.v}</div>
+                <div style={{ fontSize: 18, color: C.muted, fontWeight: 500, fontFamily: "system-ui", marginTop: 4 }}>{s.l}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Sub */}
+        <div style={{ fontSize: 28, color: C.muted, textAlign: "center", fontFamily: "system-ui", fontWeight: 400 }}>
           7-day free trial · No card required
         </div>
 
-        {/* Pulsing URL */}
-        <div
-          style={{
-            fontSize: 52,
-            fontWeight: 800,
-            color: PRI,
-            fontFamily: "monospace",
-            letterSpacing: "-0.02em",
-            transform: `scale(${urlPulse})`,
-            padding: "22px 56px",
-            borderRadius: 22,
-            border: `2px solid ${PRI}38`,
-            backgroundColor: `${PRI}12`,
-          }}
-        >
-          signalsky.app
+        {/* URL pill */}
+        <div style={{
+          padding: "16px 48px",
+          background: `${C.primary}1a`, border: `1px solid ${C.primary}55`,
+          borderRadius: 999,
+        }}>
+          <span style={{
+            fontSize: 42, fontWeight: 800, color: C.primary,
+            fontFamily: "system-ui", letterSpacing: "0.02em",
+          }}>signalsky.app</span>
         </div>
       </AbsoluteFill>
-    </Shell>
+
+      {/* Fade to black */}
+      <AbsoluteFill style={{ background: "#000", opacity: fadeOut, pointerEvents: "none" }} />
+
+      <Dots current={5} total={6} />
+    </AbsoluteFill>
   );
 };
 
-// ─── ROOT COMPOSITION ─────────────────────────────────────────────────────────
-export const LaunchReelComposition: React.FC = () => (
-  <>
-    <BackgroundMusic totalFrames={TOTAL} duck={false} fullVolume={0.42} />
+// ── ROOT ───────────────────────────────────────────────────────────────────
+export const LaunchReelComposition: React.FC = () => {
+  const frame = useCurrentFrame();
+  return (
+    <AbsoluteFill style={{ background: C.bg, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <BackgroundMusic
+        totalFrames={TOTAL}
+        duck={true}
+        duckVolume={0.08}
+        fullVolume={0.08}
+        fadeInFrames={30}
+        fadeOutFrames={45}
+      />
 
-    <Sequence from={S1_START} durationInFrames={rf(3)}>
-      <S1Hook />
-    </Sequence>
-
-    <Sequence from={S2_START} durationInFrames={rf(3)}>
-      <S2Intro />
-    </Sequence>
-
-    <Sequence from={S3_START} durationInFrames={rf(8)}>
-      <S3Demo />
-    </Sequence>
-
-    <Sequence from={S4_START} durationInFrames={rf(5)}>
-      <S4Showcase />
-    </Sequence>
-
-    <Sequence from={S5_START} durationInFrames={rf(5)}>
-      <S5Features />
-    </Sequence>
-
-    <Sequence from={S6_START} durationInFrames={rf(6)}>
-      <S6CTA />
-    </Sequence>
-  </>
-);
+      <Sequence from={f(S1.start)} durationInFrames={f(S1.dur)}><Scene1 /></Sequence>
+      <Sequence from={f(S2.start)} durationInFrames={f(S2.dur)}><Scene2 /></Sequence>
+      <Sequence from={f(S3.start)} durationInFrames={f(S3.dur)}><Scene3 /></Sequence>
+      <Sequence from={f(S4.start)} durationInFrames={f(S4.dur)}><Scene4 /></Sequence>
+      <Sequence from={f(S5.start)} durationInFrames={f(S5.dur)}><Scene5 /></Sequence>
+      <Sequence from={f(S6.start)} durationInFrames={f(S6.dur)}><Scene6 /></Sequence>
+    </AbsoluteFill>
+  );
+};

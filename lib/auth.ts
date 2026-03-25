@@ -2,6 +2,29 @@ import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 
+// RECORDING_MODE: hardcoded demo PRO session — remove before deploying to prod
+const RECORDING_MODE = process.env.RECORDING_MODE === "true"
+const DEMO_USER_ID = "463f30d6-775e-4606-a795-82c1bc6e66cc"
+const DEMO_SESSION_USER = {
+  id: DEMO_USER_ID,
+  email: "gosulayaswanth2@gmail.com",
+  name: "Tanvika Gosula",
+  image: null as null,
+  tier: "PRO" as const,
+  trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+  isAdmin: false,
+}
+const DEMO_INITIAL_USER = {
+  id: DEMO_USER_ID,
+  email: "gosulayaswanth2@gmail.com" as string | undefined,
+  name: "Tanvika Gosula",
+  image: null as null,
+  tier: "PRO",
+  trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+  isAdmin: false,
+  settings: { defaultCapitalINR: 500000, defaultCapitalUSD: 10000, defaultRiskPct: 1.5, hasSeenOnboarding: true } as Record<string, unknown>,
+}
+
 export type SessionUser = {
   id: string
   email: string
@@ -28,6 +51,7 @@ export type InitialUser = {
  * Reads auth from cookies and user profile from DB (no upsert).
  */
 export async function getInitialUser(): Promise<InitialUser | null> {
+  if (RECORDING_MODE) return DEMO_INITIAL_USER
   try {
     const supabase = await createClient()
     const {
@@ -63,6 +87,7 @@ export async function getInitialUser(): Promise<InitialUser | null> {
  * Uses getUser() to verify the token with the Supabase Auth server (no DB upsert).
  */
 export async function getSessionForApi(): Promise<{ userId: string } | null> {
+  if (RECORDING_MODE) return { userId: DEMO_USER_ID }
   try {
     const supabase = await createClient()
     const {
@@ -87,6 +112,7 @@ function generateReferralCode(seed: string): string {
 }
 
 export async function getSession(): Promise<{ user: SessionUser } | null> {
+  if (RECORDING_MODE) return { user: DEMO_SESSION_USER }
   const supabase = await createClient()
   const {
     data: { user },

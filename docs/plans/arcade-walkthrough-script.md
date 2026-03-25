@@ -17,8 +17,8 @@ No code changes needed. This is a recording script only.
 - [ ] Arcade: enable **face cam**, position bottom-right corner, circular crop
 - [ ] Arcade: set quality to **1080p**, frame rate 60fps
 - [ ] Silence phone notifications; close Slack/email
-- [ ] Have **RELIANCE** open in a background tab for the signal detail scene
-- [ ] Pre-load backtests page on RELIANCE — so data is cached and loads instantly
+- [ ] Have **TITAN** open in a background tab for the signal detail scene
+- [ ] Pre-load backtests page on TITAN — so data is cached and loads instantly
 - [ ] Run through the full script once dry before recording
 
 ---
@@ -61,15 +61,15 @@ No code changes needed. This is a recording script only.
 5. Now click the **Slingshot** chip — select **"≤ 30 days"**
 6. Table shortens significantly. Narrate:
    > "This is the Slingshot filter. It only shows stocks that reclaimed their EMA 220 within the last 30 days. Tighter reclaim window — higher conviction. These are the stocks still inside the breakout window right now."
-7. Hover over the slingshot days cell on RELIANCE row — show the tooltip ("X days from reclaim")
+7. Hover over the slingshot days cell on TITAN row — show the tooltip ("X days from reclaim")
 8. Narrate:
-   > "RELIANCE — 12 days since reclaim. Still inside the window."
+   > "TITAN — 12 days since reclaim. Still inside the window."
 
 ---
 
 ### Scene 3 — Signal Detail (1:45–2:45)
 
-**URL**: signalsky.app/scanner/RELIANCE.NS
+**URL**: signalsky.app/scanner/TITAN.NS
 
 **Face cam**: Back to bottom-right, medium size.
 
@@ -77,7 +77,7 @@ No code changes needed. This is a recording script only.
 > "Click any stock. Here's the full signal breakdown."
 
 **Actions**:
-1. Click the RELIANCE row → signal detail page opens
+1. Click the TITAN row → signal detail page opens
 2. Point at the chart — narrate:
    > "The chart marks three exact moments. The prior peak — where the stock hit its all-time high before the pullback. The break date — where it crossed below EMA 220. The reclaim date — where it crossed back above. That's the trade setup."
 3. Scroll down to **"Why This Triggered"** section — show the three cards (Pre-Set ATH, Break date, Reclaim date)
@@ -101,9 +101,9 @@ No code changes needed. This is a recording script only.
 1. Navigate to Backtests in the sidebar
 2. Show the list of backtest cards — narrate:
    > "Every symbol in your universe has a backtest. 20 years of daily data."
-3. Click the **RELIANCE** card
+3. Click the **TITAN** card
 4. Backtest detail loads — point at the equity curve chart:
-   > "RELIANCE — 72% win rate, Sharpe of 1.82, over 20 years."
+   > "TITAN — 72% win rate, Sharpe of 1.82, over 20 years."
 5. Click the **"Slingshot ≤ 30d"** chip at the top of the chart
 6. Stats re-animate — narrate:
    > "Switch to the 30-day slingshot variant. Win rate climbs to 76%. The tighter the entry window, the sharper the historical edge."
@@ -225,7 +225,7 @@ No code changes needed. This is a recording script only.
 
 Use only 4 scenes:
 
-1. **Scanner + Slingshot** (0:25–1:00, ~35s): Full scanner → Slingshot ≤30d chip click → table filters → hover tooltip on RELIANCE
+1. **Scanner + Slingshot** (0:25–1:00, ~35s): Full scanner → Slingshot ≤30d chip click → table filters → hover tooltip on TITAN
 2. **Signal Detail chart** (1:45–2:10, ~25s): Chart with 3 markers, position calculator with live update
 3. **Backtest chip switch** (3:10–3:35, ~25s): Click slingshot chip → 68% → 76% win rate animation
 4. **CTA** (5:35–6:00, ~25s): Direct to camera, pricing, signalsky.app

@@ -2,7 +2,24 @@ import { NextResponse } from "next/server"
 import { getSessionForApi } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+// RECORDING_MODE: return demo user without DB lookup — remove before deploying to prod
+if (process.env.RECORDING_MODE === "true") {
+  // module-level flag so the handler below can short-circuit
+}
+
 export async function GET() {
+  if (process.env.RECORDING_MODE === "true") {
+    return NextResponse.json({
+      id: "463f30d6-775e-4606-a795-82c1bc6e66cc",
+      name: "Tanvika Gosula",
+      email: "gosulayaswanth2@gmail.com",
+      image: null,
+      tier: "PRO",
+      trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      isAdmin: false,
+      settings: { defaultCapitalINR: 500000, defaultCapitalUSD: 10000, defaultRiskPct: 1.5, hasSeenOnboarding: true },
+    })
+  }
   const session = await getSessionForApi()
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
