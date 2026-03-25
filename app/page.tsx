@@ -22,6 +22,7 @@ import {
 import { ThemeToggle } from "@/components/signal-sky/theme-toggle"
 import { LifetimeSlots } from "@/components/signal-sky/lifetime-slots"
 import { ExplainerPlayer } from "@/components/signal-sky/explainer-player"
+import { WalkthroughVideo } from "@/components/signal-sky/walkthrough-video"
 import { getLifetimeDealInfo, type LifetimeDealInfo } from "@/lib/data/deals"
 import { getBacktestAggregates } from "@/lib/data/backtests"
 import { getLandingStats } from "@/lib/data/signals"
@@ -596,15 +597,7 @@ function AppHighlightsSection() {
                 </div>
               </div>
             </div>
-            <video
-              src="https://wdqcbbelmds6ipi3.public.blob.vercel-storage.com/promo-60s.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full block"
-              style={{ aspectRatio: "16/9" }}
-            />
+            <WalkthroughVideo />
           </div>
         </div>
       </div>
