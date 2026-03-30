@@ -150,8 +150,21 @@ function HeroSection() {
             </a>
           </div>
 
+          {/* Product Hunt Badge */}
+          <div className="mt-6">
+            <a href="https://www.producthunt.com/products/signalsky?utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-signalsky" target="_blank" rel="noopener noreferrer">
+              <img
+                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1106951&theme=dark"
+                alt="SignalSky - One strategy, 20 years of data, 1,000+ stocks scanned daily | Product Hunt"
+                width={250}
+                height={54}
+                style={{ width: 250, height: 54 }}
+              />
+            </a>
+          </div>
+
           {/* Stats row */}
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-10 sm:gap-16">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-10 sm:gap-16">
             {[
               { label: "Markets Covered", value: "2", suffix: "" },
               { label: "Signals Scanned Daily", value: "1,000", suffix: "+" },
